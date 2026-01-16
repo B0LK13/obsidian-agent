@@ -45,6 +45,7 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 		this.addSystemPromptSetting(containerEl);
 		this.addContextAwarenessSetting(containerEl);
 		this.addReconnectButton(containerEl);
+		this.addTestConnectionButton(containerEl);
 	}
 
 	private addApiKeySetting(containerEl: HTMLElement): void {
@@ -238,6 +239,38 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 		
 		const desc = buttonContainer.createDiv({ cls: 'setting-item-description' });
 		desc.textContent = 'Reinitialize LLM connection (useful after changing provider or API key)';
+	}
+
+	private addTestConnectionButton(containerEl: HTMLElement): void {
+		const buttonContainer = containerEl.createDiv({ cls: 'setting-item' });
+		const button = buttonContainer.createEl('button', {
+			text: 'Test Connection',
+			cls: 'mod-cta'
+		});
+		
+		button.addEventListener('click', async () => {
+			try {
+				button.disabled = true;
+				button.textContent = 'Testing...';
+				
+				const result = await this.plugin.aiService.testConnection();
+				
+				if (result.success) {
+					new Notice(`Connection successful! Response time: ${result.responseTime}ms`);
+				} else {
+					new Notice(`Connection failed: ${result.message}`, 5000);
+				}
+			} catch (error: any) {
+				new Notice(`Test failed: ${error.message}`, 5000);
+				console.error('Test Connection Error:', error);
+			} finally {
+				button.disabled = false;
+				button.textContent = 'Test Connection';
+			}
+		});
+		
+		const desc = buttonContainer.createDiv({ cls: 'setting-item-description' });
+		desc.textContent = 'Verify your API configuration is working correctly';
 	}
 
 	private showError(key: string, settingEl: HTMLElement, message: string): void {

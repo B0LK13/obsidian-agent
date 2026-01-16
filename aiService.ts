@@ -4,9 +4,52 @@ import { requestUrl, RequestUrlResponse, Notice } from 'obsidian';
 export class AIService {
 	private settings: ObsidianAgentSettings;
 	private timeoutMs: number = 30000;
+	private maxRetries: number = 3;
+	private initialRetryDelayMs: number = 1000;
+	private retryDelayMultiplier: number = 2;
 
 	constructor(settings: ObsidianAgentSettings) {
 		this.settings = settings;
+	}
+
+	async testConnection(): Promise<{ success: boolean; message: string; responseTime?: number }> {
+		if (!this.settings.apiKey) {
+			return {
+				success: false,
+				message: 'API key not configured'
+			};
+		}
+
+		const startTime = Date.now();
+		
+		try {
+			const response = await this.callAPIWithRetry([{
+				role: 'user',
+				content: 'Test connection. Please respond with "OK" only.'
+			}], 1);
+			
+			const responseTime = Date.now() - startTime;
+			
+			if (response.trim().toLowerCase() === 'ok' || response.length > 0) {
+				return {
+					success: true,
+					message: `Connection successful! Response time: ${responseTime}ms`,
+					responseTime
+				};
+			} else {
+				return {
+					success: false,
+					message: 'Connection succeeded but returned unexpected response'
+				};
+			}
+		} catch (error: any) {
+			const responseTime = Date.now() - startTime;
+			return {
+				success: false,
+				message: this.getErrorMessage(error),
+				responseTime
+			};
+		}
 	}
 
 	async generateCompletion(prompt: string, context?: string): Promise<string> {
@@ -36,49 +79,99 @@ export class AIService {
 		});
 
 		try {
-			const response = await this.callAPIWithTimeout(messages);
+			const response = await this.callAPIWithRetry(messages);
 			return response;
 		} catch (error: any) {
 			console.error('AI Service Error:', error);
-			throw this.handleError(error);
+			throw new Error(this.getErrorMessage(error));
 		}
 	}
 
-	private handleError(error: any): Error {
+	private getErrorMessage(error: any): string {
 		if (error.name === 'AbortError' || error.message?.includes('timeout')) {
-			return new Error('Request timed out. Please check your internet connection and try again.');
+			return 'Request timed out. Please check your internet connection and try again.';
 		}
 
 		if (error.message?.includes('401') || error.message?.includes('authentication')) {
-			return new Error('Invalid API key. Please check your API key in settings.');
+			return 'Invalid API key. Please check your API key in settings.';
 		}
 
 		if (error.message?.includes('429') || error.message?.includes('rate limit') || error.message?.includes('API limit')) {
-			return new Error(
-				'API rate limit reached. Please wait a moment and try again. ' +
-				'Tip: Consider using a local LLM like Ollama for unlimited usage.'
-			);
+			return 'API rate limit reached. Please wait a moment and try again. Tip: Consider using a local LLM like Ollama for unlimited usage.';
 		}
 
 		if (error.message?.includes('500') || error.message?.includes('502') || error.message?.includes('503')) {
-			return new Error(
-				'API service is temporarily unavailable. Please try again later. ' +
-				'Tip: Check https://status.openai.com or provider status page.'
-			);
+			return 'API service is temporarily unavailable. Please try again later. Tip: Check https://status.openai.com or provider status page.';
 		}
 
 		if (error.message?.includes('404') || error.message?.includes('model not found')) {
-			return new Error('Model not found. Please check the model name in settings.');
+			return 'Model not found. Please check the model name in settings.';
 		}
 
 		if (error.message?.includes('quota') || error.message?.includes('billing')) {
-			return new Error(
-				'API quota exceeded or billing issue. Please check your provider dashboard. ' +
-				'Tip: Consider using a local LLM like Ollama to avoid API costs.'
-			);
+			return 'API quota exceeded or billing issue. Please check your provider dashboard. Tip: Consider using a local LLM like Ollama to avoid API costs.';
 		}
 
-		return new Error(`Failed to generate completion: ${error.message}`);
+		return `Failed to generate completion: ${error.message}`;
+	}
+
+	private async callAPIWithRetry(messages: Array<{role: string, content: string}>, maxRetriesOverride?: number): Promise<string> {
+		const maxRetries = maxRetriesOverride ?? this.maxRetries;
+		let lastError: any;
+
+		for (let attempt = 0; attempt <= maxRetries; attempt++) {
+			try {
+				if (attempt > 0) {
+					const delay = this.getRetryDelay(attempt);
+					await this.sleep(delay);
+				}
+
+				return await this.callAPIWithTimeout(messages);
+			} catch (error: any) {
+				lastError = error;
+
+				if (this.shouldNotRetry(error)) {
+					throw error;
+				}
+
+				if (attempt < maxRetries) {
+					const delay = this.getRetryDelay(attempt + 1);
+					console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`);
+				}
+			}
+		}
+
+		throw lastError;
+	}
+
+	private shouldNotRetry(error: any): boolean {
+		const message = error.message?.toLowerCase() || '';
+		
+		if (message.includes('401') || message.includes('authentication')) {
+			return true;
+		}
+		
+		if (message.includes('404') || message.includes('model not found')) {
+			return true;
+		}
+		
+		if (message.includes('429') || message.includes('rate limit') || message.includes('api limit')) {
+			return true;
+		}
+		
+		if (message.includes('quota') || message.includes('billing')) {
+			return true;
+		}
+
+		return false;
+	}
+
+	private getRetryDelay(attempt: number): number {
+		return this.initialRetryDelayMs * Math.pow(this.retryDelayMultiplier, attempt - 1);
+	}
+
+	private sleep(ms: number): Promise<void> {
+		return new Promise(resolve => setTimeout(resolve, ms));
 	}
 
 	private async callAPIWithTimeout(messages: Array<{role: string, content: string}>): Promise<string> {
