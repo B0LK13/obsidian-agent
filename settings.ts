@@ -1,3 +1,17 @@
+export interface ChatMessage {
+	role: 'user' | 'assistant';
+	content: string;
+	timestamp: number;
+}
+
+export interface Conversation {
+	id: string;
+	title: string;
+	messages: ChatMessage[];
+	createdAt: number;
+	updatedAt: number;
+}
+
 export interface ObsidianAgentSettings {
 	apiKey: string;
 	apiProvider: 'openai' | 'anthropic' | 'custom';
@@ -13,6 +27,11 @@ export interface ObsidianAgentSettings {
 	totalRequests?: number;
 	totalTokensUsed?: number;
 	estimatedCost?: number;
+	// Conversation persistence
+	conversations: Conversation[];
+	activeConversationId?: string;
+	maxConversations: number;
+	enableConversationPersistence: boolean;
 }
 
 export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
@@ -26,5 +45,9 @@ export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
 	enableAutoCompletion: false,
 	enableContextAwareness: true,
 	enableTokenTracking: true,
-	costThreshold: 10
+	costThreshold: 10,
+	// Conversation persistence defaults
+	conversations: [],
+	maxConversations: 20,
+	enableConversationPersistence: true
 }

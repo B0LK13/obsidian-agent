@@ -25,9 +25,16 @@ export default class ObsidianAgentPlugin extends Plugin {
 			name: 'Ask AI Agent',
 			editorCallback: (editor: Editor, view: MarkdownView) => {
 				const context = editor.getValue();
-				new AgentModal(this.app, this.aiService, context, (result) => {
-					editor.replaceSelection(result);
-				}).open();
+				new AgentModal(
+					this.app, 
+					this.aiService, 
+					this.settings,
+					() => this.saveSettings(),
+					context, 
+					(result) => {
+						editor.replaceSelection(result);
+					}
+				).open();
 			}
 		});
 
@@ -150,10 +157,17 @@ export default class ObsidianAgentPlugin extends Plugin {
 			name: 'Answer Question Based on Note',
 			editorCallback: (editor: Editor, view: MarkdownView) => {
 				const noteContent = editor.getValue();
-				new AgentModal(this.app, this.aiService, noteContent, (result) => {
-					const cursor = editor.getCursor();
-					editor.replaceRange(`\n\n**Q:** ${result}\n`, cursor);
-				}).open();
+				new AgentModal(
+					this.app, 
+					this.aiService, 
+					this.settings,
+					() => this.saveSettings(),
+					noteContent, 
+					(result) => {
+						const cursor = editor.getCursor();
+						editor.replaceRange(`\n\n**Q:** ${result}\n`, cursor);
+					}
+				).open();
 			}
 		});
 

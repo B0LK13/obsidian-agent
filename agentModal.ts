@@ -1,14 +1,11 @@
-import { App, Modal, Notice, TextAreaComponent, setTooltip, MarkdownRenderer } from 'obsidian';
+import { App, Modal, Notice, TextAreaComponent, setTooltip, MarkdownRenderer, DropdownComponent } from 'obsidian';
 import { AIService } from './aiService';
-
-interface ChatMessage {
-	role: 'user' | 'assistant';
-	content: string;
-	timestamp: number;
-}
+import { ChatMessage, Conversation, ObsidianAgentSettings } from './settings';
 
 export class AgentModal extends Modal {
 	private aiService: AIService;
+	private settings: ObsidianAgentSettings;
+	private saveSettings: () => Promise<void>;
 	private onSubmit: (result: string) => void;
 	private prompt: string = '';
 	private context: string = '';
@@ -20,18 +17,222 @@ export class AgentModal extends Modal {
 	private stopButton?: HTMLButtonElement;
 	private isStreaming: boolean = false;
 	private currentResponse: string = '';
+	private currentConversationId: string | null = null;
+	private conversationSelector?: HTMLSelectElement;
 
-	constructor(app: App, aiService: AIService, context: string, onSubmit: (result: string) => void) {
+	constructor(
+		app: App, 
+		aiService: AIService, 
+		settings: ObsidianAgentSettings,
+		saveSettings: () => Promise<void>,
+		context: string, 
+		onSubmit: (result: string) => void
+	) {
 		super(app);
 		this.aiService = aiService;
+		this.settings = settings;
+		this.saveSettings = saveSettings;
 		this.context = context;
 		this.onSubmit = onSubmit;
+		
+		// Load active conversation if persistence is enabled
+		if (this.settings.enableConversationPersistence && this.settings.activeConversationId) {
+			const activeConv = this.settings.conversations.find(c => c.id === this.settings.activeConversationId);
+			if (activeConv) {
+				this.currentConversationId = activeConv.id;
+				this.chatHistory = [...activeConv.messages];
+			}
+		}
+	}
+
+	private generateConversationId(): string {
+		return `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+	}
+
+	private generateConversationTitle(): string {
+		if (this.chatHistory.length > 0) {
+			const firstUserMessage = this.chatHistory.find(m => m.role === 'user');
+			if (firstUserMessage) {
+				const title = firstUserMessage.content.substring(0, 50);
+				return title.length < firstUserMessage.content.length ? `${title}...` : title;
+			}
+		}
+		return `Conversation ${new Date().toLocaleDateString()}`;
+	}
+
+	private async saveCurrentConversation(): Promise<void> {
+		if (!this.settings.enableConversationPersistence || this.chatHistory.length === 0) {
+			return;
+		}
+
+		const now = Date.now();
+		
+		if (this.currentConversationId) {
+			// Update existing conversation
+			const convIndex = this.settings.conversations.findIndex(c => c.id === this.currentConversationId);
+			if (convIndex >= 0) {
+				this.settings.conversations[convIndex].messages = [...this.chatHistory];
+				this.settings.conversations[convIndex].updatedAt = now;
+				this.settings.conversations[convIndex].title = this.generateConversationTitle();
+			}
+		} else {
+			// Create new conversation
+			this.currentConversationId = this.generateConversationId();
+			const newConversation: Conversation = {
+				id: this.currentConversationId,
+				title: this.generateConversationTitle(),
+				messages: [...this.chatHistory],
+				createdAt: now,
+				updatedAt: now
+			};
+			this.settings.conversations.unshift(newConversation);
+			
+			// Limit to maxConversations
+			if (this.settings.conversations.length > this.settings.maxConversations) {
+				this.settings.conversations = this.settings.conversations.slice(0, this.settings.maxConversations);
+			}
+		}
+
+		this.settings.activeConversationId = this.currentConversationId;
+		await this.saveSettings();
+		this.updateConversationSelector();
+	}
+
+	private loadConversation(conversationId: string): void {
+		const conversation = this.settings.conversations.find(c => c.id === conversationId);
+		if (conversation) {
+			this.currentConversationId = conversationId;
+			this.chatHistory = [...conversation.messages];
+			this.settings.activeConversationId = conversationId;
+			this.renderChatHistory();
+		}
+	}
+
+	private async startNewConversation(): Promise<void> {
+		this.currentConversationId = null;
+		this.chatHistory = [];
+		this.settings.activeConversationId = undefined;
+		await this.saveSettings();
+		this.renderChatHistory();
+		this.updateConversationSelector();
+		new Notice('Started new conversation');
+	}
+
+	private updateConversationSelector(): void {
+		if (!this.conversationSelector) return;
+		
+		// Clear existing options
+		this.conversationSelector.innerHTML = '';
+		
+		// Add "New Conversation" option
+		const newOption = document.createElement('option');
+		newOption.value = '';
+		newOption.text = '+ New Conversation';
+		this.conversationSelector.appendChild(newOption);
+		
+		// Add existing conversations
+		this.settings.conversations.forEach(conv => {
+			const option = document.createElement('option');
+			option.value = conv.id;
+			option.text = conv.title;
+			if (conv.id === this.currentConversationId) {
+				option.selected = true;
+			}
+			this.conversationSelector!.appendChild(option);
+		});
+	}
+
+	private async deleteConversation(conversationId: string): Promise<void> {
+		const convIndex = this.settings.conversations.findIndex(c => c.id === conversationId);
+		if (convIndex >= 0) {
+			this.settings.conversations.splice(convIndex, 1);
+			if (this.currentConversationId === conversationId) {
+				this.currentConversationId = null;
+				this.chatHistory = [];
+				this.settings.activeConversationId = undefined;
+			}
+			await this.saveSettings();
+			this.updateConversationSelector();
+			this.renderChatHistory();
+			new Notice('Conversation deleted');
+		}
+	}
+
+	private exportConversationAsMarkdown(): string {
+		if (this.chatHistory.length === 0) {
+			return '';
+		}
+		
+		let markdown = `# AI Conversation\n\n`;
+		markdown += `*Exported on ${new Date().toLocaleString()}*\n\n---\n\n`;
+		
+		this.chatHistory.forEach(message => {
+			const role = message.role === 'user' ? '**You**' : '**AI Agent**';
+			const time = new Date(message.timestamp).toLocaleTimeString();
+			markdown += `${role} *(${time})*:\n\n${message.content}\n\n---\n\n`;
+		});
+		
+		return markdown;
 	}
 
 	onOpen() {
 		const {contentEl} = this;
 
 		contentEl.createEl('h2', {text: 'AI Agent Assistant'});
+
+		// Conversation selector row
+		if (this.settings.enableConversationPersistence) {
+			const conversationRow = contentEl.createDiv({ cls: 'conversation-selector-row' });
+			conversationRow.style.display = 'flex';
+			conversationRow.style.alignItems = 'center';
+			conversationRow.style.gap = '0.5rem';
+			conversationRow.style.marginBottom = '0.75rem';
+
+			const selectorLabel = conversationRow.createEl('span', { text: 'Conversation:' });
+			selectorLabel.style.fontSize = 'var(--font-smaller)';
+			selectorLabel.style.color = 'var(--text-muted)';
+
+			this.conversationSelector = conversationRow.createEl('select') as HTMLSelectElement;
+			this.conversationSelector.style.flex = '1';
+			this.conversationSelector.style.padding = '0.25rem';
+			this.conversationSelector.style.borderRadius = 'var(--radius-s)';
+			this.conversationSelector.style.border = '1px solid var(--background-modifier-border)';
+			this.conversationSelector.style.backgroundColor = 'var(--background-primary)';
+			this.updateConversationSelector();
+			
+			this.conversationSelector.addEventListener('change', async (e) => {
+				const selectedId = (e.target as HTMLSelectElement).value;
+				if (selectedId === '') {
+					await this.startNewConversation();
+				} else {
+					this.loadConversation(selectedId);
+				}
+			});
+
+			const exportButton = conversationRow.createEl('button', { text: 'Export' });
+			exportButton.style.fontSize = 'var(--font-smaller)';
+			setTooltip(exportButton, 'Export conversation as markdown');
+			exportButton.addEventListener('click', () => {
+				const markdown = this.exportConversationAsMarkdown();
+				if (markdown) {
+					navigator.clipboard.writeText(markdown);
+					new Notice('Conversation copied to clipboard as markdown');
+				} else {
+					new Notice('No conversation to export');
+				}
+			});
+
+			if (this.currentConversationId) {
+				const deleteButton = conversationRow.createEl('button', { text: 'Delete', cls: 'mod-warning' });
+				deleteButton.style.fontSize = 'var(--font-smaller)';
+				setTooltip(deleteButton, 'Delete this conversation');
+				deleteButton.addEventListener('click', async () => {
+					if (this.currentConversationId && confirm('Delete this conversation?')) {
+						await this.deleteConversation(this.currentConversationId);
+					}
+				});
+			}
+		}
 
 		const headerContainer = contentEl.createDiv({ cls: 'modal-header' });
 		headerContainer.style.display = 'flex';
@@ -189,6 +390,7 @@ export class AgentModal extends Modal {
 			if (this.currentResponse) {
 				this.addMessageToHistory('assistant', this.currentResponse);
 				this.renderChatHistory();
+				await this.saveCurrentConversation();
 			}
 			
 			this.onSubmit(this.currentResponse);
@@ -300,7 +502,7 @@ export class AgentModal extends Modal {
 		container.scrollTop = container.scrollHeight;
 	}
 
-	private clearChatWithConfirmation(): void {
+	private async clearChatWithConfirmation(): Promise<void> {
 		if (this.chatHistory.length === 0) {
 			new Notice('Chat is already empty');
 			return;
@@ -310,6 +512,17 @@ export class AgentModal extends Modal {
 		
 		if (confirmClear) {
 			this.chatHistory = [];
+			
+			// Also clear from saved conversation
+			if (this.currentConversationId) {
+				const convIndex = this.settings.conversations.findIndex(c => c.id === this.currentConversationId);
+				if (convIndex >= 0) {
+					this.settings.conversations[convIndex].messages = [];
+					this.settings.conversations[convIndex].updatedAt = Date.now();
+					await this.saveSettings();
+				}
+			}
+			
 			this.renderChatHistory();
 			new Notice('Chat history cleared');
 		}

@@ -70,9 +70,57 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 		this.addMaxTokensSetting(containerEl);
 		this.addSystemPromptSetting(containerEl);
 		this.addContextAwarenessSetting(containerEl);
+		this.addConversationPersistenceSetting(containerEl);
 		this.addTokenTrackingSetting(containerEl);
 		this.addReconnectButton(containerEl);
 		this.addTestConnectionButton(containerEl);
+	}
+
+	private addConversationPersistenceSetting(containerEl: HTMLElement): void {
+		containerEl.createEl('h3', { text: 'Conversation History' });
+
+		new Setting(containerEl)
+			.setName('Enable Conversation Persistence')
+			.setDesc('Save conversations across sessions')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.enableConversationPersistence)
+				.onChange(async (value) => {
+					this.plugin.settings.enableConversationPersistence = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Max Saved Conversations')
+			.setDesc('Maximum number of conversations to keep (oldest are deleted)')
+			.addText(text => text
+				.setPlaceholder('20')
+				.setValue(String(this.plugin.settings.maxConversations))
+				.onChange(async (value) => {
+					const parsed = parseInt(value);
+					this.plugin.settings.maxConversations = isNaN(parsed) || parsed < 1 ? 20 : parsed;
+					await this.plugin.saveSettings();
+				}));
+
+		// Show saved conversations count
+		const conversationCount = this.plugin.settings.conversations?.length || 0;
+		const countSetting = new Setting(containerEl)
+			.setName('Saved Conversations')
+			.setDesc(`${conversationCount} conversation(s) saved`);
+
+		if (conversationCount > 0) {
+			countSetting.addButton(button => button
+				.setButtonText('Clear All')
+				.setWarning()
+				.onClick(async () => {
+					if (confirm('Delete all saved conversations? This cannot be undone.')) {
+						this.plugin.settings.conversations = [];
+						this.plugin.settings.activeConversationId = undefined;
+						await this.plugin.saveSettings();
+						this.display();
+						new Notice('All conversations deleted');
+					}
+				}));
+		}
 	}
 
 	private addTokenTrackingSetting(containerEl: HTMLElement): void {
