@@ -159,7 +159,7 @@ export class AgentModal extends Modal {
 
 		submitButton.setAttr('disabled', 'true');
 		submitButton.textContent = 'Generating...';
-		this.stopButton.style.display = 'none';
+		if (this.stopButton) this.stopButton.style.display = 'none';
 		this.isStreaming = true;
 		this.currentResponse = '';
 
@@ -175,12 +175,12 @@ export class AgentModal extends Modal {
 					this.onStreamChunk(chunk);
 					if (chunk.done) {
 						this.isStreaming = false;
-						this.stopButton.style.display = 'none';
+						if (this.stopButton) this.stopButton.style.display = 'none';
 					}
 				},
 				(progress) => {
 					if (this.isStreaming) {
-						this.stopButton.style.display = 'block';
+						if (this.stopButton) this.stopButton.style.display = 'block';
 						this.onStreamProgress(progress);
 					}
 				}
@@ -201,7 +201,7 @@ export class AgentModal extends Modal {
 			}
 		} finally {
 			this.isStreaming = false;
-			this.stopButton.style.display = 'none';
+			if (this.stopButton) this.stopButton.style.display = 'none';
 			submitButton.removeAttribute('disabled');
 			submitButton.textContent = 'Generate';
 		}
@@ -241,43 +241,6 @@ export class AgentModal extends Modal {
 			this.aiService.cancelCurrentRequest();
 			new Notice('Generation stopped');
 		}
-	}
-
-	private onStreamChunk(chunk: any): void {
-		if (chunk.done) {
-			return;
-		}
-
-		if (chunk.content) {
-			this.currentResponse += chunk.content;
-			
-			if (this.chatHistory.length > 0 && this.chatHistory[this.chatHistory.length - 1].role === 'assistant') {
-				const lastMessage = this.chatHistory[this.chatHistory.length - 1];
-				if (lastMessage) {
-					lastMessage.content = this.currentResponse;
-				}
-			}
-			
-			this.renderChatHistory();
-		}
-	}
-
-	private onStreamProgress(progress: string): void {
-		if (progress && this.isStreaming) {
-			if (this.chatHistory.length === 0 || this.chatHistory[this.chatHistory.length - 1]?.role !== 'assistant') {
-				this.addMessageToHistory('assistant', '');
-			}
-			
-			if (this.chatHistory.length > 0) {
-				const lastMessage = this.chatHistory[this.chatHistory.length - 1];
-				if (lastMessage) {
-					lastMessage.content = progress;
-				}
-			}
-			
-			this.renderChatHistory();
-		}
-	}
 	}
 
 	private addMessageToHistory(role: 'user' | 'assistant', content: string): void {

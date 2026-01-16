@@ -70,8 +70,113 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 		this.addMaxTokensSetting(containerEl);
 		this.addSystemPromptSetting(containerEl);
 		this.addContextAwarenessSetting(containerEl);
+		this.addTokenTrackingSetting(containerEl);
 		this.addReconnectButton(containerEl);
 		this.addTestConnectionButton(containerEl);
+	}
+
+	private addTokenTrackingSetting(containerEl: HTMLElement): void {
+		new Setting(containerEl)
+			.setName('Enable Token Tracking')
+			.setDesc('Track API token usage and estimate costs')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.enableTokenTracking)
+				.onChange(async (value) => {
+					this.plugin.settings.enableTokenTracking = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Cost Warning Threshold ($)')
+			.setDesc('Show warning when estimated cost exceeds this amount')
+			.addText(text => text
+				.setPlaceholder('10')
+				.setValue(String(this.plugin.settings.costThreshold))
+				.onChange(async (value) => {
+					const parsed = parseFloat(value);
+					this.plugin.settings.costThreshold = isNaN(parsed) ? 10 : parsed;
+					await this.plugin.saveSettings();
+				}));
+
+		this.addUsageSummary(containerEl);
+	}
+
+	private addUsageSummary(containerEl: HTMLElement): void {
+		const summaryContainer = containerEl.createDiv({ cls: 'usage-summary' });
+		summaryContainer.style.marginTop = '1.5rem';
+		summaryContainer.style.padding = '1rem';
+		summaryContainer.style.border = '1px solid var(--background-modifier-border)';
+		summaryContainer.style.borderRadius = 'var(--radius-s)';
+		summaryContainer.style.backgroundColor = 'var(--background-secondary)';
+
+		const usage = this.plugin.settings as any;
+		const tokensUsed = usage.totalTokensUsed || 0;
+		const requestsMade = usage.totalRequests || 0;
+		const estimatedCost = usage.estimatedCost || 0;
+
+		summaryContainer.createEl('h3', { text: 'Usage Summary' });
+		
+		const statsGrid = summaryContainer.createDiv({ cls: 'stats-grid' });
+		statsGrid.style.display = 'grid';
+		statsGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+		statsGrid.style.gap = '0.5rem';
+		statsGrid.style.marginTop = '0.5rem';
+
+		this.createStatCard(statsGrid, 'Total Requests', String(requestsMade));
+		this.createStatCard(statsGrid, 'Tokens Used', String(tokensUsed));
+		this.createStatCard(statsGrid, 'Estimated Cost', `$${estimatedCost.toFixed(2)}`);
+
+		if (tokensUsed > 0) {
+			const avgPerRequest = (tokensUsed / requestsMade).toFixed(0);
+			this.createStatCard(statsGrid, 'Avg Tokens/Request', avgPerRequest);
+		}
+
+		const exportButton = summaryContainer.createEl('button', {
+			text: 'Export Usage Data (CSV)',
+			cls: 'mod-cta'
+		});
+		exportButton.style.marginTop = '1rem';
+		exportButton.addEventListener('click', () => this.exportUsageData());
+	}
+
+	private createStatCard(container: HTMLElement, label: string, value: string): void {
+		const card = container.createDiv({ cls: 'stat-card' });
+		card.style.padding = '0.5rem';
+		card.style.borderRadius = 'var(--radius-s)';
+		card.style.backgroundColor = 'var(--background-primary)';
+
+		const labelEl = card.createDiv({ cls: 'stat-label' });
+		labelEl.style.fontSize = 'var(--font-smaller)';
+		labelEl.style.color = 'var(--text-muted)';
+		labelEl.textContent = label;
+
+		const valueEl = card.createDiv({ cls: 'stat-value' });
+		valueEl.style.fontSize = 'var(--font-ui-large)';
+		valueEl.style.fontWeight = 'bold';
+		valueEl.textContent = value;
+	}
+
+	private exportUsageData(): void {
+		const usage = this.plugin.settings as any;
+		const csv = [
+			'Metric,Value',
+			`Total Requests,${usage.totalRequests || 0}`,
+			`Total Tokens Used,${usage.totalTokensUsed || 0}`,
+			`Estimated Cost ($),${(usage.estimatedCost || 0).toFixed(2)}`,
+			`Export Date,${new Date().toISOString()}`
+		].join('\n');
+
+		const blob = new Blob([csv], {type: 'text/csv'});
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `obsidian-agent-usage-${new Date().toISOString().split('T')[0]}.csv`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+
+		new Notice('Usage data exported');
 	}
 
 	private addApiKeySetting(containerEl: HTMLElement): void {
