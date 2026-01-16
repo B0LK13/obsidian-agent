@@ -15,6 +15,8 @@ export class AgentModal extends Modal {
 	private chatHistory: ChatMessage[] = [];
 	private chatHistoryContainer?: HTMLElement;
 	private promptContainer?: HTMLElement;
+	private submitButton?: HTMLButtonElement;
+	private textAreaElement?: HTMLTextAreaElement;
 
 	constructor(app: App, aiService: AIService, context: string, onSubmit: (result: string) => void) {
 		super(app);
@@ -34,10 +36,19 @@ export class AgentModal extends Modal {
 		headerContainer.style.alignItems = 'center';
 		headerContainer.style.marginBottom = '1rem';
 
-		headerContainer.createEl('p', {
+		const headerText = headerContainer.createDiv();
+		headerText.createEl('p', {
 			text: 'Enter your prompt below. The agent will use current note as context.',
 			cls: 'setting-item-description'
 		});
+
+		const shortcutsHint = headerText.createEl('p', {
+			text: 'Shortcuts: Enter to send, Ctrl/Cmd+K to clear, Escape to close',
+			cls: 'setting-item-description'
+		});
+		shortcutsHint.style.fontSize = 'var(--font-smaller)';
+		shortcutsHint.style.color = 'var(--text-muted)';
+		shortcutsHint.style.marginTop = '0.25rem';
 
 		const clearButton = headerContainer.createEl('button', {
 			text: 'Clear Chat',
@@ -59,9 +70,11 @@ export class AgentModal extends Modal {
 		this.promptContainer = contentEl.createDiv('prompt-container');
 		
 		const textArea = new TextAreaComponent(this.promptContainer);
-		textArea.inputEl.style.width = '100%';
-		textArea.inputEl.style.minHeight = '100px';
-		textArea.inputEl.placeholder = 'What would you like AI to help with?';
+		this.textAreaElement = textArea.inputEl as HTMLTextAreaElement;
+		this.textAreaElement.style.width = '100%';
+		this.textAreaElement.style.minHeight = '100px';
+		this.textAreaElement.placeholder = 'What would you like AI to help with?';
+		this.textAreaElement.addEventListener('keydown', (e) => this.handleKeyDown(e));
 		textArea.onChange((value) => {
 			this.prompt = value;
 		});
@@ -77,15 +90,36 @@ export class AgentModal extends Modal {
 			this.close();
 		});
 
-		const submitButton = buttonContainer.createEl('button', {
+		this.submitButton = buttonContainer.createEl('button', {
 			text: 'Generate',
 			cls: 'mod-cta'
-		});
-		submitButton.addEventListener('click', async () => {
-			await this.handleSubmit(submitButton);
+		}) as HTMLButtonElement;
+		this.submitButton.addEventListener('click', async () => {
+			if (this.submitButton) {
+				await this.handleSubmit(this.submitButton as HTMLElement);
+			}
 		});
 
-		textArea.inputEl.focus();
+		this.textAreaElement.focus();
+	}
+
+	private handleKeyDown(event: KeyboardEvent): void {
+		if (event.key === 'Enter' && !event.shiftKey) {
+			event.preventDefault();
+			if (this.submitButton && !this.submitButton.disabled) {
+				this.handleSubmit(this.submitButton as HTMLElement);
+			}
+		}
+
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			this.close();
+		}
+
+		if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+			event.preventDefault();
+			this.clearChatWithConfirmation();
+		}
 	}
 
 	private async handleSubmit(submitButton: HTMLElement): Promise<void> {
