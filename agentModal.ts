@@ -2,6 +2,7 @@ import { App, Modal, Notice, TextAreaComponent, setTooltip, MarkdownRenderer, Dr
 import { AIService } from './aiService';
 import { ChatMessage, Conversation, ObsidianAgentSettings } from './settings';
 import { PromptTemplate, BUILT_IN_TEMPLATES, getTemplateCategories, filterTemplates, applyTemplate, generateTemplateId } from './promptTemplates';
+import { calculateTokenCount, getUsageLevel, getUsageColor, formatTokenCount, TokenCount } from './tokenCounter';
 
 export class AgentModal extends Modal {
 	private aiService: AIService;
@@ -20,6 +21,9 @@ export class AgentModal extends Modal {
 	private currentResponse: string = '';
 	private currentConversationId: string | null = null;
 	private conversationSelector?: HTMLSelectElement;
+	private tokenCounterContainer?: HTMLElement;
+	private tokenCounterBar?: HTMLElement;
+	private tokenCounterText?: HTMLElement;
 
 	constructor(
 		app: App, 
@@ -194,10 +198,59 @@ export class AgentModal extends Modal {
 					this.textAreaElement.value = appliedPrompt;
 					this.prompt = appliedPrompt;
 					this.textAreaElement.focus();
+					this.updateTokenCounter();
 				}
 			}
 		);
 		modal.open();
+	}
+
+	private updateTokenCounter(): void {
+		if (!this.tokenCounterBar || !this.tokenCounterText) return;
+
+		const tokenCount = calculateTokenCount(
+			this.settings.systemPrompt,
+			this.settings.enableContextAwareness ? this.context : '',
+			this.chatHistory,
+			this.prompt,
+			this.settings.model,
+			this.settings.apiProvider
+		);
+
+		const level = getUsageLevel(tokenCount.percentage);
+		const color = getUsageColor(level);
+
+		// Update bar
+		this.tokenCounterBar.style.width = `${Math.min(100, tokenCount.percentage)}%`;
+		this.tokenCounterBar.style.backgroundColor = color;
+
+		// Update text
+		this.tokenCounterText.empty();
+		
+		const leftText = this.tokenCounterText.createDiv();
+		leftText.innerHTML = `<strong>${formatTokenCount(tokenCount.total)}</strong> / ${formatTokenCount(tokenCount.limit)} tokens`;
+		
+		const rightText = this.tokenCounterText.createDiv();
+		rightText.style.cursor = 'pointer';
+		rightText.textContent = 'Details';
+		setTooltip(rightText, this.getTokenBreakdown(tokenCount));
+
+		// Warning for high usage
+		if (level === 'critical') {
+			leftText.style.color = color;
+			new Notice('Warning: Approaching token limit. Consider shortening context.', 3000);
+		} else if (level === 'high') {
+			leftText.style.color = color;
+		}
+	}
+
+	private getTokenBreakdown(tokenCount: TokenCount): string {
+		return `Token Breakdown:
+• System Prompt: ${formatTokenCount(tokenCount.systemPrompt)}
+• Note Context: ${formatTokenCount(tokenCount.context)}
+• Conversation: ${formatTokenCount(tokenCount.conversationHistory)}
+• Current Prompt: ${formatTokenCount(tokenCount.currentPrompt)}
+• Total: ${formatTokenCount(tokenCount.total)} / ${formatTokenCount(tokenCount.limit)} (${tokenCount.percentage}%)`;
 	}
 
 	onOpen() {
@@ -306,7 +359,38 @@ export class AgentModal extends Modal {
 		this.textAreaElement.addEventListener('keydown', (e) => this.handleKeyDown(e));
 		textArea.onChange((value) => {
 			this.prompt = value;
+			this.updateTokenCounter();
 		});
+
+		// Token counter
+		this.tokenCounterContainer = contentEl.createDiv({ cls: 'token-counter' });
+		this.tokenCounterContainer.style.marginTop = '0.5rem';
+		this.tokenCounterContainer.style.padding = '0.5rem';
+		this.tokenCounterContainer.style.backgroundColor = 'var(--background-secondary)';
+		this.tokenCounterContainer.style.borderRadius = 'var(--radius-s)';
+		this.tokenCounterContainer.style.fontSize = 'var(--font-smaller)';
+
+		// Token counter bar
+		const barContainer = this.tokenCounterContainer.createDiv({ cls: 'token-bar-container' });
+		barContainer.style.height = '4px';
+		barContainer.style.backgroundColor = 'var(--background-modifier-border)';
+		barContainer.style.borderRadius = '2px';
+		barContainer.style.marginBottom = '0.5rem';
+		barContainer.style.overflow = 'hidden';
+
+		this.tokenCounterBar = barContainer.createDiv({ cls: 'token-bar' });
+		this.tokenCounterBar.style.height = '100%';
+		this.tokenCounterBar.style.width = '0%';
+		this.tokenCounterBar.style.backgroundColor = 'var(--interactive-accent)';
+		this.tokenCounterBar.style.transition = 'width 0.2s ease, background-color 0.2s ease';
+
+		// Token counter text
+		this.tokenCounterText = this.tokenCounterContainer.createDiv({ cls: 'token-text' });
+		this.tokenCounterText.style.display = 'flex';
+		this.tokenCounterText.style.justifyContent = 'space-between';
+		this.tokenCounterText.style.color = 'var(--text-muted)';
+
+		this.updateTokenCounter();
 
 		// Templates button row
 		const templatesRow = contentEl.createDiv({ cls: 'templates-row' });
@@ -486,6 +570,7 @@ export class AgentModal extends Modal {
 			content,
 			timestamp: Date.now()
 		});
+		this.updateTokenCounter();
 	}
 
 	private renderChatHistory(): void {
