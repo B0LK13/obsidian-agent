@@ -1,8 +1,68 @@
-import { Editor, MarkdownView, Notice, Plugin } from 'obsidian';
-import { ObsidianAgentSettings, DEFAULT_SETTINGS } from './settings';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin } from 'obsidian';
+import { ObsidianAgentSettings, DEFAULT_SETTINGS, AIProfile, createDefaultProfile, generateProfileId } from './settings';
 import { ObsidianAgentSettingTab } from './settingsTab';
 import { AIService, CompletionResult } from './aiService';
 import { AgentModal } from './agentModal';
+
+class ProfileSwitcherModal extends Modal {
+	private profiles: AIProfile[];
+	private activeProfileId: string;
+	private onSelect: (profileId: string) => void;
+
+	constructor(app: App, profiles: AIProfile[], activeProfileId: string, onSelect: (profileId: string) => void) {
+		super(app);
+		this.profiles = profiles;
+		this.activeProfileId = activeProfileId;
+		this.onSelect = onSelect;
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.createEl('h2', { text: 'Switch AI Profile' });
+		
+		const list = contentEl.createDiv({ cls: 'profile-list' });
+		list.style.display = 'flex';
+		list.style.flexDirection = 'column';
+		list.style.gap = '0.5rem';
+
+		this.profiles.forEach(profile => {
+			const isActive = profile.id === this.activeProfileId;
+			const item = list.createDiv({ cls: 'profile-item' });
+			item.style.display = 'flex';
+			item.style.alignItems = 'center';
+			item.style.justifyContent = 'space-between';
+			item.style.padding = '0.75rem';
+			item.style.borderRadius = 'var(--radius-s)';
+			item.style.border = '1px solid var(--background-modifier-border)';
+			item.style.cursor = 'pointer';
+			item.style.backgroundColor = isActive ? 'var(--interactive-accent)' : 'var(--background-secondary)';
+			item.style.color = isActive ? 'var(--text-on-accent)' : 'var(--text-normal)';
+
+			const info = item.createDiv();
+			info.createEl('strong', { text: profile.name });
+			const details = info.createDiv();
+			details.style.fontSize = 'var(--font-smaller)';
+			details.style.opacity = '0.8';
+			details.textContent = `${profile.apiProvider} - ${profile.model}`;
+
+			if (isActive) {
+				item.createEl('span', { text: '(Active)' });
+			}
+
+			item.addEventListener('click', () => {
+				if (!isActive) {
+					this.onSelect(profile.id);
+				}
+				this.close();
+			});
+		});
+	}
+
+	onClose() {
+		const { contentEl } = this;
+		contentEl.empty();
+	}
+}
 
 export default class ObsidianAgentPlugin extends Plugin {
 	settings: ObsidianAgentSettings;
@@ -10,6 +70,7 @@ export default class ObsidianAgentPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
+		await this.migrateToProfiles();
 
 		this.aiService = new AIService(this.settings);
 
@@ -171,6 +232,25 @@ export default class ObsidianAgentPlugin extends Plugin {
 			}
 		});
 
+		// Command: Switch AI Profile
+		this.addCommand({
+			id: 'switch-ai-profile',
+			name: 'Switch AI Profile',
+			callback: () => {
+				const profiles = this.settings.profiles;
+				if (profiles.length <= 1) {
+					new Notice('No other profiles available. Create profiles in settings.');
+					return;
+				}
+				
+				// Create a simple modal for profile selection
+				const modal = new ProfileSwitcherModal(this.app, profiles, this.settings.activeProfileId, async (profileId) => {
+					await this.switchProfile(profileId);
+				});
+				modal.open();
+			}
+		});
+
 		// Add settings tab
 		this.addSettingTab(new ObsidianAgentSettingTab(this.app, this));
 
@@ -183,6 +263,87 @@ export default class ObsidianAgentPlugin extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+	}
+
+	private async migrateToProfiles(): Promise<void> {
+		// Migrate existing settings to profile system if not already done
+		if (!this.settings.profiles || this.settings.profiles.length === 0) {
+			const defaultProfile = createDefaultProfile(this.settings);
+			this.settings.profiles = [defaultProfile];
+			this.settings.activeProfileId = 'default';
+			await this.saveSettings();
+			console.log('Migrated settings to profile system');
+		}
+	}
+
+	getActiveProfile(): AIProfile | undefined {
+		return this.settings.profiles.find(p => p.id === this.settings.activeProfileId);
+	}
+
+	async switchProfile(profileId: string): Promise<void> {
+		const profile = this.settings.profiles.find(p => p.id === profileId);
+		if (!profile) {
+			new Notice('Profile not found');
+			return;
+		}
+
+		// Apply profile settings to main settings
+		this.settings.activeProfileId = profileId;
+		this.settings.apiProvider = profile.apiProvider;
+		this.settings.apiKey = profile.apiKey;
+		this.settings.customApiUrl = profile.customApiUrl;
+		this.settings.model = profile.model;
+		this.settings.temperature = profile.temperature;
+		this.settings.maxTokens = profile.maxTokens;
+		this.settings.systemPrompt = profile.systemPrompt;
+
+		await this.saveSettings();
+		new Notice(`Switched to profile: ${profile.name}`);
+	}
+
+	async createProfile(profile: AIProfile): Promise<void> {
+		this.settings.profiles.push(profile);
+		await this.saveSettings();
+		new Notice(`Profile created: ${profile.name}`);
+	}
+
+	async updateProfile(profile: AIProfile): Promise<void> {
+		const index = this.settings.profiles.findIndex(p => p.id === profile.id);
+		if (index >= 0) {
+			this.settings.profiles[index] = profile;
+			// If updating active profile, also update main settings
+			if (profile.id === this.settings.activeProfileId) {
+				this.settings.apiProvider = profile.apiProvider;
+				this.settings.apiKey = profile.apiKey;
+				this.settings.customApiUrl = profile.customApiUrl;
+				this.settings.model = profile.model;
+				this.settings.temperature = profile.temperature;
+				this.settings.maxTokens = profile.maxTokens;
+				this.settings.systemPrompt = profile.systemPrompt;
+			}
+			await this.saveSettings();
+		}
+	}
+
+	async deleteProfile(profileId: string): Promise<void> {
+		if (profileId === 'default') {
+			new Notice('Cannot delete the default profile');
+			return;
+		}
+		
+		const index = this.settings.profiles.findIndex(p => p.id === profileId);
+		if (index >= 0) {
+			const profileName = this.settings.profiles[index].name;
+			this.settings.profiles.splice(index, 1);
+			
+			// If deleting active profile, switch to default
+			if (this.settings.activeProfileId === profileId) {
+				await this.switchProfile('default');
+			} else {
+				await this.saveSettings();
+			}
+			new Notice(`Profile deleted: ${profileName}`);
+		}
 	}
 
 	private async trackTokenUsage(result: CompletionResult): Promise<void> {

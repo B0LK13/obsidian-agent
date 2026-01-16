@@ -244,6 +244,24 @@ export class AIService {
 				stream = true;
 				break;
 
+			case 'ollama':
+				const ollamaStreamUrl = this.settings.customApiUrl || 'http://localhost:11434';
+				url = `${ollamaStreamUrl}/api/chat`;
+				headers = {
+					'Content-Type': 'application/json'
+				};
+				body = {
+					model: this.settings.model,
+					messages: messages,
+					options: {
+						temperature: this.settings.temperature,
+						num_predict: this.settings.maxTokens
+					},
+					stream: false  // Ollama streaming handled differently
+				};
+				stream = false;
+				break;
+
 			case 'custom':
 				if (!this.settings.customApiUrl) {
 					throw new Error('Custom API URL not configured');
@@ -402,6 +420,23 @@ export class AIService {
 				};
 				break;
 
+			case 'ollama':
+				const ollamaUrl = this.settings.customApiUrl || 'http://localhost:11434';
+				url = `${ollamaUrl}/api/chat`;
+				headers = {
+					'Content-Type': 'application/json'
+				};
+				body = {
+					model: this.settings.model,
+					messages: messages,
+					options: {
+						temperature: this.settings.temperature,
+						num_predict: this.settings.maxTokens
+					},
+					stream: false
+				};
+				break;
+
 			case 'custom':
 				if (!this.settings.customApiUrl) {
 					throw new Error('Custom API URL not configured');
@@ -441,6 +476,11 @@ export class AIService {
 		if (this.settings.apiProvider === 'anthropic') {
 			result.text = response.json.content[0].text;
 			result.tokensUsed = response.json.usage?.output_tokens;
+		} else if (this.settings.apiProvider === 'ollama') {
+			result.text = response.json.message?.content || '';
+			result.tokensUsed = response.json.eval_count || 0;
+			result.inputTokens = response.json.prompt_eval_count || 0;
+			result.outputTokens = response.json.eval_count || 0;
 		} else {
 			result.text = response.json.choices[0].message.content;
 			result.inputTokens = response.json.usage?.prompt_tokens;

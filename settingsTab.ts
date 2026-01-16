@@ -1,6 +1,7 @@
-import { App, PluginSettingTab, Setting, Notice } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice, Modal, TextComponent, DropdownComponent } from 'obsidian';
 import ObsidianAgentPlugin from './main';
 import { AIService } from './aiService';
+import { AIProfile, generateProfileId, DEFAULT_PROFILES } from './settings';
 
 export class ObsidianAgentSettingTab extends PluginSettingTab {
 	plugin: ObsidianAgentPlugin;
@@ -33,6 +34,131 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 		desc.textContent = 'Backup or restore your configuration';
 	}
 
+	private addProfileSection(containerEl: HTMLElement): void {
+		containerEl.createEl('h3', { text: 'AI Profiles' });
+
+		const activeProfile = this.plugin.getActiveProfile();
+		
+		// Profile selector
+		new Setting(containerEl)
+			.setName('Active Profile')
+			.setDesc('Switch between different AI configurations')
+			.addDropdown(dropdown => {
+				this.plugin.settings.profiles.forEach(profile => {
+					dropdown.addOption(profile.id, profile.name);
+				});
+				dropdown.setValue(this.plugin.settings.activeProfileId);
+				dropdown.onChange(async (value) => {
+					await this.plugin.switchProfile(value);
+					this.display();
+				});
+			});
+
+		// Profile actions
+		const actionsContainer = containerEl.createDiv({ cls: 'profile-actions' });
+		actionsContainer.style.display = 'flex';
+		actionsContainer.style.gap = '0.5rem';
+		actionsContainer.style.marginBottom = '1rem';
+
+		const createButton = actionsContainer.createEl('button', {
+			text: 'Create Profile',
+			cls: 'mod-cta'
+		});
+		createButton.addEventListener('click', () => this.openProfileEditor());
+
+		const editButton = actionsContainer.createEl('button', {
+			text: 'Edit Current'
+		});
+		editButton.addEventListener('click', () => {
+			if (activeProfile) {
+				this.openProfileEditor(activeProfile);
+			}
+		});
+
+		const duplicateButton = actionsContainer.createEl('button', {
+			text: 'Duplicate'
+		});
+		duplicateButton.addEventListener('click', async () => {
+			if (activeProfile) {
+				const newProfile: AIProfile = {
+					...activeProfile,
+					id: generateProfileId(),
+					name: `${activeProfile.name} (Copy)`
+				};
+				await this.plugin.createProfile(newProfile);
+				this.display();
+			}
+		});
+
+		if (activeProfile && activeProfile.id !== 'default') {
+			const deleteButton = actionsContainer.createEl('button', {
+				text: 'Delete',
+				cls: 'mod-warning'
+			});
+			deleteButton.addEventListener('click', async () => {
+				if (confirm(`Delete profile "${activeProfile.name}"?`)) {
+					await this.plugin.deleteProfile(activeProfile.id);
+					this.display();
+				}
+			});
+		}
+
+		// Quick add from templates
+		new Setting(containerEl)
+			.setName('Add from Template')
+			.setDesc('Quickly add a preconfigured profile')
+			.addDropdown(dropdown => {
+				dropdown.addOption('', 'Select template...');
+				DEFAULT_PROFILES.forEach(template => {
+					dropdown.addOption(template.id, template.name);
+				});
+				dropdown.onChange(async (templateId) => {
+					if (!templateId) return;
+					const template = DEFAULT_PROFILES.find(t => t.id === templateId);
+					if (template) {
+						const newProfile: AIProfile = {
+							...template,
+							id: generateProfileId()
+						};
+						await this.plugin.createProfile(newProfile);
+						this.display();
+					}
+				});
+			});
+
+		// Show active profile info
+		if (activeProfile) {
+			const infoContainer = containerEl.createDiv({ cls: 'profile-info' });
+			infoContainer.style.padding = '0.75rem';
+			infoContainer.style.backgroundColor = 'var(--background-secondary)';
+			infoContainer.style.borderRadius = 'var(--radius-s)';
+			infoContainer.style.marginBottom = '1rem';
+
+			infoContainer.createEl('strong', { text: `Active: ${activeProfile.name}` });
+			const details = infoContainer.createDiv();
+			details.style.fontSize = 'var(--font-smaller)';
+			details.style.color = 'var(--text-muted)';
+			details.style.marginTop = '0.25rem';
+			details.textContent = `Provider: ${activeProfile.apiProvider} | Model: ${activeProfile.model} | Temp: ${activeProfile.temperature}`;
+		}
+	}
+
+	private openProfileEditor(existingProfile?: AIProfile): void {
+		const modal = new ProfileEditorModal(
+			this.app,
+			existingProfile || null,
+			async (profile) => {
+				if (existingProfile) {
+					await this.plugin.updateProfile(profile);
+				} else {
+					await this.plugin.createProfile(profile);
+				}
+				this.display();
+			}
+		);
+		modal.open();
+	}
+
 	display(): void {
 		const {containerEl} = this;
 
@@ -42,6 +168,10 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 		containerEl.createEl('h2', {text: 'Obsidian Agent Settings'});
 
 		this.addSettingsActions(containerEl);
+		
+		containerEl.createEl('hr');
+		
+		this.addProfileSection(containerEl);
 
 		containerEl.createEl('hr');
 
@@ -537,5 +667,127 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 		document.body.appendChild(input);
 		input.click();
 		document.body.removeChild(input);
+	}
+}
+
+class ProfileEditorModal extends Modal {
+	private profile: AIProfile | null;
+	private onSave: (profile: AIProfile) => void;
+	private formData: AIProfile;
+
+	constructor(app: App, profile: AIProfile | null, onSave: (profile: AIProfile) => void) {
+		super(app);
+		this.profile = profile;
+		this.onSave = onSave;
+		this.formData = profile ? { ...profile } : {
+			id: generateProfileId(),
+			name: '',
+			apiProvider: 'openai',
+			apiKey: '',
+			customApiUrl: '',
+			model: 'gpt-4',
+			temperature: 0.7,
+			maxTokens: 2000,
+			systemPrompt: 'You are a helpful AI assistant integrated into Obsidian.'
+		};
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.createEl('h2', { text: this.profile ? 'Edit Profile' : 'Create Profile' });
+
+		new Setting(contentEl)
+			.setName('Profile Name')
+			.addText(text => text
+				.setPlaceholder('My Profile')
+				.setValue(this.formData.name)
+				.onChange(value => this.formData.name = value));
+
+		new Setting(contentEl)
+			.setName('API Provider')
+			.addDropdown(dropdown => dropdown
+				.addOption('openai', 'OpenAI')
+				.addOption('anthropic', 'Anthropic')
+				.addOption('ollama', 'Ollama (Local)')
+				.addOption('custom', 'Custom API')
+				.setValue(this.formData.apiProvider)
+				.onChange((value: 'openai' | 'anthropic' | 'ollama' | 'custom') => {
+					this.formData.apiProvider = value;
+					if (value === 'ollama') {
+						this.formData.customApiUrl = 'http://localhost:11434';
+					}
+				}));
+
+		new Setting(contentEl)
+			.setName('API Key')
+			.setDesc('Leave empty for Ollama')
+			.addText(text => text
+				.setPlaceholder('sk-...')
+				.setValue(this.formData.apiKey)
+				.onChange(value => this.formData.apiKey = value));
+
+		new Setting(contentEl)
+			.setName('Custom API URL')
+			.setDesc('Required for Custom/Ollama providers')
+			.addText(text => text
+				.setPlaceholder('http://localhost:11434')
+				.setValue(this.formData.customApiUrl)
+				.onChange(value => this.formData.customApiUrl = value));
+
+		new Setting(contentEl)
+			.setName('Model')
+			.addText(text => text
+				.setPlaceholder('gpt-4')
+				.setValue(this.formData.model)
+				.onChange(value => this.formData.model = value));
+
+		new Setting(contentEl)
+			.setName('Temperature')
+			.addSlider(slider => slider
+				.setLimits(0, 1, 0.1)
+				.setValue(this.formData.temperature)
+				.setDynamicTooltip()
+				.onChange(value => this.formData.temperature = value));
+
+		new Setting(contentEl)
+			.setName('Max Tokens')
+			.addText(text => text
+				.setPlaceholder('2000')
+				.setValue(String(this.formData.maxTokens))
+				.onChange(value => {
+					const parsed = parseInt(value);
+					this.formData.maxTokens = isNaN(parsed) ? 2000 : parsed;
+				}));
+
+		new Setting(contentEl)
+			.setName('System Prompt')
+			.addTextArea(text => text
+				.setPlaceholder('You are a helpful assistant...')
+				.setValue(this.formData.systemPrompt)
+				.onChange(value => this.formData.systemPrompt = value));
+
+		const buttonContainer = contentEl.createDiv({ cls: 'button-container' });
+		buttonContainer.style.display = 'flex';
+		buttonContainer.style.justifyContent = 'flex-end';
+		buttonContainer.style.gap = '0.5rem';
+		buttonContainer.style.marginTop = '1rem';
+
+		const cancelButton = buttonContainer.createEl('button', { text: 'Cancel' });
+		cancelButton.addEventListener('click', () => this.close());
+
+		const saveButton = buttonContainer.createEl('button', { text: 'Save', cls: 'mod-cta' });
+		saveButton.addEventListener('click', () => {
+			if (!this.formData.name.trim()) {
+				new Notice('Profile name is required');
+				return;
+			}
+			this.onSave(this.formData);
+			this.close();
+		});
+	}
+
+	onClose() {
+		const { contentEl } = this;
+		contentEl.empty();
 	}
 }

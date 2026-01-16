@@ -12,9 +12,69 @@ export interface Conversation {
 	updatedAt: number;
 }
 
-export interface ObsidianAgentSettings {
+export interface AIProfile {
+	id: string;
+	name: string;
+	apiProvider: 'openai' | 'anthropic' | 'ollama' | 'custom';
 	apiKey: string;
-	apiProvider: 'openai' | 'anthropic' | 'custom';
+	customApiUrl: string;
+	model: string;
+	temperature: number;
+	maxTokens: number;
+	systemPrompt: string;
+}
+
+export const DEFAULT_PROFILES: AIProfile[] = [
+	{
+		id: 'openai-gpt4',
+		name: 'OpenAI GPT-4',
+		apiProvider: 'openai',
+		apiKey: '',
+		customApiUrl: '',
+		model: 'gpt-4',
+		temperature: 0.7,
+		maxTokens: 2000,
+		systemPrompt: 'You are a helpful AI assistant integrated into Obsidian.'
+	},
+	{
+		id: 'openai-gpt35',
+		name: 'OpenAI GPT-3.5 (Fast)',
+		apiProvider: 'openai',
+		apiKey: '',
+		customApiUrl: '',
+		model: 'gpt-3.5-turbo',
+		temperature: 0.7,
+		maxTokens: 2000,
+		systemPrompt: 'You are a helpful AI assistant integrated into Obsidian.'
+	},
+	{
+		id: 'anthropic-claude',
+		name: 'Anthropic Claude',
+		apiProvider: 'anthropic',
+		apiKey: '',
+		customApiUrl: '',
+		model: 'claude-3-sonnet-20240229',
+		temperature: 0.7,
+		maxTokens: 2000,
+		systemPrompt: 'You are a helpful AI assistant integrated into Obsidian.'
+	},
+	{
+		id: 'ollama-local',
+		name: 'Ollama (Local)',
+		apiProvider: 'ollama',
+		apiKey: '',
+		customApiUrl: 'http://localhost:11434',
+		model: 'llama2',
+		temperature: 0.7,
+		maxTokens: 2000,
+		systemPrompt: 'You are a helpful AI assistant integrated into Obsidian.'
+	}
+];
+
+export interface ObsidianAgentSettings {
+	// Active profile settings (for backward compatibility)
+	apiKey: string;
+	apiProvider: 'openai' | 'anthropic' | 'ollama' | 'custom';
 	customApiUrl: string;
 	model: string;
 	temperature: number;
@@ -32,6 +92,9 @@ export interface ObsidianAgentSettings {
 	activeConversationId?: string;
 	maxConversations: number;
 	enableConversationPersistence: boolean;
+	// AI Profiles
+	profiles: AIProfile[];
+	activeProfileId: string;
 }
 
 export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
@@ -49,5 +112,26 @@ export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
 	// Conversation persistence defaults
 	conversations: [],
 	maxConversations: 20,
-	enableConversationPersistence: true
+	enableConversationPersistence: true,
+	// AI Profiles defaults
+	profiles: [],
+	activeProfileId: 'default'
+}
+
+export function generateProfileId(): string {
+	return `profile_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+export function createDefaultProfile(settings: ObsidianAgentSettings): AIProfile {
+	return {
+		id: 'default',
+		name: 'Default',
+		apiProvider: settings.apiProvider,
+		apiKey: settings.apiKey,
+		customApiUrl: settings.customApiUrl,
+		model: settings.model,
+		temperature: settings.temperature,
+		maxTokens: settings.maxTokens,
+		systemPrompt: settings.systemPrompt
+	};
 }
