@@ -95,6 +95,16 @@ export interface ObsidianAgentSettings {
 	// AI Profiles
 	profiles: AIProfile[];
 	activeProfileId: string;
+	// Custom prompt templates
+	customTemplates: Array<{
+		id: string;
+		name: string;
+		description: string;
+		category: string;
+		prompt: string;
+		variables?: string[];
+		isBuiltIn: boolean;
+	}>;
 }
 
 export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
@@ -115,7 +125,9 @@ export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
 	enableConversationPersistence: true,
 	// AI Profiles defaults
 	profiles: [],
-	activeProfileId: 'default'
+	activeProfileId: 'default',
+	// Custom templates
+	customTemplates: []
 }
 
 export function generateProfileId(): string {

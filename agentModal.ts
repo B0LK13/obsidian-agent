@@ -1,6 +1,7 @@
 import { App, Modal, Notice, TextAreaComponent, setTooltip, MarkdownRenderer, DropdownComponent } from 'obsidian';
 import { AIService } from './aiService';
 import { ChatMessage, Conversation, ObsidianAgentSettings } from './settings';
+import { PromptTemplate, BUILT_IN_TEMPLATES, getTemplateCategories, filterTemplates, applyTemplate, generateTemplateId } from './promptTemplates';
 
 export class AgentModal extends Modal {
 	private aiService: AIService;
@@ -175,6 +176,30 @@ export class AgentModal extends Modal {
 		return markdown;
 	}
 
+	private getAllTemplates(): PromptTemplate[] {
+		const customTemplates = (this.settings.customTemplates || []).map(t => ({
+			...t,
+			isBuiltIn: false
+		}));
+		return [...BUILT_IN_TEMPLATES, ...customTemplates];
+	}
+
+	private openTemplatesPicker(): void {
+		const modal = new TemplatesPickerModal(
+			this.app,
+			this.getAllTemplates(),
+			this.context,
+			(appliedPrompt) => {
+				if (this.textAreaElement) {
+					this.textAreaElement.value = appliedPrompt;
+					this.prompt = appliedPrompt;
+					this.textAreaElement.focus();
+				}
+			}
+		);
+		modal.open();
+	}
+
 	onOpen() {
 		const {contentEl} = this;
 
@@ -282,6 +307,16 @@ export class AgentModal extends Modal {
 		textArea.onChange((value) => {
 			this.prompt = value;
 		});
+
+		// Templates button row
+		const templatesRow = contentEl.createDiv({ cls: 'templates-row' });
+		templatesRow.style.marginTop = '0.5rem';
+		templatesRow.style.marginBottom = '0.5rem';
+
+		const templatesButton = templatesRow.createEl('button', { text: 'Templates' });
+		templatesButton.style.fontSize = 'var(--font-smaller)';
+		setTooltip(templatesButton, 'Use a prompt template');
+		templatesButton.addEventListener('click', () => this.openTemplatesPicker());
 
 		const buttonContainer = contentEl.createDiv('button-container');
 		buttonContainer.style.marginTop = '1rem';
@@ -540,6 +575,167 @@ export class AgentModal extends Modal {
 	onClose() {
 		this.aiService.cancelCurrentRequest();
 		const {contentEl} = this;
+		contentEl.empty();
+	}
+}
+
+class TemplatesPickerModal extends Modal {
+	private templates: PromptTemplate[];
+	private context: string;
+	private onApply: (prompt: string) => void;
+	private selectedCategory: string = 'All';
+	private searchQuery: string = '';
+	private templatesContainer?: HTMLElement;
+
+	constructor(app: App, templates: PromptTemplate[], context: string, onApply: (prompt: string) => void) {
+		super(app);
+		this.templates = templates;
+		this.context = context;
+		this.onApply = onApply;
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.createEl('h2', { text: 'Prompt Templates' });
+
+		// Search and filter row
+		const filterRow = contentEl.createDiv({ cls: 'filter-row' });
+		filterRow.style.display = 'flex';
+		filterRow.style.gap = '0.5rem';
+		filterRow.style.marginBottom = '1rem';
+
+		// Search input
+		const searchInput = filterRow.createEl('input', { type: 'text' });
+		searchInput.placeholder = 'Search templates...';
+		searchInput.style.flex = '1';
+		searchInput.style.padding = '0.5rem';
+		searchInput.style.borderRadius = 'var(--radius-s)';
+		searchInput.style.border = '1px solid var(--background-modifier-border)';
+		searchInput.addEventListener('input', (e) => {
+			this.searchQuery = (e.target as HTMLInputElement).value;
+			this.renderTemplates();
+		});
+
+		// Category filter
+		const categorySelect = filterRow.createEl('select');
+		categorySelect.style.padding = '0.5rem';
+		categorySelect.style.borderRadius = 'var(--radius-s)';
+		categorySelect.style.border = '1px solid var(--background-modifier-border)';
+		
+		const allOption = categorySelect.createEl('option', { text: 'All Categories', value: 'All' });
+		const categories = getTemplateCategories(this.templates);
+		categories.forEach(cat => {
+			categorySelect.createEl('option', { text: cat, value: cat });
+		});
+		
+		categorySelect.addEventListener('change', (e) => {
+			this.selectedCategory = (e.target as HTMLSelectElement).value;
+			this.renderTemplates();
+		});
+
+		// Templates container
+		this.templatesContainer = contentEl.createDiv({ cls: 'templates-container' });
+		this.templatesContainer.style.maxHeight = '400px';
+		this.templatesContainer.style.overflowY = 'auto';
+
+		this.renderTemplates();
+	}
+
+	private renderTemplates(): void {
+		if (!this.templatesContainer) return;
+		this.templatesContainer.empty();
+
+		const filtered = filterTemplates(this.templates, this.selectedCategory, this.searchQuery);
+
+		if (filtered.length === 0) {
+			const empty = this.templatesContainer.createDiv({ cls: 'empty-state' });
+			empty.style.textAlign = 'center';
+			empty.style.padding = '2rem';
+			empty.style.color = 'var(--text-muted)';
+			empty.textContent = 'No templates found';
+			return;
+		}
+
+		// Group by category
+		const byCategory: Record<string, PromptTemplate[]> = {};
+		filtered.forEach(t => {
+			if (!byCategory[t.category]) {
+				byCategory[t.category] = [];
+			}
+			byCategory[t.category].push(t);
+		});
+
+		Object.entries(byCategory).forEach(([category, templates]) => {
+			const categoryHeader = this.templatesContainer!.createEl('h4', { text: category });
+			categoryHeader.style.marginTop = '1rem';
+			categoryHeader.style.marginBottom = '0.5rem';
+			categoryHeader.style.color = 'var(--text-muted)';
+
+			templates.forEach(template => {
+				const item = this.templatesContainer!.createDiv({ cls: 'template-item' });
+				item.style.padding = '0.75rem';
+				item.style.marginBottom = '0.5rem';
+				item.style.borderRadius = 'var(--radius-s)';
+				item.style.border = '1px solid var(--background-modifier-border)';
+				item.style.cursor = 'pointer';
+				item.style.backgroundColor = 'var(--background-secondary)';
+
+				item.addEventListener('mouseenter', () => {
+					item.style.backgroundColor = 'var(--background-modifier-hover)';
+				});
+				item.addEventListener('mouseleave', () => {
+					item.style.backgroundColor = 'var(--background-secondary)';
+				});
+
+				const header = item.createDiv({ cls: 'template-header' });
+				header.style.display = 'flex';
+				header.style.justifyContent = 'space-between';
+				header.style.alignItems = 'center';
+
+				header.createEl('strong', { text: template.name });
+				if (!template.isBuiltIn) {
+					const badge = header.createEl('span', { text: 'Custom' });
+					badge.style.fontSize = 'var(--font-smallest)';
+					badge.style.padding = '0.1rem 0.3rem';
+					badge.style.borderRadius = 'var(--radius-s)';
+					badge.style.backgroundColor = 'var(--interactive-accent)';
+					badge.style.color = 'var(--text-on-accent)';
+				}
+
+				const desc = item.createDiv({ cls: 'template-desc' });
+				desc.style.fontSize = 'var(--font-smaller)';
+				desc.style.color = 'var(--text-muted)';
+				desc.style.marginTop = '0.25rem';
+				desc.textContent = template.description;
+
+				item.addEventListener('click', () => {
+					this.applyTemplate(template);
+				});
+			});
+		});
+	}
+
+	private applyTemplate(template: PromptTemplate): void {
+		// If template has variables, try to use context
+		let appliedPrompt = template.prompt;
+		
+		// Replace common variables with context if available
+		if (this.context) {
+			appliedPrompt = appliedPrompt.replace(/\{text\}/g, this.context);
+			appliedPrompt = appliedPrompt.replace(/\{content\}/g, this.context);
+			appliedPrompt = appliedPrompt.replace(/\{code\}/g, this.context);
+		}
+		
+		// For other variables, leave placeholder hints
+		appliedPrompt = appliedPrompt.replace(/\{(\w+)\}/g, '[Enter $1 here]');
+		
+		this.onApply(appliedPrompt);
+		this.close();
+		new Notice(`Template "${template.name}" applied`);
+	}
+
+	onClose() {
+		const { contentEl } = this;
 		contentEl.empty();
 	}
 }

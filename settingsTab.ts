@@ -1,7 +1,8 @@
-import { App, PluginSettingTab, Setting, Notice, Modal, TextComponent, DropdownComponent } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice, Modal, TextComponent, DropdownComponent, TextAreaComponent } from 'obsidian';
 import ObsidianAgentPlugin from './main';
 import { AIService } from './aiService';
 import { AIProfile, generateProfileId, DEFAULT_PROFILES } from './settings';
+import { PromptTemplate, BUILT_IN_TEMPLATES, generateTemplateId } from './promptTemplates';
 
 export class ObsidianAgentSettingTab extends PluginSettingTab {
 	plugin: ObsidianAgentPlugin;
@@ -159,6 +160,94 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 		modal.open();
 	}
 
+	private addTemplatesSection(containerEl: HTMLElement): void {
+		containerEl.createEl('h3', { text: 'Prompt Templates' });
+
+		const customCount = this.plugin.settings.customTemplates?.length || 0;
+		const builtInCount = BUILT_IN_TEMPLATES.length;
+
+		new Setting(containerEl)
+			.setName('Templates')
+			.setDesc(`${builtInCount} built-in templates, ${customCount} custom templates`)
+			.addButton(button => button
+				.setButtonText('Create Custom Template')
+				.setCta()
+				.onClick(() => this.openTemplateEditor()));
+
+		// List custom templates
+		if (customCount > 0) {
+			const listContainer = containerEl.createDiv({ cls: 'custom-templates-list' });
+			listContainer.style.marginTop = '0.5rem';
+			listContainer.style.marginBottom = '1rem';
+
+			this.plugin.settings.customTemplates.forEach(template => {
+				const item = listContainer.createDiv({ cls: 'template-list-item' });
+				item.style.display = 'flex';
+				item.style.justifyContent = 'space-between';
+				item.style.alignItems = 'center';
+				item.style.padding = '0.5rem';
+				item.style.marginBottom = '0.25rem';
+				item.style.backgroundColor = 'var(--background-secondary)';
+				item.style.borderRadius = 'var(--radius-s)';
+
+				const info = item.createDiv();
+				info.createEl('strong', { text: template.name });
+				const meta = info.createDiv();
+				meta.style.fontSize = 'var(--font-smaller)';
+				meta.style.color = 'var(--text-muted)';
+				meta.textContent = `${template.category} - ${template.description}`;
+
+				const actions = item.createDiv({ cls: 'template-actions' });
+				actions.style.display = 'flex';
+				actions.style.gap = '0.25rem';
+
+				const editBtn = actions.createEl('button', { text: 'Edit' });
+				editBtn.style.fontSize = 'var(--font-smaller)';
+				editBtn.addEventListener('click', () => this.openTemplateEditor(template));
+
+				const deleteBtn = actions.createEl('button', { text: 'Delete', cls: 'mod-warning' });
+				deleteBtn.style.fontSize = 'var(--font-smaller)';
+				deleteBtn.addEventListener('click', async () => {
+					if (confirm(`Delete template "${template.name}"?`)) {
+						const index = this.plugin.settings.customTemplates.findIndex(t => t.id === template.id);
+						if (index >= 0) {
+							this.plugin.settings.customTemplates.splice(index, 1);
+							await this.plugin.saveSettings();
+							this.display();
+							new Notice('Template deleted');
+						}
+					}
+				});
+			});
+		}
+	}
+
+	private openTemplateEditor(existingTemplate?: PromptTemplate): void {
+		const modal = new TemplateEditorModal(
+			this.app,
+			existingTemplate || null,
+			async (template) => {
+				if (!this.plugin.settings.customTemplates) {
+					this.plugin.settings.customTemplates = [];
+				}
+
+				if (existingTemplate) {
+					const index = this.plugin.settings.customTemplates.findIndex(t => t.id === template.id);
+					if (index >= 0) {
+						this.plugin.settings.customTemplates[index] = template;
+					}
+				} else {
+					this.plugin.settings.customTemplates.push(template);
+				}
+				
+				await this.plugin.saveSettings();
+				this.display();
+				new Notice(existingTemplate ? 'Template updated' : 'Template created');
+			}
+		);
+		modal.open();
+	}
+
 	display(): void {
 		const {containerEl} = this;
 
@@ -172,6 +261,10 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 		containerEl.createEl('hr');
 		
 		this.addProfileSection(containerEl);
+
+		containerEl.createEl('hr');
+		
+		this.addTemplatesSection(containerEl);
 
 		containerEl.createEl('hr');
 
@@ -779,6 +872,103 @@ class ProfileEditorModal extends Modal {
 		saveButton.addEventListener('click', () => {
 			if (!this.formData.name.trim()) {
 				new Notice('Profile name is required');
+				return;
+			}
+			this.onSave(this.formData);
+			this.close();
+		});
+	}
+
+	onClose() {
+		const { contentEl } = this;
+		contentEl.empty();
+	}
+}
+
+class TemplateEditorModal extends Modal {
+	private template: PromptTemplate | null;
+	private onSave: (template: PromptTemplate) => void;
+	private formData: PromptTemplate;
+
+	constructor(app: App, template: PromptTemplate | null, onSave: (template: PromptTemplate) => void) {
+		super(app);
+		this.template = template;
+		this.onSave = onSave;
+		this.formData = template ? { ...template } : {
+			id: generateTemplateId(),
+			name: '',
+			description: '',
+			category: 'Custom',
+			prompt: '',
+			variables: [],
+			isBuiltIn: false
+		};
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.createEl('h2', { text: this.template ? 'Edit Template' : 'Create Template' });
+
+		new Setting(contentEl)
+			.setName('Template Name')
+			.addText(text => text
+				.setPlaceholder('My Template')
+				.setValue(this.formData.name)
+				.onChange(value => this.formData.name = value));
+
+		new Setting(contentEl)
+			.setName('Description')
+			.addText(text => text
+				.setPlaceholder('What this template does')
+				.setValue(this.formData.description)
+				.onChange(value => this.formData.description = value));
+
+		new Setting(contentEl)
+			.setName('Category')
+			.addDropdown(dropdown => dropdown
+				.addOption('Writing', 'Writing')
+				.addOption('Research', 'Research')
+				.addOption('Note-taking', 'Note-taking')
+				.addOption('Coding', 'Coding')
+				.addOption('Creative', 'Creative')
+				.addOption('Custom', 'Custom')
+				.setValue(this.formData.category)
+				.onChange(value => this.formData.category = value));
+
+		const promptSetting = new Setting(contentEl)
+			.setName('Prompt Template')
+			.setDesc('Use {text}, {topic}, {code}, etc. as placeholders');
+		
+		const promptTextArea = contentEl.createEl('textarea');
+		promptTextArea.style.width = '100%';
+		promptTextArea.style.minHeight = '150px';
+		promptTextArea.style.marginBottom = '1rem';
+		promptTextArea.style.padding = '0.5rem';
+		promptTextArea.style.borderRadius = 'var(--radius-s)';
+		promptTextArea.style.border = '1px solid var(--background-modifier-border)';
+		promptTextArea.style.fontFamily = 'var(--font-monospace)';
+		promptTextArea.placeholder = 'Please summarize the following:\n\n{text}';
+		promptTextArea.value = this.formData.prompt;
+		promptTextArea.addEventListener('input', (e) => {
+			this.formData.prompt = (e.target as HTMLTextAreaElement).value;
+		});
+
+		const buttonContainer = contentEl.createDiv({ cls: 'button-container' });
+		buttonContainer.style.display = 'flex';
+		buttonContainer.style.justifyContent = 'flex-end';
+		buttonContainer.style.gap = '0.5rem';
+
+		const cancelButton = buttonContainer.createEl('button', { text: 'Cancel' });
+		cancelButton.addEventListener('click', () => this.close());
+
+		const saveButton = buttonContainer.createEl('button', { text: 'Save', cls: 'mod-cta' });
+		saveButton.addEventListener('click', () => {
+			if (!this.formData.name.trim()) {
+				new Notice('Template name is required');
+				return;
+			}
+			if (!this.formData.prompt.trim()) {
+				new Notice('Prompt template is required');
 				return;
 			}
 			this.onSave(this.formData);
