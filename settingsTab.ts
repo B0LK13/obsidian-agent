@@ -11,6 +11,28 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
+	private addSettingsActions(containerEl: HTMLElement): void {
+		const actionsContainer = containerEl.createDiv({ cls: 'settings-actions' });
+		actionsContainer.style.display = 'flex';
+		actionsContainer.style.gap = '0.5rem';
+		actionsContainer.style.marginBottom = '1rem';
+
+		const exportButton = actionsContainer.createEl('button', {
+			text: 'Export Settings',
+			cls: 'mod-cta'
+		});
+		exportButton.addEventListener('click', () => this.exportSettings());
+
+		const importButton = actionsContainer.createEl('button', {
+			text: 'Import Settings',
+			cls: 'mod-cta'
+		});
+		importButton.addEventListener('click', () => this.importSettings());
+
+		const desc = actionsContainer.createDiv({ cls: 'setting-item-description' });
+		desc.textContent = 'Backup or restore your configuration';
+	}
+
 	display(): void {
 		const {containerEl} = this;
 
@@ -18,6 +40,10 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 		this.errorElements.clear();
 
 		containerEl.createEl('h2', {text: 'Obsidian Agent Settings'});
+
+		this.addSettingsActions(containerEl);
+
+		containerEl.createEl('hr');
 
 		new Setting(containerEl)
 			.setName('API Provider')
@@ -293,5 +319,70 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 			errorEl.remove();
 			this.errorElements.delete(key);
 		}
+	}
+
+	private exportSettings(): void {
+		const settingsToExport = {
+			...this.plugin.settings,
+			apiKey: this.plugin.settings.apiKey ? '***' : ''
+		};
+
+		const blob = new Blob([JSON.stringify(settingsToExport, null, 2)], {type: 'application/json'});
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `obsidian-agent-settings-${new Date().toISOString().split('T')[0]}.json`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+
+		new Notice('Settings exported successfully');
+	}
+
+	private async importSettings(): Promise<void> {
+		const input = document.createElement('input');
+		input.type = 'file';
+		input.accept = 'application/json';
+		input.onchange = async (e) => {
+			const file = (e.target as HTMLInputElement).files?.[0];
+			if (!file) return;
+
+			try {
+				const text = await file.text();
+				const importedSettings = JSON.parse(text);
+
+				const requiredKeys = ['apiProvider', 'model', 'temperature', 'maxTokens', 'systemPrompt', 'enableContextAwareness'];
+				for (const key of requiredKeys) {
+					if (!(key in importedSettings)) {
+						new Notice('Invalid settings file: missing required fields', 3000);
+						return;
+					}
+				}
+
+				const confirmImport = confirm(
+					'This will overwrite your current settings. Continue?'
+				);
+
+				if (!confirmImport) return;
+
+				Object.assign(this.plugin.settings, importedSettings);
+				
+				if (importedSettings.apiKey === '***') {
+					this.plugin.settings.apiKey = '';
+				}
+
+				await this.plugin.saveSettings();
+				this.display();
+				new Notice('Settings imported successfully');
+			} catch (error: any) {
+				new Notice(`Failed to import settings: ${error.message}`, 3000);
+				console.error('Import Error:', error);
+			}
+		};
+
+		document.body.appendChild(input);
+		input.click();
+		document.body.removeChild(input);
 	}
 }
