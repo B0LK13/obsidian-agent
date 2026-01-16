@@ -1,6 +1,13 @@
 import { ObsidianAgentSettings } from './settings';
 import { requestUrl, RequestUrlResponse, Notice } from 'obsidian';
 
+export interface CompletionResult {
+	text: string;
+	tokensUsed?: number;
+	inputTokens?: number;
+	outputTokens?: number;
+}
+
 export class AIService {
 	private settings: ObsidianAgentSettings;
 	private timeoutMs: number = 30000;
@@ -23,14 +30,14 @@ export class AIService {
 		const startTime = Date.now();
 		
 		try {
-			const response = await this.callAPIWithRetry([{
+			const result = await this.callAPIWithRetry([{
 				role: 'user',
 				content: 'Test connection. Please respond with "OK" only.'
 			}], 1);
 			
 			const responseTime = Date.now() - startTime;
 			
-			if (response.trim().toLowerCase() === 'ok' || response.length > 0) {
+			if (result.text.trim().toLowerCase() === 'ok' || result.text.length > 0) {
 				return {
 					success: true,
 					message: `Connection successful! Response time: ${responseTime}ms`,
@@ -52,7 +59,7 @@ export class AIService {
 		}
 	}
 
-	async generateCompletion(prompt: string, context?: string): Promise<string> {
+	async generateCompletion(prompt: string, context?: string): Promise<CompletionResult> {
 		if (!this.settings.apiKey) {
 			throw new Error('API key not configured. Please set it in settings.');
 		}
@@ -79,8 +86,8 @@ export class AIService {
 		});
 
 		try {
-			const response = await this.callAPIWithRetry(messages);
-			return response;
+			const result = await this.callAPIWithRetry(messages);
+			return result;
 		} catch (error: any) {
 			console.error('AI Service Error:', error);
 			throw new Error(this.getErrorMessage(error));
@@ -115,7 +122,7 @@ export class AIService {
 		return `Failed to generate completion: ${error.message}`;
 	}
 
-	private async callAPIWithRetry(messages: Array<{role: string, content: string}>, maxRetriesOverride?: number): Promise<string> {
+	private async callAPIWithRetry(messages: Array<{role: string, content: string}>, maxRetriesOverride?: number): Promise<CompletionResult> {
 		const maxRetries = maxRetriesOverride ?? this.maxRetries;
 		let lastError: any;
 
@@ -174,7 +181,7 @@ export class AIService {
 		return new Promise(resolve => setTimeout(resolve, ms));
 	}
 
-	private async callAPIWithTimeout(messages: Array<{role: string, content: string}>): Promise<string> {
+	private async callAPIWithTimeout(messages: Array<{role: string, content: string}>): Promise<CompletionResult> {
 		return Promise.race([
 			this.callAPI(messages),
 			this.timeoutPromise(this.timeoutMs)
@@ -191,7 +198,7 @@ export class AIService {
 		});
 	}
 
-	private async callAPI(messages: Array<{role: string, content: string}>): Promise<string> {
+	private async callAPI(messages: Array<{role: string, content: string}>): Promise<CompletionResult> {
 		let url: string;
 		let headers: Record<string, string>;
 		let body: any;
@@ -263,10 +270,18 @@ export class AIService {
 			throw new Error(`API request failed with status ${response.status}: ${errorText}`);
 		}
 
+		const result: CompletionResult = { text: '' };
+
 		if (this.settings.apiProvider === 'anthropic') {
-			return response.json.content[0].text;
+			result.text = response.json.content[0].text;
+			result.tokensUsed = response.json.usage?.output_tokens;
 		} else {
-			return response.json.choices[0].message.content;
+			result.text = response.json.choices[0].message.content;
+			result.inputTokens = response.json.usage?.prompt_tokens;
+			result.outputTokens = response.json.usage?.completion_tokens;
+			result.tokensUsed = (response.json.usage?.prompt_tokens || 0) + (response.json.usage?.completion_tokens || 0);
 		}
+
+		return result;
 	}
 }

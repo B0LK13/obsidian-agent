@@ -1,7 +1,7 @@
 import { Editor, MarkdownView, Notice, Plugin } from 'obsidian';
 import { ObsidianAgentSettings, DEFAULT_SETTINGS } from './settings';
 import { ObsidianAgentSettingTab } from './settingsTab';
-import { AIService } from './aiService';
+import { AIService, CompletionResult } from './aiService';
 import { AgentModal } from './agentModal';
 
 export default class ObsidianAgentPlugin extends Plugin {
@@ -12,6 +12,12 @@ export default class ObsidianAgentPlugin extends Plugin {
 		await this.loadSettings();
 
 		this.aiService = new AIService(this.settings);
+
+		if (!this.settings.totalRequests) {
+			this.settings.totalRequests = 0;
+			this.settings.totalTokensUsed = 0;
+			this.settings.estimatedCost = 0;
+		}
 
 		// Command: Ask AI Agent
 		this.addCommand({
@@ -41,10 +47,11 @@ export default class ObsidianAgentPlugin extends Plugin {
 				new Notice('Generating summary...');
 
 				try {
-					const summary = await this.aiService.generateCompletion(
+					const summaryResult = await this.aiService.generateCompletion(
 						`Please provide a concise summary of the following text:\n\n${textToSummarize}`
 					);
-					editor.replaceSelection(`\n\n## Summary\n${summary}\n`);
+					await this.trackTokenUsage(summaryResult);
+					editor.replaceSelection(`\n\n## Summary\n${summaryResult.text}\n`);
 					new Notice('Summary generated!');
 				} catch (error) {
 					new Notice(`Error: ${error.message}`);
@@ -68,10 +75,11 @@ export default class ObsidianAgentPlugin extends Plugin {
 				new Notice('Expanding ideas...');
 
 				try {
-					const expansion = await this.aiService.generateCompletion(
-						`Please expand on the following ideas with more detail and context:\n\n${selection}`
+					const expansionResult = await this.aiService.generateCompletion(
+						`Please expand on following ideas with more detail and context:\n\n${selection}`
 					);
-					editor.replaceSelection(expansion);
+					await this.trackTokenUsage(expansionResult);
+					editor.replaceSelection(expansionResult.text);
 					new Notice('Ideas expanded!');
 				} catch (error) {
 					new Notice(`Error: ${error.message}`);
@@ -95,10 +103,11 @@ export default class ObsidianAgentPlugin extends Plugin {
 				new Notice('Improving writing...');
 
 				try {
-					const improved = await this.aiService.generateCompletion(
-						`Please improve the following text for clarity, grammar, and style:\n\n${selection}`
+					const improvedResult = await this.aiService.generateCompletion(
+						`Please improve following text for clarity, grammar, and style:\n\n${selection}`
 					);
-					editor.replaceSelection(improved);
+					await this.trackTokenUsage(improvedResult);
+					editor.replaceSelection(improvedResult.text);
 					new Notice('Writing improved!');
 				} catch (error) {
 					new Notice(`Error: ${error.message}`);
@@ -122,10 +131,11 @@ export default class ObsidianAgentPlugin extends Plugin {
 				new Notice('Generating outline...');
 
 				try {
-					const outline = await this.aiService.generateCompletion(
+					const outlineResult = await this.aiService.generateCompletion(
 						`Please create a detailed outline for the following topic:\n\n${topic}`
 					);
-					editor.replaceSelection(`\n\n${outline}\n`);
+					await this.trackTokenUsage(outlineResult);
+					editor.replaceSelection(`\n\n${outlineResult.text}\n`);
 					new Notice('Outline generated!');
 				} catch (error) {
 					new Notice(`Error: ${error.message}`);
@@ -159,6 +169,35 @@ export default class ObsidianAgentPlugin extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+	}
+
+	private async trackTokenUsage(result: CompletionResult): Promise<void> {
+		if (!this.settings.enableTokenTracking || !result.tokensUsed) {
+			return;
+		}
+
+		this.settings.totalRequests = (this.settings.totalRequests || 0) + 1;
+		this.settings.totalTokensUsed = (this.settings.totalTokensUsed || 0) + result.tokensUsed;
+
+		const cost = this.estimateCost(result);
+		this.settings.estimatedCost = (this.settings.estimatedCost || 0) + cost;
+
+		if (this.settings.estimatedCost > this.settings.costThreshold) {
+			new Notice(`Cost warning: You've spent approximately $${this.settings.estimatedCost.toFixed(2)} this session`, 5000);
+		}
+
+		await this.saveSettings();
+	}
+
+	private estimateCost(result: CompletionResult): number {
+		if (this.settings.apiProvider === 'openai') {
+			const inputCost = ((result.inputTokens || 0) / 1000) * 0.03;
+			const outputCost = ((result.outputTokens || 0) / 1000) * 0.06;
+			return inputCost + outputCost;
+		} else if (this.settings.apiProvider === 'anthropic') {
+			return ((result.tokensUsed || 0) / 1000) * 0.075;
+		}
+		return 0;
 	}
 
 	async saveSettings() {

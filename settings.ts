@@ -8,6 +8,11 @@ export interface ObsidianAgentSettings {
 	systemPrompt: string;
 	enableAutoCompletion: boolean;
 	enableContextAwareness: boolean;
+	enableTokenTracking: boolean;
+	costThreshold: number;
+	totalRequests?: number;
+	totalTokensUsed?: number;
+	estimatedCost?: number;
 }
 
 export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
@@ -19,5 +24,7 @@ export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
 	maxTokens: 2000,
 	systemPrompt: 'You are a helpful AI assistant integrated into Obsidian. Help users with note-taking, knowledge management, and content generation.',
 	enableAutoCompletion: false,
-	enableContextAwareness: true
+	enableContextAwareness: true,
+	enableTokenTracking: true,
+	costThreshold: 10
 }
