@@ -70,9 +70,9 @@ export class AIService {
 					'x-api-key': this.settings.apiKey,
 					'anthropic-version': '2023-06-01'
 				};
-				// Convert messages format for Anthropic
+				// Convert messages format for Anthropic (only user messages, system handled separately)
 				const systemMsg = messages.find(m => m.role === 'system');
-				const userMessages = messages.filter(m => m.role !== 'system');
+				const userMessages = messages.filter(m => m.role === 'user');
 				body = {
 					model: this.settings.model,
 					max_tokens: this.settings.maxTokens,
@@ -111,15 +111,28 @@ export class AIService {
 			throw: false
 		});
 
-		if (response.status !== 200) {
+		if (response.status < 200 || response.status >= 300) {
 			throw new Error(`API request failed with status ${response.status}: ${response.text}`);
 		}
 
-		// Parse response based on provider
-		if (this.settings.apiProvider === 'anthropic') {
-			return response.json.content[0].text;
-		} else {
-			return response.json.choices[0].message.content;
+		// Parse response based on provider with validation
+		try {
+			if (this.settings.apiProvider === 'anthropic') {
+				if (!response.json.content || !Array.isArray(response.json.content) || response.json.content.length === 0) {
+					throw new Error('Invalid response format: missing or empty content array');
+				}
+				return response.json.content[0].text;
+			} else {
+				if (!response.json.choices || !Array.isArray(response.json.choices) || response.json.choices.length === 0) {
+					throw new Error('Invalid response format: missing or empty choices array');
+				}
+				if (!response.json.choices[0].message || !response.json.choices[0].message.content) {
+					throw new Error('Invalid response format: missing message content');
+				}
+				return response.json.choices[0].message.content;
+			}
+		} catch (error) {
+			throw new Error(`Failed to parse API response: ${error.message}`);
 		}
 	}
 }

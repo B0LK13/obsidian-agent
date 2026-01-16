@@ -6,7 +6,6 @@ export interface ObsidianAgentSettings {
 	temperature: number;
 	maxTokens: number;
 	systemPrompt: string;
-	enableAutoCompletion: boolean;
 	enableContextAwareness: boolean;
 }
 
@@ -18,6 +17,5 @@ export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
 	temperature: 0.7,
 	maxTokens: 2000,
 	systemPrompt: 'You are a helpful AI assistant integrated into Obsidian. Help users with note-taking, knowledge management, and content generation.',
-	enableAutoCompletion: false,
 	enableContextAwareness: true
 }
