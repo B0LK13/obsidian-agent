@@ -8,15 +8,34 @@ export interface CompletionResult {
 	outputTokens?: number;
 }
 
+export interface StreamChunk {
+	content: string;
+	done: boolean;
+	tokensUsed?: number;
+	inputTokens?: number;
+	outputTokens?: number;
+}
+
+export type StreamCallback = (chunk: StreamChunk) => void;
+export type StreamProgressCallback = (progress: string) => void;
+
 export class AIService {
 	private settings: ObsidianAgentSettings;
 	private timeoutMs: number = 30000;
 	private maxRetries: number = 3;
 	private initialRetryDelayMs: number = 1000;
 	private retryDelayMultiplier: number = 2;
+	private currentAbortController: AbortController | null = null;
 
 	constructor(settings: ObsidianAgentSettings) {
 		this.settings = settings;
+	}
+
+	cancelCurrentRequest(): void {
+		if (this.currentAbortController) {
+			this.currentAbortController.abort();
+			this.currentAbortController = null;
+		}
 	}
 
 	async testConnection(): Promise<{ success: boolean; message: string; responseTime?: number }> {
@@ -59,7 +78,7 @@ export class AIService {
 		}
 	}
 
-	async generateCompletion(prompt: string, context?: string): Promise<CompletionResult> {
+	async generateCompletion(prompt: string, context?: string, stream?: boolean, onChunk?: StreamCallback, onProgress?: StreamProgressCallback): Promise<CompletionResult> {
 		if (!this.settings.apiKey) {
 			throw new Error('API key not configured. Please set it in settings.');
 		}
@@ -86,8 +105,13 @@ export class AIService {
 		});
 
 		try {
-			const result = await this.callAPIWithRetry(messages);
-			return result;
+			if (stream && onChunk && onProgress) {
+				return await this.streamAPI(messages, onChunk, onProgress);
+			} else if (stream && onChunk && !onProgress) {
+				return await this.streamAPI(messages, onChunk, undefined);
+			} else {
+				return await this.callAPIWithRetry(messages);
+			}
 		} catch (error: any) {
 			console.error('AI Service Error:', error);
 			throw new Error(this.getErrorMessage(error));
@@ -175,6 +199,148 @@ export class AIService {
 
 	private getRetryDelay(attempt: number): number {
 		return this.initialRetryDelayMs * Math.pow(this.retryDelayMultiplier, attempt - 1);
+	}
+
+	private async streamAPI(messages: Array<{role: string, content: string}>, onChunk: StreamCallback, onProgress?: StreamProgressCallback): Promise<CompletionResult> {
+		let url: string;
+		let headers: Record<string, string>;
+		let body: any;
+		let stream: boolean = false;
+
+		switch (this.settings.apiProvider) {
+			case 'openai':
+				url = 'https://api.openai.com/v1/chat/completions';
+				headers = {
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${this.settings.apiKey}`
+				};
+				body = {
+					model: this.settings.model,
+					messages: messages,
+					temperature: this.settings.temperature,
+					max_tokens: this.settings.maxTokens,
+					stream: true
+				};
+				stream = true;
+				break;
+
+			case 'anthropic':
+				url = 'https://api.anthropic.com/v1/messages';
+				headers = {
+					'Content-Type': 'application/json',
+					'x-api-key': this.settings.apiKey,
+					'anthropic-version': '2023-06-01'
+				};
+				const systemMsg = messages.find(m => m.role === 'system');
+				const userMessages = messages.filter(m => m.role !== 'system');
+				body = {
+					model: this.settings.model,
+					max_tokens: this.settings.maxTokens,
+					temperature: this.settings.temperature,
+					system: systemMsg?.content,
+					messages: userMessages,
+					stream: true
+				};
+				stream = true;
+				break;
+
+			case 'custom':
+				if (!this.settings.customApiUrl) {
+					throw new Error('Custom API URL not configured');
+				}
+				url = this.settings.customApiUrl;
+				headers = {
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${this.settings.apiKey}`
+				};
+				body = {
+					model: this.settings.model,
+					messages: messages,
+					temperature: this.settings.temperature,
+					max_tokens: this.settings.maxTokens,
+					stream: true
+				};
+				stream = true;
+				break;
+
+			default:
+				throw new Error(`Unknown API provider: ${this.settings.apiProvider}`);
+		}
+
+		let fullText = '';
+		let tokensUsed = 0;
+		let inputTokens = 0;
+		let outputTokens = 0;
+
+		try {
+			const response = await requestUrl({
+				url: url,
+				method: 'POST',
+				headers: headers,
+				body: JSON.stringify(body),
+				throw: false
+			});
+
+			if (response.status !== 200) {
+				const errorText = response.text || '';
+				throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+			}
+
+			const lines = (response.text || '').split('\n');
+			for (const line of lines) {
+				if (line.startsWith('data: ')) {
+					const data = line.slice(6);
+					if (data.trim() === '[DONE]') {
+						onChunk({
+							content: fullText,
+							done: true,
+							tokensUsed: tokensUsed,
+							inputTokens,
+							outputTokens
+						});
+						break;
+					}
+
+					try {
+						const json = JSON.parse(data);
+						let content = '';
+						let deltaTokens = 0;
+
+						if (json.choices?.[0]?.delta?.content) {
+							content = json.choices[0].delta.content || '';
+						}
+
+						if (json.usage) {
+							tokensUsed = (json.usage.total_tokens || 0);
+							if (json.usage.prompt_tokens) {
+								inputTokens = json.usage.prompt_tokens;
+							}
+							if (json.usage.completion_tokens) {
+								outputTokens = json.usage.completion_tokens;
+							}
+						}
+
+						if (content) {
+							fullText += content;
+							if (onProgress) {
+								onProgress(fullText);
+							}
+						}
+					} catch (e) {
+						console.error('Failed to parse SSE data:', data);
+					}
+				}
+			}
+		} catch (error: any) {
+			throw error;
+		}
+
+		return {
+			text: fullText,
+			tokensUsed: tokensUsed || 0,
+			inputTokens,
+			outputTokens
+		};
 	}
 
 	private sleep(ms: number): Promise<void> {

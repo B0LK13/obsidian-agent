@@ -17,6 +17,9 @@ export class AgentModal extends Modal {
 	private promptContainer?: HTMLElement;
 	private submitButton?: HTMLButtonElement;
 	private textAreaElement?: HTMLTextAreaElement;
+	private stopButton?: HTMLButtonElement;
+	private isStreaming: boolean = false;
+	private currentResponse: string = '';
 
 	constructor(app: App, aiService: AIService, context: string, onSubmit: (result: string) => void) {
 		super(app);
@@ -100,6 +103,13 @@ export class AgentModal extends Modal {
 			}
 		});
 
+		this.stopButton = buttonContainer.createEl('button', {
+			text: 'Stop',
+			cls: 'mod-warning'
+		}) as HTMLButtonElement;
+		this.stopButton.style.display = 'none';
+		this.stopButton.addEventListener('click', () => this.stopGeneration());
+
 		this.textAreaElement.focus();
 	}
 
@@ -149,25 +159,125 @@ export class AgentModal extends Modal {
 
 		submitButton.setAttr('disabled', 'true');
 		submitButton.textContent = 'Generating...';
+		this.stopButton.style.display = 'none';
+		this.isStreaming = true;
+		this.currentResponse = '';
 
 		this.addMessageToHistory('user', this.prompt);
 		this.renderChatHistory();
 
 		try {
-			const result = await this.aiService.generateCompletion(this.prompt, this.context);
-			this.addMessageToHistory('assistant', result);
-			this.renderChatHistory();
+			await this.aiService.generateCompletion(
+				this.prompt,
+				this.context,
+				true,
+				(chunk) => {
+					this.onStreamChunk(chunk);
+					if (chunk.done) {
+						this.isStreaming = false;
+						this.stopButton.style.display = 'none';
+					}
+				},
+				(progress) => {
+					if (this.isStreaming) {
+						this.stopButton.style.display = 'block';
+						this.onStreamProgress(progress);
+					}
+				}
+			);
 			
-			this.onSubmit(result);
+			if (this.currentResponse) {
+				this.addMessageToHistory('assistant', this.currentResponse);
+				this.renderChatHistory();
+			}
+			
+			this.onSubmit(this.currentResponse);
 			this.prompt = '';
 			this.updatePromptInput();
 		} catch (error: any) {
-			new Notice(`Error: ${error.message}`);
-			console.error('Agent Modal Error:', error);
+			if (error.name !== 'AbortError') {
+				new Notice(`Error: ${error.message}`);
+				console.error('Agent Modal Error:', error);
+			}
 		} finally {
+			this.isStreaming = false;
+			this.stopButton.style.display = 'none';
 			submitButton.removeAttribute('disabled');
 			submitButton.textContent = 'Generate';
 		}
+	}
+
+	private onStreamChunk(chunk: any): void {
+		if (chunk.done) {
+			return;
+		}
+
+		if (chunk.content) {
+			this.currentResponse += chunk.content;
+			
+			if (this.chatHistory.length > 0 && this.chatHistory[this.chatHistory.length - 1].role === 'assistant') {
+				const lastMessage = this.chatHistory[this.chatHistory.length - 1];
+				lastMessage.content = this.currentResponse;
+			}
+			
+			this.renderChatHistory();
+		}
+	}
+
+	private onStreamProgress(progress: string): void {
+		if (progress && this.isStreaming) {
+			if (this.chatHistory.length === 0 || this.chatHistory[this.chatHistory.length - 1].role !== 'assistant') {
+				this.addMessageToHistory('assistant', '');
+			}
+			
+			const lastMessage = this.chatHistory[this.chatHistory.length - 1];
+			lastMessage.content = progress;
+			this.renderChatHistory();
+		}
+	}
+
+	private stopGeneration(): void {
+		if (this.isStreaming) {
+			this.aiService.cancelCurrentRequest();
+			new Notice('Generation stopped');
+		}
+	}
+
+	private onStreamChunk(chunk: any): void {
+		if (chunk.done) {
+			return;
+		}
+
+		if (chunk.content) {
+			this.currentResponse += chunk.content;
+			
+			if (this.chatHistory.length > 0 && this.chatHistory[this.chatHistory.length - 1].role === 'assistant') {
+				const lastMessage = this.chatHistory[this.chatHistory.length - 1];
+				if (lastMessage) {
+					lastMessage.content = this.currentResponse;
+				}
+			}
+			
+			this.renderChatHistory();
+		}
+	}
+
+	private onStreamProgress(progress: string): void {
+		if (progress && this.isStreaming) {
+			if (this.chatHistory.length === 0 || this.chatHistory[this.chatHistory.length - 1]?.role !== 'assistant') {
+				this.addMessageToHistory('assistant', '');
+			}
+			
+			if (this.chatHistory.length > 0) {
+				const lastMessage = this.chatHistory[this.chatHistory.length - 1];
+				if (lastMessage) {
+					lastMessage.content = progress;
+				}
+			}
+			
+			this.renderChatHistory();
+		}
+	}
 	}
 
 	private addMessageToHistory(role: 'user' | 'assistant', content: string): void {
@@ -252,6 +362,7 @@ export class AgentModal extends Modal {
 	}
 
 	onClose() {
+		this.aiService.cancelCurrentRequest();
 		const {contentEl} = this;
 		contentEl.empty();
 	}
