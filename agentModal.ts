@@ -1,4 +1,4 @@
-import { App, Modal, Notice, TextAreaComponent, setTooltip } from 'obsidian';
+import { App, Modal, Notice, TextAreaComponent, setTooltip, MarkdownRenderer } from 'obsidian';
 import { AIService } from './aiService';
 
 interface ChatMessage {
@@ -103,6 +103,25 @@ export class AgentModal extends Modal {
 		this.textAreaElement.focus();
 	}
 
+	private renderMarkdown(text: string): string {
+		let html = text
+			.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+			.replace(/`([^`]+)`/g, '<code>$1</code>')
+			.replace(/\*\*([^*]+)\*\*/g, '<em>$1</em>')
+			.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+			.replace(/`([^`]+)`/g, '<code>$1</code>')
+			.replace(/## (.+)/g, '<h3>$1</h3>')
+			.replace(/# (.+)/g, '<h2>$1</h2>')
+			.replace(/^- (.+)/gm, '<li>$1</li>')
+			.replace(/\n/g, '<br>');
+		
+		const listWrap = html.replace(/<li>(.+?)<\/li>/g, (match, content) => {
+			return `<ul style="margin: 0; padding-left: 1.5rem;">${content}</ul>`;
+		});
+		
+		return listWrap;
+	}
+
 	private handleKeyDown(event: KeyboardEvent): void {
 		if (event.key === 'Enter' && !event.shiftKey) {
 			event.preventDefault();
@@ -195,9 +214,14 @@ export class AgentModal extends Modal {
 			contentEl.style.padding = '0.5rem';
 			contentEl.style.borderRadius = 'var(--radius-s)';
 			contentEl.style.backgroundColor = message.role === 'user' ? 'var(--background-secondary)' : 'var(--background-primary)';
-			contentEl.textContent = message.content;
 			contentEl.style.whiteSpace = 'pre-wrap';
 			contentEl.style.wordBreak = 'break-word';
+			
+			if (message.role === 'assistant') {
+				contentEl.innerHTML = this.renderMarkdown(message.content);
+			} else {
+				contentEl.textContent = message.content;
+			}
 		});
 
 		container.scrollTop = container.scrollHeight;
