@@ -451,8 +451,28 @@ export default class ObsidianAgentPlugin extends Plugin {
 	}
 
 	async saveSettings() {
+		// Persist cache data before saving
+		const cacheService = this.aiService?.getCacheService();
+		if (cacheService && this.settings.cacheConfig?.enabled) {
+			const cacheData = cacheService.exportCache();
+			this.settings.cacheData = {
+				entries: cacheData.entries,
+				stats: cacheData.stats
+			};
+		}
+
 		await this.saveData(this.settings);
-		// Update AI service with new settings
-		this.aiService = new AIService(this.settings);
+		
+		// Update AI service with new settings (preserves cache)
+		const newService = new AIService(this.settings);
+		const oldCache = this.aiService?.getCacheService();
+		if (oldCache && cacheService) {
+			newService.getCacheService().importCache({
+				entries: oldCache.exportCache().entries,
+				stats: oldCache.getStats(),
+				settings: this.settings.cacheConfig
+			});
+		}
+		this.aiService = newService;
 	}
 }

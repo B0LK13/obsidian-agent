@@ -1,11 +1,14 @@
 import { ObsidianAgentSettings } from './settings';
 import { requestUrl, RequestUrlResponse, Notice } from 'obsidian';
+import { CacheService, CacheEntry } from './cacheService';
 
 export interface CompletionResult {
 	text: string;
 	tokensUsed?: number;
 	inputTokens?: number;
 	outputTokens?: number;
+	fromCache?: boolean;
+	cacheEntry?: CacheEntry;
 }
 
 export interface StreamChunk {
@@ -26,9 +29,42 @@ export class AIService {
 	private initialRetryDelayMs: number = 1000;
 	private retryDelayMultiplier: number = 2;
 	private currentAbortController: AbortController | null = null;
+	private cacheService: CacheService;
+	private bypassCache: boolean = false;
 
 	constructor(settings: ObsidianAgentSettings) {
 		this.settings = settings;
+		this.cacheService = new CacheService(settings.cacheConfig);
+		
+		// Import persisted cache data if available
+		if (settings.cacheData?.entries?.length > 0) {
+			this.cacheService.importCache({
+				entries: settings.cacheData.entries,
+				stats: settings.cacheData.stats,
+				settings: settings.cacheConfig
+			});
+		}
+	}
+
+	/**
+	 * Get the cache service instance
+	 */
+	getCacheService(): CacheService {
+		return this.cacheService;
+	}
+
+	/**
+	 * Set bypass cache flag for next request
+	 */
+	setBypassCache(bypass: boolean): void {
+		this.bypassCache = bypass;
+	}
+
+	/**
+	 * Update cache settings
+	 */
+	updateCacheSettings(settings: ObsidianAgentSettings): void {
+		this.cacheService.updateSettings(settings.cacheConfig);
 	}
 
 	cancelCurrentRequest(): void {
@@ -79,9 +115,33 @@ export class AIService {
 	}
 
 	async generateCompletion(prompt: string, context?: string, stream?: boolean, onChunk?: StreamCallback, onProgress?: StreamProgressCallback): Promise<CompletionResult> {
-		if (!this.settings.apiKey) {
+		if (!this.settings.apiKey && this.settings.apiProvider !== 'ollama') {
 			throw new Error('API key not configured. Please set it in settings.');
 		}
+
+		// Check cache first (only for non-streaming requests)
+		if (!stream && !this.bypassCache && this.cacheService.isEnabled()) {
+			const cachedEntry = this.cacheService.get(
+				prompt,
+				context || '',
+				this.settings.model,
+				this.settings.temperature
+			);
+
+			if (cachedEntry) {
+				return {
+					text: cachedEntry.response,
+					tokensUsed: cachedEntry.tokensUsed,
+					inputTokens: cachedEntry.inputTokens,
+					outputTokens: cachedEntry.outputTokens,
+					fromCache: true,
+					cacheEntry: cachedEntry
+				};
+			}
+		}
+
+		// Reset bypass flag after checking
+		this.bypassCache = false;
 
 		const messages = [];
 		
@@ -105,13 +165,33 @@ export class AIService {
 		});
 
 		try {
+			let result: CompletionResult;
+			
 			if (stream && onChunk && onProgress) {
-				return await this.streamAPI(messages, onChunk, onProgress);
+				result = await this.streamAPI(messages, onChunk, onProgress);
 			} else if (stream && onChunk && !onProgress) {
-				return await this.streamAPI(messages, onChunk, undefined);
+				result = await this.streamAPI(messages, onChunk, undefined);
 			} else {
-				return await this.callAPIWithRetry(messages);
+				result = await this.callAPIWithRetry(messages);
 			}
+
+			// Store in cache (for non-streaming or after streaming completes)
+			if (this.cacheService.isEnabled() && result.text) {
+				const cacheEntry = this.cacheService.set(
+					prompt,
+					context || '',
+					this.settings.model,
+					this.settings.temperature,
+					result.text,
+					result.tokensUsed || 0,
+					result.inputTokens || 0,
+					result.outputTokens || 0
+				);
+				result.cacheEntry = cacheEntry;
+			}
+
+			result.fromCache = false;
+			return result;
 		} catch (error: any) {
 			console.error('AI Service Error:', error);
 			throw new Error(this.getErrorMessage(error));

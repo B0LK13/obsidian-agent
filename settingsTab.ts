@@ -295,6 +295,7 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 		this.addContextAwarenessSetting(containerEl);
 		this.addVaultContextSettings(containerEl);
 		this.addConversationPersistenceSetting(containerEl);
+		this.addCacheSettings(containerEl);
 		this.addTokenTrackingSetting(containerEl);
 		this.addReconnectButton(containerEl);
 		this.addTestConnectionButton(containerEl);
@@ -489,6 +490,157 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 					this.plugin.settings.contextConfig.excludeFolders = value;
 					await this.plugin.saveSettings();
 				}));
+	}
+
+	private addCacheSettings(containerEl: HTMLElement): void {
+		containerEl.createEl('h3', { text: 'Response Caching' });
+
+		const desc = containerEl.createEl('p', { cls: 'setting-item-description' });
+		desc.textContent = 'Cache AI responses to reduce API costs and improve response time for repeated queries.';
+		desc.style.marginBottom = '1rem';
+
+		// Ensure cacheConfig exists
+		if (!this.plugin.settings.cacheConfig) {
+			this.plugin.settings.cacheConfig = {
+				enabled: true,
+				maxEntries: 100,
+				maxAgeDays: 30,
+				matchThreshold: 1.0
+			};
+		}
+
+		new Setting(containerEl)
+			.setName('Enable Response Caching')
+			.setDesc('Cache identical queries to save API calls')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.cacheConfig.enabled)
+				.onChange(async (value) => {
+					this.plugin.settings.cacheConfig.enabled = value;
+					await this.plugin.saveSettings();
+					this.plugin.aiService?.getCacheService()?.setEnabled(value);
+				}));
+
+		new Setting(containerEl)
+			.setName('Max Cache Entries')
+			.setDesc('Maximum number of cached responses (oldest removed first)')
+			.addText(text => text
+				.setPlaceholder('100')
+				.setValue(String(this.plugin.settings.cacheConfig.maxEntries))
+				.onChange(async (value) => {
+					const parsed = parseInt(value);
+					this.plugin.settings.cacheConfig.maxEntries = isNaN(parsed) ? 100 : Math.max(10, parsed);
+					await this.plugin.saveSettings();
+					this.plugin.aiService?.updateCacheSettings(this.plugin.settings);
+				}));
+
+		new Setting(containerEl)
+			.setName('Cache Expiration (Days)')
+			.setDesc('How long to keep cached responses')
+			.addText(text => text
+				.setPlaceholder('30')
+				.setValue(String(this.plugin.settings.cacheConfig.maxAgeDays))
+				.onChange(async (value) => {
+					const parsed = parseInt(value);
+					this.plugin.settings.cacheConfig.maxAgeDays = isNaN(parsed) ? 30 : Math.max(1, parsed);
+					await this.plugin.saveSettings();
+					this.plugin.aiService?.updateCacheSettings(this.plugin.settings);
+				}));
+
+		// Cache statistics
+		const cacheService = this.plugin.aiService?.getCacheService();
+		if (cacheService) {
+			const stats = cacheService.getStats();
+			const hitRate = cacheService.getHitRate();
+			const costSavings = cacheService.getEstimatedCostSavings();
+
+			const statsContainer = containerEl.createDiv({ cls: 'cache-stats' });
+			statsContainer.style.padding = '1rem';
+			statsContainer.style.backgroundColor = 'var(--background-secondary)';
+			statsContainer.style.borderRadius = 'var(--radius-s)';
+			statsContainer.style.marginBottom = '1rem';
+
+			statsContainer.createEl('h4', { text: 'Cache Statistics' });
+			statsContainer.style.marginTop = '0';
+
+			const statsGrid = statsContainer.createDiv({ cls: 'stats-grid' });
+			statsGrid.style.display = 'grid';
+			statsGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+			statsGrid.style.gap = '0.5rem';
+			statsGrid.style.marginTop = '0.5rem';
+
+			this.createStatCard(statsGrid, 'Cached Entries', String(stats.totalEntries));
+			this.createStatCard(statsGrid, 'Cache Hits', String(stats.totalHits));
+			this.createStatCard(statsGrid, 'Cache Misses', String(stats.totalMisses));
+			this.createStatCard(statsGrid, 'Hit Rate', `${hitRate.toFixed(1)}%`);
+			this.createStatCard(statsGrid, 'Tokens Saved', String(stats.estimatedSavings));
+			this.createStatCard(statsGrid, 'Est. Savings', `$${costSavings.toFixed(4)}`);
+			this.createStatCard(statsGrid, 'Cache Size', cacheService.getFormattedCacheSize());
+
+			// Cache actions
+			const actionsContainer = statsContainer.createDiv({ cls: 'cache-actions' });
+			actionsContainer.style.display = 'flex';
+			actionsContainer.style.gap = '0.5rem';
+			actionsContainer.style.marginTop = '1rem';
+
+			const clearButton = actionsContainer.createEl('button', {
+				text: 'Clear Cache',
+				cls: 'mod-warning'
+			});
+			clearButton.addEventListener('click', async () => {
+				if (confirm('Clear all cached responses? This cannot be undone.')) {
+					cacheService.clearCache();
+					// Persist the cleared cache
+					this.plugin.settings.cacheData = {
+						entries: [],
+						stats: cacheService.getStats()
+					};
+					await this.plugin.saveSettings();
+					this.display();
+					new Notice('Cache cleared');
+				}
+			});
+
+			const cleanExpiredButton = actionsContainer.createEl('button', {
+				text: 'Clean Expired'
+			});
+			cleanExpiredButton.addEventListener('click', async () => {
+				const count = cacheService.cleanExpired();
+				// Persist the cleaned cache
+				const cacheData = cacheService.exportCache();
+				this.plugin.settings.cacheData = {
+					entries: cacheData.entries,
+					stats: cacheData.stats
+				};
+				await this.plugin.saveSettings();
+				this.display();
+				new Notice(`Removed ${count} expired entries`);
+			});
+
+			const resetStatsButton = actionsContainer.createEl('button', {
+				text: 'Reset Stats'
+			});
+			resetStatsButton.addEventListener('click', async () => {
+				cacheService.resetStats();
+				const cacheData = cacheService.exportCache();
+				this.plugin.settings.cacheData = {
+					entries: cacheData.entries,
+					stats: cacheData.stats
+				};
+				await this.plugin.saveSettings();
+				this.display();
+				new Notice('Statistics reset');
+			});
+
+			// View cached entries button
+			if (stats.totalEntries > 0) {
+				const viewEntriesButton = actionsContainer.createEl('button', {
+					text: 'View Entries'
+				});
+				viewEntriesButton.addEventListener('click', () => {
+					new CacheBrowserModal(this.app, this.plugin).open();
+				});
+			}
+		}
 	}
 
 	private addConversationPersistenceSetting(containerEl: HTMLElement): void {
@@ -1166,6 +1318,132 @@ class TemplateEditorModal extends Modal {
 			this.onSave(this.formData);
 			this.close();
 		});
+	}
+
+	onClose() {
+		const { contentEl } = this;
+		contentEl.empty();
+	}
+}
+
+class CacheBrowserModal extends Modal {
+	private plugin: ObsidianAgentPlugin;
+	private entries: any[] = [];
+	private searchTerm: string = '';
+
+	constructor(app: App, plugin: ObsidianAgentPlugin) {
+		super(app);
+		this.plugin = plugin;
+		const cacheService = plugin.aiService?.getCacheService();
+		if (cacheService) {
+			this.entries = cacheService.getAllEntries();
+		}
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.createEl('h2', { text: 'Cached Responses' });
+
+		const searchContainer = contentEl.createDiv({ cls: 'cache-search' });
+		searchContainer.style.marginBottom = '1rem';
+
+		new Setting(searchContainer)
+			.setName('Search')
+			.setDesc('Filter cached responses by keyword')
+			.addText(text => text
+				.setPlaceholder('Search cached responses...')
+				.onChange(value => {
+					this.searchTerm = value.toLowerCase();
+					this.renderEntries(contentEl);
+				}));
+
+		this.renderEntries(contentEl);
+
+		const closeButton = contentEl.createEl('button', { text: 'Close', cls: 'mod-cta' });
+		closeButton.style.marginTop = '1rem';
+		closeButton.addEventListener('click', () => this.close());
+	}
+
+	private renderEntries(contentEl: HTMLElement): void {
+		const listContainer = contentEl.querySelector('.cache-entries-list');
+		if (listContainer) {
+			listContainer.remove();
+		}
+
+		const filteredEntries = this.searchTerm
+			? this.entries.filter(e =>
+				e.prompt.toLowerCase().includes(this.searchTerm) ||
+				e.response.toLowerCase().includes(this.searchTerm)
+			)
+			: this.entries;
+
+		if (filteredEntries.length === 0) {
+			const empty = contentEl.createDiv({ cls: 'cache-empty' });
+			empty.style.padding = '2rem';
+			empty.style.textAlign = 'center';
+			empty.style.color = 'var(--text-muted)';
+			empty.textContent = this.searchTerm
+				? 'No cached responses match your search.'
+				: 'No cached responses yet.';
+			return;
+		}
+
+		const list = contentEl.createDiv({ cls: 'cache-entries-list' });
+		list.style.maxHeight = '400px';
+		list.style.overflowY = 'auto';
+
+		filteredEntries.slice(0, 50).forEach(entry => {
+			const item = list.createDiv({ cls: 'cache-entry-item' });
+			item.style.padding = '0.75rem';
+			item.style.marginBottom = '0.5rem';
+			item.style.backgroundColor = 'var(--background-secondary)';
+			item.style.borderRadius = 'var(--radius-s)';
+
+			const header = item.createDiv({ cls: 'cache-entry-header' });
+			header.style.display = 'flex';
+			header.style.justifyContent = 'space-between';
+			header.style.alignItems = 'center';
+			header.style.marginBottom = '0.5rem';
+
+			const meta = header.createDiv();
+			meta.style.fontSize = 'var(--font-smaller)';
+			meta.style.color = 'var(--text-muted)';
+			const date = new Date(entry.createdAt).toLocaleDateString();
+			meta.textContent = `${date} | ${entry.model} | ${entry.tokensUsed} tokens | Used ${entry.accessCount}x`;
+
+			const deleteBtn = header.createEl('button', { text: 'Delete', cls: 'mod-warning' });
+			deleteBtn.style.fontSize = 'var(--font-smaller)';
+			deleteBtn.style.padding = '0.25rem 0.5rem';
+			deleteBtn.addEventListener('click', () => {
+				if (confirm('Delete this cached response?')) {
+					const cacheService = this.plugin.aiService?.getCacheService();
+					if (cacheService && cacheService.deleteEntry(entry.id)) {
+						this.entries = this.entries.filter(e => e.id !== entry.id);
+						this.renderEntries(contentEl);
+						new Notice('Cached response deleted');
+					}
+				}
+			});
+
+			const promptPreview = item.createDiv({ cls: 'cache-entry-prompt' });
+			promptPreview.style.fontWeight = 'bold';
+			promptPreview.style.fontSize = 'var(--font-small)';
+			promptPreview.style.marginBottom = '0.25rem';
+			promptPreview.textContent = entry.prompt.substring(0, 200) + (entry.prompt.length > 200 ? '...' : '');
+
+		const responsePreview = item.createDiv({ cls: 'cache-entry-response' });
+		responsePreview.style.fontSize = 'var(--font-small)';
+		responsePreview.style.color = 'var(--text-muted)';
+		responsePreview.textContent = entry.response.substring(0, 300) + (entry.response.length > 300 ? '...' : '');
+	});
+
+		if (filteredEntries.length > 50) {
+			const more = contentEl.createDiv({ cls: 'cache-more' });
+			more.style.textAlign = 'center';
+			more.style.color = 'var(--text-muted)';
+			more.style.marginTop = '0.5rem';
+			more.textContent = `Showing 50 of ${filteredEntries.length} entries. Use search to filter.`;
+		}
 	}
 
 	onClose() {

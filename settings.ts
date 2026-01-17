@@ -2,6 +2,8 @@ export interface ChatMessage {
 	role: 'user' | 'assistant';
 	content: string;
 	timestamp: number;
+	fromCache?: boolean;
+	tokensUsed?: number;
 }
 
 export interface Conversation {
@@ -71,6 +73,30 @@ export const DEFAULT_PROFILES: AIProfile[] = [
 	}
 ];
 
+export interface CacheEntry {
+	id: string;
+	promptHash: string;
+	contextHash: string;
+	prompt: string;
+	response: string;
+	model: string;
+	temperature: number;
+	tokensUsed: number;
+	inputTokens: number;
+	outputTokens: number;
+	createdAt: number;
+	accessedAt: number;
+	accessCount: number;
+}
+
+export interface CacheStats {
+	totalEntries: number;
+	totalHits: number;
+	totalMisses: number;
+	estimatedSavings: number;
+	cacheSize: number;
+}
+
 export interface ObsidianAgentSettings {
 	// Active profile settings (for backward compatibility)
 	apiKey: string;
@@ -116,6 +142,18 @@ export interface ObsidianAgentSettings {
 		linkDepth: number;
 		excludeFolders: string;
 	};
+	// Response caching settings
+	cacheConfig: {
+		enabled: boolean;
+		maxEntries: number;
+		maxAgeDays: number;
+		matchThreshold: number;
+	};
+	// Persisted cache data
+	cacheData: {
+		entries: CacheEntry[];
+		stats: CacheStats;
+	};
 }
 
 export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
@@ -149,6 +187,23 @@ export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
 		maxTokensPerNote: 1000,
 		linkDepth: 1,
 		excludeFolders: 'templates, .obsidian'
+	},
+	// Response caching
+	cacheConfig: {
+		enabled: true,
+		maxEntries: 100,
+		maxAgeDays: 30,
+		matchThreshold: 1.0
+	},
+	cacheData: {
+		entries: [],
+		stats: {
+			totalEntries: 0,
+			totalHits: 0,
+			totalMisses: 0,
+			estimatedSavings: 0,
+			cacheSize: 0
+		}
 	}
 }
 

@@ -413,13 +413,22 @@ export class AgentModal extends Modal {
 			this.close();
 		});
 
+		const refreshButton = buttonContainer.createEl('button', {text: 'Refresh'});
+		refreshButton.style.fontSize = 'var(--font-smaller)';
+		setTooltip(refreshButton, 'Regenerate response (bypass cache)');
+		refreshButton.addEventListener('click', async () => {
+			if (this.submitButton && !this.submitButton.disabled && this.prompt.trim()) {
+				await this.handleSubmit(this.submitButton as HTMLElement, true);
+			}
+		});
+
 		this.submitButton = buttonContainer.createEl('button', {
 			text: 'Generate',
 			cls: 'mod-cta'
 		}) as HTMLButtonElement;
 		this.submitButton.addEventListener('click', async () => {
 			if (this.submitButton) {
-				await this.handleSubmit(this.submitButton as HTMLElement);
+				await this.handleSubmit(this.submitButton as HTMLElement, false);
 			}
 		});
 
@@ -471,10 +480,14 @@ export class AgentModal extends Modal {
 		}
 	}
 
-	private async handleSubmit(submitButton: HTMLElement): Promise<void> {
+	private async handleSubmit(submitButton: HTMLElement, bypassCache: boolean = false): Promise<void> {
 		if (!this.prompt.trim()) {
 			new Notice('Please enter a prompt');
 			return;
+		}
+
+		if (bypassCache) {
+			this.aiService.setBypassCache(true);
 		}
 
 		submitButton.setAttr('disabled', 'true');
@@ -487,7 +500,7 @@ export class AgentModal extends Modal {
 		this.renderChatHistory();
 
 		try {
-			await this.aiService.generateCompletion(
+			const result = await this.aiService.generateCompletion(
 				this.prompt,
 				this.context,
 				true,
@@ -505,13 +518,17 @@ export class AgentModal extends Modal {
 					}
 				}
 			);
-			
+
 			if (this.currentResponse) {
-				this.addMessageToHistory('assistant', this.currentResponse);
+				this.addMessageToHistory('assistant', this.currentResponse, result.fromCache, result.tokensUsed);
 				this.renderChatHistory();
 				await this.saveCurrentConversation();
+
+				if (result.fromCache) {
+					new Notice('Response loaded from cache');
+				}
 			}
-			
+
 			this.onSubmit(this.currentResponse);
 			this.prompt = '';
 			this.updatePromptInput();
@@ -564,11 +581,13 @@ export class AgentModal extends Modal {
 		}
 	}
 
-	private addMessageToHistory(role: 'user' | 'assistant', content: string): void {
+	private addMessageToHistory(role: 'user' | 'assistant', content: string, fromCache?: boolean, tokensUsed?: number): void {
 		this.chatHistory.push({
 			role,
 			content,
-			timestamp: Date.now()
+			timestamp: Date.now(),
+			fromCache,
+			tokensUsed
 		});
 		this.updateTokenCounter();
 	}
@@ -596,14 +615,38 @@ export class AgentModal extends Modal {
 			headerEl.style.fontSize = 'var(--font-smaller)';
 			headerEl.style.color = 'var(--text-muted)';
 
-			const roleLabel = headerEl.createEl('span', { 
+			const headerLeft = headerEl.createDiv();
+			headerLeft.style.display = 'flex';
+			headerLeft.style.alignItems = 'center';
+			headerLeft.style.gap = '0.5rem';
+
+			const roleLabel = headerLeft.createEl('span', {
 				text: message.role === 'user' ? 'You' : 'AI Agent',
 				cls: message.role === 'user' ? 'user-label' : 'assistant-label'
 			});
 			roleLabel.style.fontWeight = 'bold';
-			
+
+			if (message.fromCache) {
+				const cacheBadge = headerLeft.createEl('span', { text: 'Cached', cls: 'cache-badge' });
+				cacheBadge.style.backgroundColor = 'var(--interactive-accent)';
+				cacheBadge.style.color = 'var(--text-on-accent)';
+				cacheBadge.style.padding = '0.125rem 0.5rem';
+				cacheBadge.style.borderRadius = 'var(--radius-s)';
+				cacheBadge.style.fontSize = 'var(--font-smaller)';
+				cacheBadge.style.fontWeight = 'bold';
+			}
+
+			const headerRight = headerEl.createDiv();
+			headerRight.style.display = 'flex';
+			headerRight.style.alignItems = 'center';
+			headerRight.style.gap = '0.5rem';
+
 			const timestamp = new Date(message.timestamp).toLocaleTimeString();
-			headerEl.createEl('span', { text: timestamp });
+			headerRight.createEl('span', { text: timestamp });
+
+			if (message.tokensUsed) {
+				headerRight.createEl('span', { text: `${message.tokensUsed} tokens` });
+			}
 
 			const contentEl = messageEl.createDiv({ cls: 'message-content' });
 			contentEl.style.padding = '0.5rem';
@@ -611,7 +654,7 @@ export class AgentModal extends Modal {
 			contentEl.style.backgroundColor = message.role === 'user' ? 'var(--background-secondary)' : 'var(--background-primary)';
 			contentEl.style.whiteSpace = 'pre-wrap';
 			contentEl.style.wordBreak = 'break-word';
-			
+
 			if (message.role === 'assistant') {
 				contentEl.innerHTML = this.renderMarkdown(message.content);
 			} else {
