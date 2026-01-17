@@ -154,6 +154,11 @@ export interface ObsidianAgentSettings {
 		entries: CacheEntry[];
 		stats: CacheStats;
 	};
+	// Accessibility settings
+	accessibilityConfig: {
+		enableHighContrast: boolean;
+		enableReducedMotion: boolean;
+	};
 }
 
 export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
@@ -204,6 +209,11 @@ export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
 			estimatedSavings: 0,
 			cacheSize: 0
 		}
+	},
+	// Accessibility
+	accessibilityConfig: {
+		enableHighContrast: false,
+		enableReducedMotion: false
 	}
 }
 

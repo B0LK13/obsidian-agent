@@ -296,6 +296,7 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 		this.addVaultContextSettings(containerEl);
 		this.addConversationPersistenceSetting(containerEl);
 		this.addCacheSettings(containerEl);
+		this.addAccessibilitySettings(containerEl);
 		this.addTokenTrackingSetting(containerEl);
 		this.addReconnectButton(containerEl);
 		this.addTestConnectionButton(containerEl);
@@ -688,6 +689,45 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 					}
 				}));
 		}
+	}
+
+	private addAccessibilitySettings(containerEl: HTMLElement): void {
+		containerEl.createEl('h3', { text: 'Accessibility' });
+
+		const desc = containerEl.createEl('p', { cls: 'setting-item-description' });
+		desc.textContent = 'Customize plugin for your accessibility needs.';
+		desc.style.marginBottom = '1rem';
+
+		if (!this.plugin.settings.accessibilityConfig) {
+			this.plugin.settings.accessibilityConfig = {
+				enableHighContrast: false,
+				enableReducedMotion: false
+			};
+		}
+
+		new Setting(containerEl)
+			.setName('High Contrast Mode')
+			.setDesc('Increase color contrast for better visibility')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.accessibilityConfig.enableHighContrast)
+				.onChange(async (value) => {
+					this.plugin.settings.accessibilityConfig.enableHighContrast = value;
+					await this.plugin.saveSettings();
+					this.plugin.applyAccessibilitySettings();
+					new Notice(value ? 'High contrast enabled' : 'High contrast disabled');
+				}));
+
+		new Setting(containerEl)
+			.setName('Reduced Motion')
+			.setDesc('Disable animations and transitions (also respects system preference)')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.accessibilityConfig.enableReducedMotion)
+				.onChange(async (value) => {
+					this.plugin.settings.accessibilityConfig.enableReducedMotion = value;
+					await this.plugin.saveSettings();
+					this.plugin.applyAccessibilitySettings();
+					new Notice(value ? 'Reduced motion enabled' : 'Reduced motion disabled');
+				}));
 	}
 
 	private addTokenTrackingSetting(containerEl: HTMLElement): void {

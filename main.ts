@@ -74,6 +74,8 @@ export default class ObsidianAgentPlugin extends Plugin {
 		await this.loadSettings();
 		await this.migrateToProfiles();
 
+		this.registerStyles();
+
 		this.aiService = new AIService(this.settings);
 		this.contextProvider = new ContextProvider(this.app);
 
@@ -437,6 +439,31 @@ export default class ObsidianAgentPlugin extends Plugin {
 		}
 
 		await this.saveSettings();
+	}
+
+	private registerStyles(): void {
+		const styleContent = this.app.vault.adapter.read('styles.css');
+		styleContent.then((content) => {
+			if (content) {
+				const styleEl = document.createElement('style');
+				styleEl.textContent = content;
+				styleEl.className = 'obsidian-agent-styles';
+				document.head.appendChild(styleEl);
+			}
+		});
+		this.applyAccessibilitySettings();
+	}
+
+	applyAccessibilitySettings(): void {
+		document.body.classList.remove('oa-high-contrast', 'oa-reduced-motion');
+
+		if (this.settings.accessibilityConfig?.enableHighContrast) {
+			document.body.classList.add('oa-high-contrast');
+		}
+
+		if (this.settings.accessibilityConfig?.enableReducedMotion) {
+			document.body.classList.add('oa-reduced-motion');
+		}
 	}
 
 	private estimateCost(result: CompletionResult): number {

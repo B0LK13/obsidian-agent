@@ -603,11 +603,17 @@ export class AgentModal extends Modal {
 		}
 
 		this.chatHistoryContainer.style.display = 'block';
+		this.chatHistoryContainer.setAttribute('role', 'log');
+		this.chatHistoryContainer.setAttribute('aria-live', 'polite');
+		this.chatHistoryContainer.setAttribute('aria-label', 'AI conversation history');
 
 		const container = this.chatHistoryContainer;
-		this.chatHistory.forEach(message => {
+		this.chatHistory.forEach((message, index) => {
 			const messageEl = container.createDiv({ cls: 'chat-message' });
 			messageEl.style.marginBottom = '0.75rem';
+			messageEl.setAttribute('role', 'article');
+			messageEl.setAttribute('aria-label', `${message.role === 'user' ? 'You' : 'AI Agent'} message at ${new Date(message.timestamp).toLocaleTimeString()}`);
+			messageEl.setAttribute('tabindex', '0');
 
 			const headerEl = messageEl.createDiv({ cls: 'message-header' });
 			headerEl.style.display = 'flex';
