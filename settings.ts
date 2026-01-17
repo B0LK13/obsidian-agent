@@ -105,6 +105,17 @@ export interface ObsidianAgentSettings {
 		variables?: string[];
 		isBuiltIn: boolean;
 	}>;
+	// Vault-wide context settings
+	contextConfig: {
+		enableLinkedNotes: boolean;
+		enableBacklinks: boolean;
+		enableTagContext: boolean;
+		enableFolderContext: boolean;
+		maxNotesPerSource: number;
+		maxTokensPerNote: number;
+		linkDepth: number;
+		excludeFolders: string;
+	};
 }
 
 export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
@@ -127,7 +138,18 @@ export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
 	profiles: [],
 	activeProfileId: 'default',
 	// Custom templates
-	customTemplates: []
+	customTemplates: [],
+	// Vault-wide context
+	contextConfig: {
+		enableLinkedNotes: false,
+		enableBacklinks: false,
+		enableTagContext: false,
+		enableFolderContext: false,
+		maxNotesPerSource: 5,
+		maxTokensPerNote: 1000,
+		linkDepth: 1,
+		excludeFolders: 'templates, .obsidian'
+	}
 }
 
 export function generateProfileId(): string {

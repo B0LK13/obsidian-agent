@@ -293,10 +293,202 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 		this.addMaxTokensSetting(containerEl);
 		this.addSystemPromptSetting(containerEl);
 		this.addContextAwarenessSetting(containerEl);
+		this.addVaultContextSettings(containerEl);
 		this.addConversationPersistenceSetting(containerEl);
 		this.addTokenTrackingSetting(containerEl);
 		this.addReconnectButton(containerEl);
 		this.addTestConnectionButton(containerEl);
+	}
+
+	private addVaultContextSettings(containerEl: HTMLElement): void {
+		containerEl.createEl('h3', { text: 'Vault-Wide Context' });
+		
+		const desc = containerEl.createEl('p', { cls: 'setting-item-description' });
+		desc.textContent = 'Include content from related notes to give AI more context about your knowledge base.';
+		desc.style.marginBottom = '1rem';
+
+		new Setting(containerEl)
+			.setName('Include Linked Notes')
+			.setDesc('Add content from notes linked in the current note')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.contextConfig?.enableLinkedNotes || false)
+				.onChange(async (value) => {
+					if (!this.plugin.settings.contextConfig) {
+						this.plugin.settings.contextConfig = {
+							enableLinkedNotes: false,
+							enableBacklinks: false,
+							enableTagContext: false,
+							enableFolderContext: false,
+							maxNotesPerSource: 5,
+							maxTokensPerNote: 1000,
+							linkDepth: 1,
+							excludeFolders: 'templates, .obsidian'
+						};
+					}
+					this.plugin.settings.contextConfig.enableLinkedNotes = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Include Backlinks')
+			.setDesc('Add content from notes that link TO the current note')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.contextConfig?.enableBacklinks || false)
+				.onChange(async (value) => {
+					if (!this.plugin.settings.contextConfig) {
+						this.plugin.settings.contextConfig = {
+							enableLinkedNotes: false,
+							enableBacklinks: false,
+							enableTagContext: false,
+							enableFolderContext: false,
+							maxNotesPerSource: 5,
+							maxTokensPerNote: 1000,
+							linkDepth: 1,
+							excludeFolders: 'templates, .obsidian'
+						};
+					}
+					this.plugin.settings.contextConfig.enableBacklinks = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Include Same-Tag Notes')
+			.setDesc('Add content from notes with the same tags')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.contextConfig?.enableTagContext || false)
+				.onChange(async (value) => {
+					if (!this.plugin.settings.contextConfig) {
+						this.plugin.settings.contextConfig = {
+							enableLinkedNotes: false,
+							enableBacklinks: false,
+							enableTagContext: false,
+							enableFolderContext: false,
+							maxNotesPerSource: 5,
+							maxTokensPerNote: 1000,
+							linkDepth: 1,
+							excludeFolders: 'templates, .obsidian'
+						};
+					}
+					this.plugin.settings.contextConfig.enableTagContext = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Include Folder Notes')
+			.setDesc('Add content from notes in the same folder')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.contextConfig?.enableFolderContext || false)
+				.onChange(async (value) => {
+					if (!this.plugin.settings.contextConfig) {
+						this.plugin.settings.contextConfig = {
+							enableLinkedNotes: false,
+							enableBacklinks: false,
+							enableTagContext: false,
+							enableFolderContext: false,
+							maxNotesPerSource: 5,
+							maxTokensPerNote: 1000,
+							linkDepth: 1,
+							excludeFolders: 'templates, .obsidian'
+						};
+					}
+					this.plugin.settings.contextConfig.enableFolderContext = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Max Notes Per Source')
+			.setDesc('Maximum number of notes to include from each source')
+			.addText(text => text
+				.setPlaceholder('5')
+				.setValue(String(this.plugin.settings.contextConfig?.maxNotesPerSource || 5))
+				.onChange(async (value) => {
+					const parsed = parseInt(value);
+					if (!this.plugin.settings.contextConfig) {
+						this.plugin.settings.contextConfig = {
+							enableLinkedNotes: false,
+							enableBacklinks: false,
+							enableTagContext: false,
+							enableFolderContext: false,
+							maxNotesPerSource: 5,
+							maxTokensPerNote: 1000,
+							linkDepth: 1,
+							excludeFolders: 'templates, .obsidian'
+						};
+					}
+					this.plugin.settings.contextConfig.maxNotesPerSource = isNaN(parsed) ? 5 : Math.max(1, parsed);
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Max Tokens Per Note')
+			.setDesc('Maximum tokens to include from each additional note')
+			.addText(text => text
+				.setPlaceholder('1000')
+				.setValue(String(this.plugin.settings.contextConfig?.maxTokensPerNote || 1000))
+				.onChange(async (value) => {
+					const parsed = parseInt(value);
+					if (!this.plugin.settings.contextConfig) {
+						this.plugin.settings.contextConfig = {
+							enableLinkedNotes: false,
+							enableBacklinks: false,
+							enableTagContext: false,
+							enableFolderContext: false,
+							maxNotesPerSource: 5,
+							maxTokensPerNote: 1000,
+							linkDepth: 1,
+							excludeFolders: 'templates, .obsidian'
+						};
+					}
+					this.plugin.settings.contextConfig.maxTokensPerNote = isNaN(parsed) ? 1000 : Math.max(100, parsed);
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Link Depth')
+			.setDesc('How many levels of links to follow (1 = direct links only)')
+			.addDropdown(dropdown => dropdown
+				.addOption('1', '1 (Direct links)')
+				.addOption('2', '2 (Links of links)')
+				.setValue(String(this.plugin.settings.contextConfig?.linkDepth || 1))
+				.onChange(async (value) => {
+					if (!this.plugin.settings.contextConfig) {
+						this.plugin.settings.contextConfig = {
+							enableLinkedNotes: false,
+							enableBacklinks: false,
+							enableTagContext: false,
+							enableFolderContext: false,
+							maxNotesPerSource: 5,
+							maxTokensPerNote: 1000,
+							linkDepth: 1,
+							excludeFolders: 'templates, .obsidian'
+						};
+					}
+					this.plugin.settings.contextConfig.linkDepth = parseInt(value);
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Exclude Folders')
+			.setDesc('Folders to exclude from context (comma-separated)')
+			.addText(text => text
+				.setPlaceholder('templates, .obsidian')
+				.setValue(this.plugin.settings.contextConfig?.excludeFolders || 'templates, .obsidian')
+				.onChange(async (value) => {
+					if (!this.plugin.settings.contextConfig) {
+						this.plugin.settings.contextConfig = {
+							enableLinkedNotes: false,
+							enableBacklinks: false,
+							enableTagContext: false,
+							enableFolderContext: false,
+							maxNotesPerSource: 5,
+							maxTokensPerNote: 1000,
+							linkDepth: 1,
+							excludeFolders: 'templates, .obsidian'
+						};
+					}
+					this.plugin.settings.contextConfig.excludeFolders = value;
+					await this.plugin.saveSettings();
+				}));
 	}
 
 	private addConversationPersistenceSetting(containerEl: HTMLElement): void {

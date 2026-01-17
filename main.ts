@@ -1,8 +1,9 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin } from 'obsidian';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, TFile } from 'obsidian';
 import { ObsidianAgentSettings, DEFAULT_SETTINGS, AIProfile, createDefaultProfile, generateProfileId } from './settings';
 import { ObsidianAgentSettingTab } from './settingsTab';
 import { AIService, CompletionResult } from './aiService';
 import { AgentModal } from './agentModal';
+import { ContextProvider, ContextConfig, GatheredContext } from './contextProvider';
 
 class ProfileSwitcherModal extends Modal {
 	private profiles: AIProfile[];
@@ -67,12 +68,14 @@ class ProfileSwitcherModal extends Modal {
 export default class ObsidianAgentPlugin extends Plugin {
 	settings: ObsidianAgentSettings;
 	aiService: AIService;
+	contextProvider: ContextProvider;
 
 	async onload() {
 		await this.loadSettings();
 		await this.migrateToProfiles();
 
 		this.aiService = new AIService(this.settings);
+		this.contextProvider = new ContextProvider(this.app);
 
 		if (!this.settings.totalRequests) {
 			this.settings.totalRequests = 0;
@@ -84,8 +87,29 @@ export default class ObsidianAgentPlugin extends Plugin {
 		this.addCommand({
 			id: 'ask-ai-agent',
 			name: 'Ask AI Agent',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				const context = editor.getValue();
+			editorCallback: async (editor: Editor, view: MarkdownView) => {
+				const currentContent = editor.getValue();
+				const context = await this.gatherFullContext(view.file, currentContent);
+				new AgentModal(
+					this.app, 
+					this.aiService, 
+					this.settings,
+					() => this.saveSettings(),
+					context, 
+					(result) => {
+						editor.replaceSelection(result);
+					}
+				).open();
+			}
+		});
+
+		// Command: Ask AI Agent (with vault context)
+		this.addCommand({
+			id: 'ask-ai-agent-vault-context',
+			name: 'Ask AI Agent (with Linked Notes)',
+			editorCallback: async (editor: Editor, view: MarkdownView) => {
+				const currentContent = editor.getValue();
+				const context = await this.gatherFullContext(view.file, currentContent, true);
 				new AgentModal(
 					this.app, 
 					this.aiService, 
@@ -263,6 +287,57 @@ export default class ObsidianAgentPlugin extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+	}
+
+	private async gatherFullContext(file: TFile | null, currentContent: string, forceVaultContext: boolean = false): Promise<string> {
+		const config = this.settings.contextConfig;
+		
+		// Check if any vault context is enabled
+		const hasVaultContext = forceVaultContext || 
+			config?.enableLinkedNotes || 
+			config?.enableBacklinks || 
+			config?.enableTagContext || 
+			config?.enableFolderContext;
+
+		if (!hasVaultContext) {
+			return currentContent;
+		}
+
+		// Build context config
+		const contextConfig: ContextConfig = {
+			sources: [
+				{ type: 'current', enabled: true },
+				{ type: 'linked', enabled: forceVaultContext || config?.enableLinkedNotes || false },
+				{ type: 'backlinks', enabled: config?.enableBacklinks || false },
+				{ type: 'tags', enabled: config?.enableTagContext || false },
+				{ type: 'folder', enabled: config?.enableFolderContext || false }
+			],
+			maxNotesPerSource: config?.maxNotesPerSource || 5,
+			maxTokensPerNote: config?.maxTokensPerNote || 1000,
+			linkDepth: config?.linkDepth || 1,
+			excludeFolders: (config?.excludeFolders || 'templates, .obsidian').split(',').map(s => s.trim())
+		};
+
+		try {
+			const contexts = await this.contextProvider.gatherContext(
+				file,
+				currentContent,
+				contextConfig,
+				this.settings.apiProvider
+			);
+
+			const formattedContext = this.contextProvider.formatContextsForPrompt(contexts);
+			
+			if (contexts.length > 1) {
+				const additionalNotes = contexts.length - 1;
+				new Notice(`Loaded context from ${additionalNotes} additional note(s)`);
+			}
+
+			return formattedContext;
+		} catch (error) {
+			console.error('Failed to gather vault context:', error);
+			return currentContent;
+		}
 	}
 
 	private async migrateToProfiles(): Promise<void> {
