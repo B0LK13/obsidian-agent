@@ -19,8 +19,15 @@ sqlalchemy = "^2.0.23"
 alembic = "^1.13.1"
 fastapi = {version = "^0.108.0", optional = true}
 uvicorn = {version = "^0.25.0", optional = true}
+watchdog = "^3.0.0"
+pymupdf = {version = "^1.23.0", optional = true}
+pytesseract = {version = "^0.3.10", optional = true}
+pillow = {version = "^10.0.0", optional = true}
 python-frontmatter = "^1.0.1"
 markdown = "^3.5.1"
+httpx = "^0.26.0"
+cryptography = {version = "^41.0.0", optional = true}
+openai-whisper = {version = "^20231117", optional = true}
 rich = "^13.7.0"
 
 [tool.poetry.group.dev.dependencies]
@@ -34,6 +41,9 @@ ruff = "^0.1.9"
 
 [tool.poetry.extras]
 api = ["fastapi", "uvicorn"]
+ocr = ["pymupdf", "pytesseract", "pillow"]
+encryption = ["cryptography"]
+voice = ["openai-whisper"]
 
 [tool.poetry.scripts]
 obsidian-agent = "obsidian_agent.cli:app"
