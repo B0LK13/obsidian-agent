@@ -2,6 +2,7 @@ import { ObsidianAgentSettings } from './settings';
 
 export interface CacheEntry {
 	id: string;
+	cacheKey: string;
 	promptHash: string;
 	contextHash: string;
 	prompt: string;
@@ -157,8 +158,10 @@ export class CacheService {
 		outputTokens: number
 	): CacheEntry {
 		const now = Date.now();
+		const cacheKey = this.generateCacheKey(prompt, context, model, temperature);
 		return {
 			id: `cache_${now}_${Math.random().toString(36).substr(2, 9)}`,
+			cacheKey: cacheKey,
 			promptHash: this.hashString(prompt.trim().toLowerCase()),
 			contextHash: this.hashString((context || '').trim().toLowerCase()),
 			prompt: prompt,

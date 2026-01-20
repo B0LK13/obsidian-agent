@@ -75,6 +75,7 @@ export const DEFAULT_PROFILES: AIProfile[] = [
 
 export interface CacheEntry {
 	id: string;
+	cacheKey: string;
 	promptHash: string;
 	contextHash: string;
 	prompt: string;
@@ -95,6 +96,37 @@ export interface CacheStats {
 	totalMisses: number;
 	estimatedSavings: number;
 	cacheSize: number;
+}
+
+export interface CompletionConfig {
+	enabled: boolean;
+	triggerMode: 'manual' | 'auto' | 'both';
+	autoTriggerDelay: number;
+	manualTriggerShortcut: string;
+	phraseTriggers: string[];
+	maxCompletions: number;
+	maxTokens: number;
+	debounceDelay: number;
+	showInMarkdownOnly: boolean;
+	excludedFolders: string[];
+}
+
+export interface SuggestionConfig {
+	enabled: boolean;
+	triggerDelay: number;
+	maxSuggestions: number;
+	showInMarkdownOnly: boolean;
+	suggestionTypes: {
+		links: boolean;
+		tags: boolean;
+		summaries: boolean;
+		todos: boolean;
+		improvements: boolean;
+		expansions: boolean;
+		organization: boolean;
+	};
+	autoAnalyze: boolean;
+	privacyMode: 'cloud' | 'local' | 'hybrid';
 }
 
 export interface ObsidianAgentSettings {
@@ -159,6 +191,10 @@ export interface ObsidianAgentSettings {
 		enableHighContrast: boolean;
 		enableReducedMotion: boolean;
 	};
+	// Completion settings (optional)
+	completionConfig?: CompletionConfig;
+	// Suggestion settings (optional)
+	suggestionConfig?: SuggestionConfig;
 }
 
 export const DEFAULT_SETTINGS: ObsidianAgentSettings = {

@@ -4,6 +4,8 @@ import { ObsidianAgentSettingTab } from './settingsTab';
 import { AIService, CompletionResult } from './aiService';
 import { AgentModal } from './agentModal';
 import { ContextProvider, ContextConfig, GatheredContext } from './contextProvider';
+import { Logger, LogLevel } from './logger';
+import { ErrorHandler } from './errorHandler';
 
 class ProfileSwitcherModal extends Modal {
 	private profiles: AIProfile[];
@@ -69,14 +71,28 @@ export default class ObsidianAgentPlugin extends Plugin {
 	settings: ObsidianAgentSettings;
 	aiService: AIService;
 	contextProvider: ContextProvider;
+	logger: Logger;
+	errorHandler: ErrorHandler;
 
 	async onload() {
 		await this.loadSettings();
 		await this.migrateToProfiles();
 
+		// Initialize logger and error handler
+		this.logger = new Logger({
+			level: LogLevel.INFO,
+			enableConsole: true,
+			maxLogEntries: 1000
+		});
+		this.errorHandler = new ErrorHandler(this.logger);
+		
+		this.logger.info('Obsidian Agent plugin loading', {
+			version: this.manifest.version
+		});
+
 		this.registerStyles();
 
-		this.aiService = new AIService(this.settings);
+		this.aiService = new AIService(this.settings, this.logger, this.errorHandler);
 		this.contextProvider = new ContextProvider(this.app);
 
 		if (!this.settings.totalRequests) {

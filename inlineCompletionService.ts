@@ -1,6 +1,6 @@
 import { Editor, EditorPosition } from 'obsidian';
 import { AIService } from './aiService';
-import { CompletionConfig } from './settings';
+import { CompletionConfig, ObsidianAgentSettings } from './settings';
 
 /* Completion types: 
  * continue: Continue writing from cursor
@@ -21,19 +21,6 @@ export type CompletionType =
 	| 'summarize-selection'
 	| 'improve-selection'
 	| 'expand-selection';
-
-export interface CompletionConfig {
-	enabled: boolean;
-	triggerMode: 'manual' | 'auto' | 'both';
-	autoTriggerDelay: number;  // ms
-	manualTriggerShortcut: string;  // e.g., "Ctrl+Space"
-	phraseTriggers: string[];  // e.g., ["...", "//"]
-	maxCompletions: number;
-	maxTokens: number;
-	debounceDelay: number;
-	showInMarkdownOnly: boolean;
-	excludedFolders: string[];
-}
 
 export interface CompletionSuggestion {
 	id: string;
@@ -156,7 +143,11 @@ export class InlineCompletionService {
 	/**
 	 * Get context around cursor
 	 */
-	private getContext(cursor: EditorPosition, content: string): string {
+	private getContext(cursor: EditorPosition, content: string): { 
+		beforeCursor: string; 
+		currentLine: string; 
+		surroundingLines: string; 
+	} {
 		const lines = content.split('\n');
 		const currentLine = lines[cursor.line] || '';
 		const cursorCh = cursor.ch;
@@ -404,9 +395,9 @@ export class InlineCompletionService {
 		const currentLine = this.editor.getLine(cursor.line);
 
 		this.editor.replaceRange(
+			suggestion.text,
 			{ line: cursor.line, ch: 0 },
-			{ line: cursor.line, ch: currentLine.length },
-			suggestion.text
+			{ line: cursor.line, ch: currentLine.length }
 		);
 
 		this.editor.setCursor({ line: cursor.line, ch: suggestion.text.length });
@@ -416,7 +407,7 @@ export class InlineCompletionService {
 	 * Check if should trigger based on phrase
 	 */
 	checkPhraseTrigger(text: string): boolean {
-		return this.config.phraseTriggers.some(trigger => text.endsWith(trigger));
+		return this.config.phraseTriggers.some((trigger: string) => text.endsWith(trigger));
 	}
 
 	/**

@@ -1,6 +1,8 @@
 import { ObsidianAgentSettings } from './settings';
 import { requestUrl, RequestUrlResponse, Notice } from 'obsidian';
 import { CacheService, CacheEntry } from './cacheService';
+import { Logger } from './logger';
+import { ErrorHandler, AppError, ErrorCategory, ErrorSeverity } from './errorHandler';
 
 export interface CompletionResult {
 	text: string;
@@ -31,10 +33,19 @@ export class AIService {
 	private currentAbortController: AbortController | null = null;
 	private cacheService: CacheService;
 	private bypassCache: boolean = false;
+	private logger: Logger;
+	private errorHandler: ErrorHandler;
 
-	constructor(settings: ObsidianAgentSettings) {
+	constructor(settings: ObsidianAgentSettings, logger?: Logger, errorHandler?: ErrorHandler) {
 		this.settings = settings;
+		this.logger = logger || new Logger();
+		this.errorHandler = errorHandler || new ErrorHandler(this.logger);
 		this.cacheService = new CacheService(settings.cacheConfig);
+		
+		this.logger.info('AIService initialized', {
+			provider: settings.apiProvider,
+			model: settings.model
+		});
 		
 		// Import persisted cache data if available
 		if (settings.cacheData?.entries?.length > 0) {
@@ -42,6 +53,9 @@ export class AIService {
 				entries: settings.cacheData.entries,
 				stats: settings.cacheData.stats,
 				settings: settings.cacheConfig
+			});
+			this.logger.debug('Cache data imported', {
+				entryCount: settings.cacheData.entries.length
 			});
 		}
 	}
@@ -75,7 +89,12 @@ export class AIService {
 	}
 
 	async testConnection(): Promise<{ success: boolean; message: string; responseTime?: number }> {
-		if (!this.settings.apiKey) {
+		const opLogger = this.logger.createChildLogger('testConnection');
+		
+		try {
+			this.errorHandler.validateApiKey(this.settings.apiKey, this.settings.apiProvider);
+		} catch (error) {
+			opLogger.error('API key validation failed');
 			return {
 				success: false,
 				message: 'API key not configured'
@@ -85,12 +104,14 @@ export class AIService {
 		const startTime = Date.now();
 		
 		try {
+			opLogger.info('Testing connection');
 			const result = await this.callAPIWithRetry([{
 				role: 'user',
 				content: 'Test connection. Please respond with "OK" only.'
 			}], 1);
 			
 			const responseTime = Date.now() - startTime;
+			opLogger.complete(true);
 			
 			if (result.text.trim().toLowerCase() === 'ok' || result.text.length > 0) {
 				return {
@@ -106,6 +127,12 @@ export class AIService {
 			}
 		} catch (error: any) {
 			const responseTime = Date.now() - startTime;
+			opLogger.complete(false);
+			this.errorHandler.handle(error, {
+				operation: 'testConnection',
+				category: ErrorCategory.API,
+				severity: ErrorSeverity.MEDIUM
+			});
 			return {
 				success: false,
 				message: this.getErrorMessage(error),
@@ -115,8 +142,15 @@ export class AIService {
 	}
 
 	async generateCompletion(prompt: string, context?: string, stream?: boolean, onChunk?: StreamCallback, onProgress?: StreamProgressCallback): Promise<CompletionResult> {
+		const opLogger = this.logger.createChildLogger('generateCompletion');
+		
 		if (!this.settings.apiKey && this.settings.apiProvider !== 'ollama') {
-			throw new Error('API key not configured. Please set it in settings.');
+			throw new AppError('API key not configured', {
+				category: ErrorCategory.CONFIGURATION,
+				severity: ErrorSeverity.CRITICAL,
+				operation: 'generateCompletion',
+				userMessage: 'Please set your API key in settings.'
+			});
 		}
 
 		// Check cache first (only for non-streaming requests)
@@ -129,6 +163,8 @@ export class AIService {
 			);
 
 			if (cachedEntry) {
+				opLogger.info('Cache hit', { cacheKey: cachedEntry.cacheKey });
+				opLogger.complete(true);
 				return {
 					text: cachedEntry.response,
 					tokensUsed: cachedEntry.tokensUsed,
@@ -165,6 +201,12 @@ export class AIService {
 		});
 
 		try {
+			opLogger.info('Generating completion', { 
+				stream, 
+				messagesCount: messages.length,
+				model: this.settings.model 
+			});
+			
 			let result: CompletionResult;
 			
 			if (stream && onChunk && onProgress) {
@@ -188,11 +230,24 @@ export class AIService {
 					result.outputTokens || 0
 				);
 				result.cacheEntry = cacheEntry;
+				opLogger.debug('Response cached', { cacheKey: cacheEntry.cacheKey });
 			}
 
 			result.fromCache = false;
+			opLogger.complete(true);
+			opLogger.info('Completion generated', { 
+				tokensUsed: result.tokensUsed,
+				length: result.text.length
+			});
 			return result;
 		} catch (error: any) {
+			opLogger.complete(false);
+			this.errorHandler.handle(error, {
+				operation: 'generateCompletion',
+				category: ErrorCategory.API,
+				severity: ErrorSeverity.HIGH,
+				details: { model: this.settings.model, provider: this.settings.apiProvider }
+			});
 			console.error('AI Service Error:', error);
 			throw new Error(this.getErrorMessage(error));
 		}
