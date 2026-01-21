@@ -64,3 +64,8 @@ echo "  ./bin/obsidian-agent --help"
 echo ""
 echo "Make the wrapper executable with:"
 echo "  chmod +x bin/obsidian-agent"
+echo ""
+
+# Make the wrapper executable
+chmod +x bin/obsidian-agent
+echo "✓ Wrapper script made executable"

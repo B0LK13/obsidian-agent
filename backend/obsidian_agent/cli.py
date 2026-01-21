@@ -7,7 +7,6 @@ import click
 from pathlib import Path
 from rich.console import Console
 from rich.table import Table
-from rich import print as rprint
 
 from obsidian_agent.indexer import VaultIndexer
 from obsidian_agent.search import VaultSearcher
@@ -58,7 +57,7 @@ def index(vault_path, index_dir, force):
 
 @main.command()
 @click.argument('query', nargs=-1, required=True)
-@click.argument('vault_path', type=click.Path(exists=True), required=False)
+@click.option('--vault-path', '-v', type=click.Path(exists=True), help='Path to vault (default: current directory)')
 @click.option('--index-dir', '-i', type=click.Path(), help='Custom index directory')
 @click.option('--limit', '-l', type=int, default=10, help='Maximum number of results')
 @click.option('--fields', '-f', multiple=True, help='Fields to search (title, content, tags)')

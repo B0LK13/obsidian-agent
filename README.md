@@ -111,10 +111,13 @@ Options:
 #### Search Your Vault
 
 ```bash
-obsidian-agent search "your search query" /path/to/your/vault
+obsidian-agent search "your search query" --vault-path /path/to/your/vault
+# or use current directory
+obsidian-agent search "your search query"
 ```
 
 Options:
+- `--vault-path, -v`: Path to your vault (default: current directory)
 - `--limit, -l`: Maximum number of results (default: 10)
 - `--fields, -f`: Fields to search (title, content, tags)
 
@@ -130,7 +133,7 @@ You can use the wrapper script without activating the virtual environment:
 
 ```bash
 ./bin/obsidian-agent index /path/to/your/vault
-./bin/obsidian-agent search "query" /path/to/your/vault
+./bin/obsidian-agent search "query" --vault-path /path/to/your/vault
 ```
 
 ### Systemd Service (Linux)
