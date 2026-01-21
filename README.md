@@ -4,11 +4,18 @@ AI-enhanced Obsidian Agent for intelligent note-taking, knowledge management, an
 
 ## Features
 
+### Obsidian Plugin
 - 🤖 **AI-Powered Assistance**: Integrate powerful AI models (OpenAI, Anthropic, or custom) directly into your Obsidian workflow
 - 📝 **Smart Commands**: Multiple built-in commands for common writing tasks
 - 🔍 **Context-Aware**: Agent understands your current note context
 - ⚙️ **Configurable**: Customize AI behavior, model selection, and parameters
 - 🔐 **Secure**: Your API keys are stored locally
+
+### Python Backend CLI
+- 🔎 **Fast Indexing**: Index your entire vault for lightning-fast searching
+- 🔍 **Full-Text Search**: Search across all your notes with relevance scoring
+- 📊 **Vault Statistics**: Get insights about your knowledge base
+- 🔄 **Automated Indexing**: Set up systemd service for periodic reindexing
 
 ## Commands
 
@@ -57,6 +64,93 @@ The plugin provides the following commands (accessible via Command Palette - `Ct
    ```
 
 4. Reload Obsidian and enable the plugin
+
+## Python Backend Setup
+
+The Python backend provides CLI tools for indexing and searching your vault.
+
+### Prerequisites
+
+- Python 3.8 or higher
+- pip (Python package manager)
+
+### Installation
+
+1. Navigate to the repository directory:
+   ```bash
+   cd obsidian-agent
+   ```
+
+2. Run the setup script:
+   ```bash
+   ./setup.sh
+   ```
+
+   This will:
+   - Create a Python virtual environment
+   - Install all required dependencies
+   - Set up the CLI tool
+
+3. Activate the virtual environment:
+   ```bash
+   source venv/bin/activate
+   ```
+
+### CLI Usage
+
+#### Index Your Vault
+
+```bash
+obsidian-agent index /path/to/your/vault
+```
+
+Options:
+- `--index-dir, -i`: Custom directory for the search index
+- `--force, -f`: Force reindex all documents
+
+#### Search Your Vault
+
+```bash
+obsidian-agent search "your search query" /path/to/your/vault
+```
+
+Options:
+- `--limit, -l`: Maximum number of results (default: 10)
+- `--fields, -f`: Fields to search (title, content, tags)
+
+#### View Vault Statistics
+
+```bash
+obsidian-agent stats /path/to/your/vault
+```
+
+### Using the Wrapper Script
+
+You can use the wrapper script without activating the virtual environment:
+
+```bash
+./bin/obsidian-agent index /path/to/your/vault
+./bin/obsidian-agent search "query" /path/to/your/vault
+```
+
+### Systemd Service (Linux)
+
+To set up automated indexing, you can install the systemd service:
+
+1. Edit `obsidian-agent.service` to set your vault path
+2. Copy the service files:
+   ```bash
+   sudo cp obsidian-agent.service /etc/systemd/system/
+   sudo cp obsidian-agent.timer /etc/systemd/system/
+   ```
+
+3. Enable and start the timer:
+   ```bash
+   sudo systemctl enable obsidian-agent.timer
+   sudo systemctl start obsidian-agent.timer
+   ```
+
+The timer will automatically index your vault every hour.
 
 ## Configuration
 

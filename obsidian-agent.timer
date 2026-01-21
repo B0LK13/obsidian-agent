@@ -1,0 +1,11 @@
+[Unit]
+Description=Obsidian Agent Indexing Timer
+Requires=obsidian-agent.service
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1h
+Unit=obsidian-agent.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,14 @@
+[Unit]
+Description=Obsidian Agent Indexing Service
+After=network.target
+
+[Service]
+Type=oneshot
+User=%u
+WorkingDirectory=%h/.obsidian-agent
+ExecStart=/usr/local/bin/obsidian-agent index %h/Documents/Obsidian
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
