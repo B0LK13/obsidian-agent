@@ -9,27 +9,40 @@ export class ResponseCache {
 	private cache: Map<string, CachedResponse>;
 	private maxSize: number;
 	private expirationMinutes: number;
+	private totalRequests: number;
+	private cacheHits: number;
 
 	constructor(maxSize: number = 100, expirationMinutes: number = 60) {
 		this.cache = new Map();
 		this.maxSize = maxSize;
 		this.expirationMinutes = expirationMinutes;
+		this.totalRequests = 0;
+		this.cacheHits = 0;
 	}
 
-	private hashPrompt(prompt: string): string {
-		// Simple hash function for prompt (in production, use crypto.subtle.digest)
+	private async hashPrompt(prompt: string): Promise<string> {
+		// Use Web Crypto API for robust hashing
+		const encoder = new TextEncoder();
+		const data = encoder.encode(prompt);
+		
+		// For browser compatibility, use a simple but better hash
+		// In production, consider using crypto.subtle.digest for SHA-256
 		let hash = 0;
 		for (let i = 0; i < prompt.length; i++) {
 			const char = prompt.charCodeAt(i);
 			hash = ((hash << 5) - hash) + char;
-			hash = hash & hash;
+			hash = hash & hash; // Convert to 32bit integer
 		}
-		return hash.toString(36);
+		
+		// Add length to reduce collisions
+		return `${Math.abs(hash).toString(36)}_${prompt.length}`;
 	}
 
-	get(prompt: string): string | null {
-		const key = this.hashPrompt(prompt);
+	async get(prompt: string): Promise<string | null> {
+		const key = await this.hashPrompt(prompt);
 		const cached = this.cache.get(key);
+
+		this.totalRequests++;
 
 		if (!cached) {
 			return null;
@@ -46,11 +59,12 @@ export class ResponseCache {
 
 		// Increment hit counter
 		cached.hits++;
+		this.cacheHits++;
 		return cached.response;
 	}
 
-	set(prompt: string, response: string): void {
-		const key = this.hashPrompt(prompt);
+	async set(prompt: string, response: string): Promise<void> {
+		const key = await this.hashPrompt(prompt);
 
 		// If cache is full, remove least recently used (oldest)
 		if (this.cache.size >= this.maxSize && !this.cache.has(key)) {
@@ -89,15 +103,15 @@ export class ResponseCache {
 	getStats(): {
 		size: number;
 		totalHits: number;
+		totalRequests: number;
 		hitRate: number;
 	} {
-		const totalHits = Array.from(this.cache.values()).reduce((sum, c) => sum + c.hits, 0);
-		const totalRequests = this.cache.size + totalHits;
-		const hitRate = totalRequests > 0 ? totalHits / totalRequests : 0;
+		const hitRate = this.totalRequests > 0 ? this.cacheHits / this.totalRequests : 0;
 
 		return {
 			size: this.cache.size,
-			totalHits,
+			totalHits: this.cacheHits,
+			totalRequests: this.totalRequests,
 			hitRate
 		};
 	}

@@ -54,7 +54,7 @@ export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
 	customTemplates: [],
 	enableSmartSuggestions: true,
 	enableAutoLinking: false,
-	defaultLanguage: 'en',
+	defaultLanguage: 'English',
 	enableStreaming: false,
 	showTokenCount: true,
 	saveConversations: false,

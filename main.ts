@@ -194,7 +194,7 @@ export default class ObsidianAgentPlugin extends Plugin {
 					return;
 				}
 
-				const language = this.settings.defaultLanguage || 'Spanish';
+				const language = this.settings.defaultLanguage || 'English';
 				new Notice(`Translating to ${language}...`);
 
 				try {

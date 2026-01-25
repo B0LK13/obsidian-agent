@@ -36,7 +36,7 @@ export class AIService {
 
 		// Check cache if enabled
 		if (this.settings.enableCaching && !conversationId) {
-			const cached = this.responseCache.get(prompt);
+			const cached = await this.responseCache.get(prompt);
 			if (cached) {
 				return cached;
 			}
@@ -94,7 +94,7 @@ export class AIService {
 
 			// Cache response
 			if (this.settings.enableCaching && !conversationId) {
-				this.responseCache.set(prompt, response);
+				await this.responseCache.set(prompt, response);
 			}
 
 			return response;

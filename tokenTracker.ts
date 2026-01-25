@@ -9,9 +9,13 @@ export interface TokenUsage {
 export class TokenTracker {
 	private usage: TokenUsage[];
 	private costPerToken: Map<string, { prompt: number; completion: number }>;
+	private totalRequests: number;
+	private cacheHits: number;
 
 	constructor() {
 		this.usage = [];
+		this.totalRequests = 0;
+		this.cacheHits = 0;
 		this.costPerToken = new Map([
 			['gpt-4', { prompt: 0.00003, completion: 0.00006 }],
 			['gpt-4-turbo', { prompt: 0.00001, completion: 0.00003 }],
@@ -27,8 +31,15 @@ export class TokenTracker {
 	}
 
 	estimateTokens(text: string): number {
-		// Rough estimation: ~4 characters per token
-		return Math.ceil(text.length / 4);
+		// Improved estimation: ~3.5-4 characters per token for English
+		// Adjust for different languages and special characters
+		const baseEstimate = Math.ceil(text.length / 3.7);
+		
+		// Account for special tokens, whitespace, and punctuation
+		const specialChars = (text.match(/[^\w\s]/g) || []).length;
+		const whitespace = (text.match(/\s+/g) || []).length;
+		
+		return baseEstimate + Math.ceil(specialChars * 0.5) + Math.ceil(whitespace * 0.1);
 	}
 
 	calculateCost(model: string, promptTokens: number, completionTokens: number): number {

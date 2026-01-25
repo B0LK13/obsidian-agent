@@ -15,12 +15,18 @@ export class BatchProcessor {
 	private aiService: AIService;
 	private tasks: BatchTask[];
 	private isProcessing: boolean;
+	private delayMs: number;
 
-	constructor(vault: Vault, aiService: AIService) {
+	constructor(vault: Vault, aiService: AIService, delayMs: number = 1000) {
 		this.vault = vault;
 		this.aiService = aiService;
 		this.tasks = [];
 		this.isProcessing = false;
+		this.delayMs = delayMs;
+	}
+
+	setDelay(delayMs: number): void {
+		this.delayMs = delayMs;
 	}
 
 	addTask(task: BatchTask): void {
@@ -65,8 +71,8 @@ export class BatchProcessor {
 					task.error = error.message;
 				}
 
-				// Small delay to avoid rate limiting
-				await new Promise(resolve => setTimeout(resolve, 1000));
+				// Configurable delay to avoid rate limiting
+				await new Promise(resolve => setTimeout(resolve, this.delayMs));
 			}
 		} finally {
 			this.isProcessing = false;
