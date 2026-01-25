@@ -1,16 +1,45 @@
-import { ObsidianAgentSettings } from './settings';
+import { ObsidianAgentSettings, ConversationMessage } from './settings';
 import { requestUrl, RequestUrlResponse } from 'obsidian';
+import { ConversationHistory } from './conversationHistory';
+import { TokenTracker } from './tokenTracker';
+import { ResponseCache } from './responseCache';
 
 export class AIService {
 	private settings: ObsidianAgentSettings;
+	private conversationHistory: ConversationHistory;
+	private tokenTracker: TokenTracker;
+	private responseCache: ResponseCache;
 
 	constructor(settings: ObsidianAgentSettings) {
 		this.settings = settings;
+		this.conversationHistory = new ConversationHistory(settings.maxConversationLength);
+		this.tokenTracker = new TokenTracker();
+		this.responseCache = new ResponseCache(settings.maxCachedResponses, settings.cacheExpiration);
 	}
 
-	async generateCompletion(prompt: string, context?: string): Promise<string> {
+	getConversationHistory(): ConversationHistory {
+		return this.conversationHistory;
+	}
+
+	getTokenTracker(): TokenTracker {
+		return this.tokenTracker;
+	}
+
+	getResponseCache(): ResponseCache {
+		return this.responseCache;
+	}
+
+	async generateCompletion(prompt: string, context?: string, conversationId?: string): Promise<string> {
 		if (!this.settings.apiKey) {
 			throw new Error('API key not configured. Please set it in settings.');
+		}
+
+		// Check cache if enabled
+		if (this.settings.enableCaching && !conversationId) {
+			const cached = this.responseCache.get(prompt);
+			if (cached) {
+				return cached;
+			}
 		}
 
 		const messages = [];
@@ -29,6 +58,12 @@ export class AIService {
 			});
 		}
 
+		// Add conversation history if enabled
+		if (this.settings.enableConversationHistory && conversationId) {
+			const history = this.conversationHistory.getHistory(conversationId);
+			messages.push(...history.map(m => ({ role: m.role, content: m.content })));
+		}
+
 		messages.push({
 			role: 'user',
 			content: prompt
@@ -36,6 +71,32 @@ export class AIService {
 
 		try {
 			const response = await this.callAPI(messages);
+			
+			// Track token usage
+			if (this.settings.enableTokenTracking) {
+				const fullPrompt = messages.map(m => m.content).join('\n');
+				this.tokenTracker.trackRequest(this.settings.model, fullPrompt, response);
+			}
+
+			// Save to conversation history
+			if (this.settings.enableConversationHistory && conversationId) {
+				this.conversationHistory.addMessage(conversationId, {
+					role: 'user',
+					content: prompt,
+					timestamp: Date.now()
+				});
+				this.conversationHistory.addMessage(conversationId, {
+					role: 'assistant',
+					content: response,
+					timestamp: Date.now()
+				});
+			}
+
+			// Cache response
+			if (this.settings.enableCaching && !conversationId) {
+				this.responseCache.set(prompt, response);
+			}
+
 			return response;
 		} catch (error) {
 			console.error('AI Service Error:', error);

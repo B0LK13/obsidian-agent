@@ -1,7 +1,7 @@
 {
   "name": "obsidian-agent",
-  "version": "1.0.0",
-  "description": "AI-enhanced Obsidian Agent for intelligent note-taking and knowledge management",
+  "version": "2.0.0",
+  "description": "AI-enhanced Obsidian Agent with advanced features: chat sidebar, templates, conversation history, token tracking, and 20+ intelligent commands",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
@@ -13,7 +13,12 @@
     "plugin",
     "ai",
     "agent",
-    "assistant"
+    "assistant",
+    "chat",
+    "gpt",
+    "claude",
+    "templates",
+    "automation"
   ],
   "author": "B0LK13",
   "license": "MIT",

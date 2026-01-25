@@ -1,9 +1,9 @@
 {
   "id": "obsidian-agent",
   "name": "Obsidian Agent",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "minAppVersion": "0.15.0",
-  "description": "AI-enhanced agent for intelligent note-taking, knowledge management, and content generation within Obsidian",
+  "description": "AI-enhanced agent with 20+ commands, chat sidebar, templates, conversation history, token tracking, and caching for intelligent note-taking and knowledge management",
   "author": "B0LK13",
   "authorUrl": "https://github.com/B0LK13/obsidian-agent",
   "isDesktopOnly": false
