@@ -97,6 +97,64 @@ export interface CacheStats {
 	cacheSize: number;
 }
 
+export interface CompletionConfig {
+	enabled: boolean;
+	triggerMode: 'manual' | 'auto' | 'both';
+	autoTriggerDelay: number;
+	manualTriggerShortcut: string;
+	phraseTriggers: string[];
+	maxCompletions: number;
+	maxTokens: number;
+	debounceDelay: number;
+	showInMarkdownOnly: boolean;
+	excludedFolders: string[];
+}
+
+export const DEFAULT_COMPLETION_CONFIG: CompletionConfig = {
+	enabled: true,
+	triggerMode: 'both',
+	autoTriggerDelay: 1000,
+	manualTriggerShortcut: 'ctrl+space',
+	phraseTriggers: ['...', '//'],
+	maxCompletions: 5,
+	maxTokens: 100,
+	debounceDelay: 300,
+	showInMarkdownOnly: false,
+	excludedFolders: ['templates', '.obsidian']
+};
+
+export interface SuggestionConfig {
+	enabled: boolean;
+	suggestionTypes: {
+		links: boolean;
+		tags: boolean;
+		summaries: boolean;
+		todos: boolean;
+		improvements: boolean;
+		expansions: boolean;
+		organization: boolean;
+	};
+	autoAnalyze: boolean;
+	maxSuggestions: number;
+	privacyMode: 'cloud' | 'local' | 'hybrid';
+}
+
+export const DEFAULT_SUGGESTION_CONFIG: SuggestionConfig = {
+	enabled: true,
+	suggestionTypes: {
+		links: true,
+		tags: true,
+		summaries: true,
+		todos: true,
+		improvements: true,
+		expansions: true,
+		organization: true
+	},
+	autoAnalyze: true,
+	maxSuggestions: 5,
+	privacyMode: 'hybrid'
+};
+
 export interface ObsidianAgentSettings {
 	// Active profile settings (for backward compatibility)
 	apiKey: string;
@@ -159,6 +217,10 @@ export interface ObsidianAgentSettings {
 		enableHighContrast: boolean;
 		enableReducedMotion: boolean;
 	};
+	// Inline completion settings
+	completionConfig: CompletionConfig;
+	// Intelligent suggestion settings
+	suggestionConfig: SuggestionConfig;
 }
 
 export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
@@ -214,7 +276,9 @@ export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
 	accessibilityConfig: {
 		enableHighContrast: false,
 		enableReducedMotion: false
-	}
+	},
+	completionConfig: DEFAULT_COMPLETION_CONFIG,
+	suggestionConfig: DEFAULT_SUGGESTION_CONFIG
 }
 
 export function generateProfileId(): string {

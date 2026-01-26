@@ -1,6 +1,6 @@
 import { Editor, EditorPosition } from 'obsidian';
 import { AIService } from './aiService';
-import { CompletionConfig } from './settings';
+import { CompletionConfig, DEFAULT_COMPLETION_CONFIG, ObsidianAgentSettings } from './settings';
 
 /* Completion types: 
  * continue: Continue writing from cursor
@@ -22,19 +22,6 @@ export type CompletionType =
 	| 'improve-selection'
 	| 'expand-selection';
 
-export interface CompletionConfig {
-	enabled: boolean;
-	triggerMode: 'manual' | 'auto' | 'both';
-	autoTriggerDelay: number;  // ms
-	manualTriggerShortcut: string;  // e.g., "Ctrl+Space"
-	phraseTriggers: string[];  // e.g., ["...", "//"]
-	maxCompletions: number;
-	maxTokens: number;
-	debounceDelay: number;
-	showInMarkdownOnly: boolean;
-	excludedFolders: string[];
-}
-
 export interface CompletionSuggestion {
 	id: string;
 	text: string;
@@ -44,21 +31,14 @@ export interface CompletionSuggestion {
 	replacementRange?: [number, number];
 }
 
-export const DEFAULT_COMPLETION_CONFIG: CompletionConfig = {
-	enabled: true,
-	triggerMode: 'both',
-	autoTriggerDelay: 1000,
-	manualTriggerShortcut: 'ctrl+space',
-	phraseTriggers: ['...', '//'],
-	maxCompletions: 5,
-	maxTokens: 100,
-	debounceDelay: 300,
-	showInMarkdownOnly: false,
-	excludedFolders: ['templates', '.obsidian']
-};
+interface CompletionContext {
+	beforeCursor: string;
+	currentLine: string;
+	surroundingLines: string;
+}
 
 export class InlineCompletionService {
-	private settings: ObsidianAgentSettings;
+  private settings: ObsidianAgentSettings;
 	private aiService: AIService;
 	private config: CompletionConfig;
 	private editor: Editor | null = null;
@@ -77,9 +57,9 @@ export class InlineCompletionService {
 
 	private loadConfig(): CompletionConfig {
 		if (!this.settings.completionConfig) {
-			return DEFAULT_COMPLETION_CONFIG;
+			return { ...DEFAULT_COMPLETION_CONFIG };
 		}
-		return this.settings.completionConfig;
+		return { ...DEFAULT_COMPLETION_CONFIG, ...this.settings.completionConfig };
 	}
 
 	updateConfig(config: Partial<CompletionConfig>): void {
@@ -156,7 +136,7 @@ export class InlineCompletionService {
 	/**
 	 * Get context around cursor
 	 */
-	private getContext(cursor: EditorPosition, content: string): string {
+	private getContext(cursor: EditorPosition, content: string): CompletionContext {
 		const lines = content.split('\n');
 		const currentLine = lines[cursor.line] || '';
 		const cursorCh = cursor.ch;
@@ -175,7 +155,7 @@ export class InlineCompletionService {
 	/**
 	 * Generate completions using AI service
 	 */
-	private async generateCompletions(context: any, cursor: EditorPosition): Promise<CompletionSuggestion[]> {
+	private async generateCompletions(context: CompletionContext, cursor: EditorPosition): Promise<CompletionSuggestion[]> {
 		const { beforeCursor, currentLine, surroundingLines } = context;
 
 		// Cancel any pending request
@@ -195,7 +175,7 @@ export class InlineCompletionService {
 		// Determine completion type based on context
 		const completionType = this.detectCompletionType(currentLine, beforeCursor);
 
-		const prompt = this.buildCompletionPrompt(completionType, context, cursor);
+		const prompt = this.buildCompletionPrompt(completionType, context);
 
 		try {
 			const result = await this.aiService.generateCompletion(
@@ -250,15 +230,17 @@ export class InlineCompletionService {
 	/**
 	 * Build prompt for completion
 	 */
-	private buildCompletionPrompt(type: CompletionType, context: any, cursor: EditorPosition): string {
-		const { beforeCursor, surroundingLines } = context;
+	private buildCompletionPrompt(type: CompletionType, context: CompletionContext): string {
+		const { beforeCursor } = context;
+
+		const trailing = (length: number) => beforeCursor.slice(Math.max(0, beforeCursor.length - length));
 
 		const prompts: Record<CompletionType, string> = {
-			'continue': `Continue the text from "${beforeCursor.substring(-100)}":`,
-			'complete-sentence': `Complete this sentence: "${beforeCursor.substring(-50)}..."`,
-			'complete-paragraph': `Write the next paragraph continuing from: "${beforeCursor.substring(-100)}..."`,
-			'complete-list-item': `Write the next list item continuing from: "${beforeCursor.substring(-50)}..."`,
-			'answer-question': `Answer this question: ${beforeCursor.substring(-200)}`,
+			'continue': `Continue the text from "${trailing(100)}":`,
+			'complete-sentence': `Complete this sentence: "${trailing(50)}..."`,
+			'complete-paragraph': `Write the next paragraph continuing from: "${trailing(100)}..."`,
+			'complete-list-item': `Write the next list item continuing from: "${trailing(50)}..."`,
+			'answer-question': `Answer this question: ${trailing(200)}`,
 			'summarize-selection': '',  // Would need selection
 			'improve-selection': '',
 			'expand-selection': ''
@@ -401,22 +383,22 @@ export class InlineCompletionService {
 		if (!this.editor) return;
 
 		const cursor = this.editor.getCursor();
-		const currentLine = this.editor.getLine(cursor.line);
+		this.editor.replaceRange(suggestion.text, cursor);
 
-		this.editor.replaceRange(
-			{ line: cursor.line, ch: 0 },
-			{ line: cursor.line, ch: currentLine.length },
-			suggestion.text
-		);
-
-		this.editor.setCursor({ line: cursor.line, ch: suggestion.text.length });
+		const lines = suggestion.text.split('\n');
+		const lastLine = lines[lines.length - 1];
+		const newCursor: EditorPosition = {
+			line: cursor.line + (lines.length - 1),
+			ch: lines.length === 1 ? cursor.ch + lastLine.length : lastLine.length
+		};
+		this.editor.setCursor(newCursor);
 	}
 
 	/**
 	 * Check if should trigger based on phrase
 	 */
 	checkPhraseTrigger(text: string): boolean {
-		return this.config.phraseTriggers.some(trigger => text.endsWith(trigger));
+		return this.config.phraseTriggers.some((trigger: string) => text.endsWith(trigger));
 	}
 
 	/**

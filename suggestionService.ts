@@ -1,5 +1,5 @@
 import { App, TFile } from 'obsidian';
-import { ObsidianAgentSettings } from './settings';
+import { DEFAULT_SUGGESTION_CONFIG, ObsidianAgentSettings, SuggestionConfig } from './settings';
 import { AIService } from './aiService';
 
 export interface Suggestion {
@@ -12,38 +12,6 @@ export interface Suggestion {
 	action?: () => Promise<void>;
 }
 
-export interface SuggestionConfig {
-	enabled: boolean;
-	suggestionTypes: {
-		links: boolean;
-		tags: boolean;
-		summaries: boolean;
-		todos: boolean;
-		improvements: boolean;
-		expansions: boolean;
-		organization: boolean;
-	};
-	autoAnalyze: boolean;
-	maxSuggestions: number;
-	privacyMode: 'cloud' | 'local' | 'hybrid';
-}
-
-export const DEFAULT_SUGGESTION_CONFIG: SuggestionConfig = {
-	enabled: true,
-	suggestionTypes: {
-		links: true,
-		tags: true,
-		summaries: true,
-		todos: true,
-		improvements: true,
-		expansions: true,
-		organization: true
-	},
-	autoAnalyze: true,
-	maxSuggestions: 5,
-	privacyMode: 'hybrid'
-};
-
 export class SuggestionService {
 	private app: App;
 	private settings: ObsidianAgentSettings;
@@ -53,6 +21,8 @@ export class SuggestionService {
 	private currentNote: TFile | null = null;
 	private lastAnalysisTime: number = 0;
 	private analysisCooldown: number = 30000; // 30 seconds in ms
+	private tagIndexCache: { tags: Set<string>; timestamp: number } | null = null;
+	private tagIndexTtlMs = 60000;
 
 	constructor(app: App, settings: ObsidianAgentSettings, aiService: AIService, config?: SuggestionConfig) {
 		this.app = app;
@@ -63,9 +33,16 @@ export class SuggestionService {
 
 	private loadConfigFromSettings(): SuggestionConfig {
 		if (!this.settings.suggestionConfig) {
-			return DEFAULT_SUGGESTION_CONFIG;
+			return { ...DEFAULT_SUGGESTION_CONFIG };
 		}
-		return this.settings.suggestionConfig;
+		return {
+			...DEFAULT_SUGGESTION_CONFIG,
+			...this.settings.suggestionConfig,
+			suggestionTypes: {
+				...DEFAULT_SUGGESTION_CONFIG.suggestionTypes,
+				...this.settings.suggestionConfig.suggestionTypes
+			}
+		};
 	}
 
 	updateConfig(config: Partial<SuggestionConfig>): void {
@@ -126,9 +103,9 @@ export class SuggestionService {
 			// Sort by priority and confidence
 			this.currentSuggestions = suggestions
 				.sort((a, b) => {
-					const priorityOrder = { high: 3, medium: 2, low: 1 };
+					const priorityOrder = { high: 3, medium: 2, low: 1 } as const;
 					if (a.priority !== b.priority) {
-						return priorityOrder[b.priority] - priorityOrder[b.priority];
+						return priorityOrder[b.priority] - priorityOrder[a.priority];
 					}
 					return b.confidence - a.confidence;
 				})
@@ -220,38 +197,52 @@ export class SuggestionService {
 	 */
 	private async generateTagSuggestions(content: string): Promise<Suggestion[]> {
 		const suggestions: Suggestion[] = [];
-		
-		// Get existing tags from vault
-		const allFiles = this.app.vault.getMarkdownFiles();
-		const existingTags = new Set<string>();
-		
-		for (const file of allFiles) {
-			const fileContent = await this.app.vault.read(file);
-			const tagRegex = /#(\w+)/g;
-			let match;
-			while ((match = tagRegex.exec(fileContent)) !== null) {
-				existingTags.add(match[1].toLowerCase());
-			}
-		}
-
-		// Extract potential tags from content
-		const words = content.toLowerCase().split(/\s+/);
+		const existingTags = this.getExistingTags();
+		const words = content
+			.toLowerCase()
+			.split(/\W+/)
+			.filter(Boolean);
 		const commonWords = new Set(['the', 'a', 'an', 'is', 'of', 'to', 'for', 'in', 'on', 'at', 'by']);
-		
+		const seen = new Set<string>();
+
 		for (const word of words) {
-			if (word.length > 3 && !commonWords.has(word) && !existingTags.has(word)) {
-				suggestions.push({
-					id: `tag_${Date.now()}_${Math.random()}`,
-					type: 'tag',
-					title: `Consider adding tag: #${word}`,
-					description: `"${word}" appears as a key concept`,
-					priority: 'low',
-					confidence: 0.5
-				});
+			if (seen.has(word)) continue;
+			seen.add(word);
+			if (word.length <= 3 || commonWords.has(word) || existingTags.has(word)) continue;
+			suggestions.push({
+				id: `tag_${Date.now()}_${Math.random()}`,
+				type: 'tag',
+				title: `Consider adding tag: #${word}`,
+				description: `"${word}" appears as a key concept`,
+				priority: 'low',
+				confidence: 0.5
+			});
+			if (suggestions.length >= 3) {
+				break;
 			}
 		}
 
-		return suggestions.slice(0, 3);
+		return suggestions;
+	}
+
+	private getExistingTags(): Set<string> {
+		const now = Date.now();
+		if (this.tagIndexCache && now - this.tagIndexCache.timestamp < this.tagIndexTtlMs) {
+			return this.tagIndexCache.tags;
+		}
+
+		const tags = new Set<string>();
+		const metadataTags = (this.app.metadataCache as any)?.getTags?.();
+		if (metadataTags) {
+			Object.keys(metadataTags).forEach(tag => {
+				const normalized = tag.replace(/^#/, '').toLowerCase();
+				if (normalized) {
+					tags.add(normalized);
+				}
+			});
+		}
+		this.tagIndexCache = { tags, timestamp: now };
+		return tags;
 	}
 
 	/**
@@ -381,11 +372,11 @@ export class SuggestionService {
 		const suggestions: Suggestion[] = [];
 		
 		// Find mentions without explanations
-		const mentionWithoutExplanationRegex = /(?:\w+)(?![:\s-])/g;
+		const mentionRegex = /\b([A-Za-z]{5,})\b/g;
 		let match;
 		const mentionedTerms = new Set<string>();
 		
-		while ((match = mentionWithoutExplanationRegex.exec(content)) !== null) {
+		while ((match = mentionRegex.exec(content)) !== null) {
 			mentionedTerms.add(match[1]);
 		}
 

@@ -285,7 +285,6 @@ export class AIService {
 		let url: string;
 		let headers: Record<string, string>;
 		let body: any;
-		let stream: boolean = false;
 
 		switch (this.settings.apiProvider) {
 			case 'openai':
@@ -301,7 +300,6 @@ export class AIService {
 					max_tokens: this.settings.maxTokens,
 					stream: true
 				};
-				stream = true;
 				break;
 
 			case 'anthropic':
@@ -321,7 +319,6 @@ export class AIService {
 					messages: userMessages,
 					stream: true
 				};
-				stream = true;
 				break;
 
 			case 'ollama':
@@ -337,9 +334,8 @@ export class AIService {
 						temperature: this.settings.temperature,
 						num_predict: this.settings.maxTokens
 					},
-					stream: false  // Ollama streaming handled differently
+					stream: true
 				};
-				stream = false;
 				break;
 
 			case 'custom':
@@ -358,7 +354,6 @@ export class AIService {
 					max_tokens: this.settings.maxTokens,
 					stream: true
 				};
-				stream = true;
 				break;
 
 			default:
@@ -384,48 +379,81 @@ export class AIService {
 				throw new Error(`API request failed with status ${response.status}: ${errorText}`);
 			}
 
-			const lines = (response.text || '').split('\n');
-			for (const line of lines) {
-				if (line.startsWith('data: ')) {
-					const data = line.slice(6);
-					if (data.trim() === '[DONE]') {
-						onChunk({
-							content: fullText,
-							done: true,
-							tokensUsed: tokensUsed,
-							inputTokens,
-							outputTokens
-						});
-						break;
-					}
-
+			const responseText = response.text || '';
+			if (this.settings.apiProvider === 'ollama') {
+				const chunks = responseText.split('\n').filter(Boolean);
+				for (const chunk of chunks) {
 					try {
-						const json = JSON.parse(data);
-						let content = '';
-						let deltaTokens = 0;
-
-						if (json.choices?.[0]?.delta?.content) {
-							content = json.choices[0].delta.content || '';
-						}
-
-						if (json.usage) {
-							tokensUsed = (json.usage.total_tokens || 0);
-							if (json.usage.prompt_tokens) {
-								inputTokens = json.usage.prompt_tokens;
-							}
-							if (json.usage.completion_tokens) {
-								outputTokens = json.usage.completion_tokens;
-							}
-						}
-
-						if (content) {
-							fullText += content;
+						const json = JSON.parse(chunk);
+						if (json.message?.content) {
+							fullText += json.message.content;
 							if (onProgress) {
 								onProgress(fullText);
 							}
 						}
-					} catch (e) {
-						console.error('Failed to parse SSE data:', data);
+						if (json.eval_count) {
+							outputTokens = json.eval_count;
+						}
+						if (json.prompt_eval_count) {
+							inputTokens = json.prompt_eval_count;
+						}
+						if (json.done) {
+							tokensUsed = (json.eval_count || 0) + (json.prompt_eval_count || 0);
+							onChunk({
+								content: fullText,
+								done: true,
+								tokensUsed,
+								inputTokens,
+								outputTokens
+							});
+						}
+					} catch (err) {
+						console.error('Failed to parse Ollama chunk:', chunk);
+					}
+				}
+			} else {
+				const lines = responseText.split('\n');
+				for (const line of lines) {
+					if (line.startsWith('data: ')) {
+						const data = line.slice(6);
+						if (data.trim() === '[DONE]') {
+							onChunk({
+								content: fullText,
+								done: true,
+								tokensUsed: tokensUsed,
+								inputTokens,
+								outputTokens
+							});
+							break;
+						}
+
+						try {
+							const json = JSON.parse(data);
+							let content = '';
+
+							if (json.choices?.[0]?.delta?.content) {
+								content = json.choices[0].delta.content || '';
+							}
+
+							if (json.usage) {
+								tokensUsed = (json.usage.total_tokens || 0);
+								if (json.usage.prompt_tokens) {
+									inputTokens = json.usage.prompt_tokens;
+								}
+								if (json.usage.completion_tokens) {
+									outputTokens = json.usage.completion_tokens;
+								}
+							}
+
+							if (content) {
+								fullText += content;
+								if (onProgress) {
+									onProgress(fullText);
+								}
+							}
+						} catch (e) {
+							console.error('Failed to parse SSE data:', data);
+						}
 					}
 				}
 			}

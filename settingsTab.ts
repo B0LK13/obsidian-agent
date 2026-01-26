@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting, Notice, Modal, TextComponent, DropdownComponent, TextAreaComponent } from 'obsidian';
 import ObsidianAgentPlugin from './main';
 import { AIService } from './aiService';
-import { AIProfile, generateProfileId, DEFAULT_PROFILES } from './settings';
+import { AIProfile, generateProfileId, DEFAULT_PROFILES, DEFAULT_COMPLETION_CONFIG, DEFAULT_SUGGESTION_CONFIG, CompletionConfig, SuggestionConfig } from './settings';
 import { PromptTemplate, BUILT_IN_TEMPLATES, generateTemplateId } from './promptTemplates';
 
 export class ObsidianAgentSettingTab extends PluginSettingTab {
@@ -296,6 +296,8 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 		this.addVaultContextSettings(containerEl);
 		this.addConversationPersistenceSetting(containerEl);
 		this.addCacheSettings(containerEl);
+		this.addInlineCompletionSettings(containerEl);
+		this.addSuggestionSettings(containerEl);
 		this.addAccessibilitySettings(containerEl);
 		this.addTokenTrackingSetting(containerEl);
 		this.addReconnectButton(containerEl);
@@ -642,6 +644,225 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 				});
 			}
 		}
+	}
+
+	private getCompletionConfig(): CompletionConfig {
+		const existing = this.plugin.settings.completionConfig;
+		if (!existing) {
+			this.plugin.settings.completionConfig = { ...DEFAULT_COMPLETION_CONFIG };
+		} else {
+			this.plugin.settings.completionConfig = {
+				...DEFAULT_COMPLETION_CONFIG,
+				...existing,
+				phraseTriggers: Array.isArray(existing.phraseTriggers) && existing.phraseTriggers.length
+					? existing.phraseTriggers
+					: [...DEFAULT_COMPLETION_CONFIG.phraseTriggers],
+				excludedFolders: Array.isArray(existing.excludedFolders) && existing.excludedFolders.length
+					? existing.excludedFolders
+					: [...DEFAULT_COMPLETION_CONFIG.excludedFolders]
+			};
+		}
+		return this.plugin.settings.completionConfig;
+	}
+
+	private addInlineCompletionSettings(containerEl: HTMLElement): void {
+		containerEl.createEl('h3', { text: 'Inline Completions' });
+		const config = this.getCompletionConfig();
+
+		new Setting(containerEl)
+			.setName('Enable Inline Completions')
+			.setDesc('Show AI suggestions while typing inside the editor')
+			.addToggle(toggle => toggle
+				.setValue(config.enabled)
+				.onChange(async (value) => {
+					config.enabled = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Trigger Mode')
+			.setDesc('Manual = hotkey only, Auto = after a pause, Both = either')
+			.addDropdown(dropdown => dropdown
+				.addOption('manual', 'Manual')
+				.addOption('auto', 'Auto')
+				.addOption('both', 'Both')
+				.setValue(config.triggerMode)
+				.onChange(async (value: 'manual' | 'auto' | 'both') => {
+					config.triggerMode = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Auto Trigger Delay (ms)')
+			.setDesc('How long to wait after typing before auto suggestions run')
+			.addText(text => text
+				.setPlaceholder(String(DEFAULT_COMPLETION_CONFIG.autoTriggerDelay))
+				.setValue(String(config.autoTriggerDelay))
+				.onChange(async (value) => {
+					const parsed = parseInt(value, 10);
+					config.autoTriggerDelay = isNaN(parsed) ? DEFAULT_COMPLETION_CONFIG.autoTriggerDelay : Math.max(200, parsed);
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Manual Shortcut')
+			.setDesc('Keyboard shortcut to trigger completion (e.g., ctrl+space)')
+			.addText(text => text
+				.setValue(config.manualTriggerShortcut)
+				.onChange(async (value) => {
+					config.manualTriggerShortcut = value.trim() || DEFAULT_COMPLETION_CONFIG.manualTriggerShortcut;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Phrase Triggers')
+			.setDesc('Comma-separated endings that auto-request completions (e.g., ..., //)')
+			.addText(text => text
+				.setValue(config.phraseTriggers.join(', '))
+				.onChange(async (value) => {
+					config.phraseTriggers = value
+						.split(',')
+						.map(v => v.trim())
+						.filter(Boolean);
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Max Suggestions per Request')
+			.setDesc('Limit how many completions are offered each time')
+			.addSlider(slider => slider
+				.setLimits(1, 10, 1)
+				.setDynamicTooltip()
+				.setValue(config.maxCompletions)
+				.onChange(async (value) => {
+					config.maxCompletions = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Max Tokens per Completion')
+			.setDesc('Shorter values keep inline completions snappy')
+			.addText(text => text
+				.setPlaceholder(String(DEFAULT_COMPLETION_CONFIG.maxTokens))
+				.setValue(String(config.maxTokens))
+				.onChange(async (value) => {
+					const parsed = parseInt(value, 10);
+					config.maxTokens = isNaN(parsed) ? DEFAULT_COMPLETION_CONFIG.maxTokens : Math.max(16, parsed);
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Show in Markdown Only')
+			.setDesc('Disable completions in other editor types')
+			.addToggle(toggle => toggle
+				.setValue(config.showInMarkdownOnly)
+				.onChange(async (value) => {
+					config.showInMarkdownOnly = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Excluded Folders')
+			.setDesc('Comma-separated list of folders where completions stay off')
+			.addText(text => text
+				.setPlaceholder(DEFAULT_COMPLETION_CONFIG.excludedFolders.join(', '))
+				.setValue(config.excludedFolders.join(', '))
+				.onChange(async (value) => {
+					config.excludedFolders = value
+						.split(',')
+						.map(v => v.trim())
+						.filter(Boolean);
+					await this.plugin.saveSettings();
+				}));
+	}
+
+	private getSuggestionConfig(): SuggestionConfig {
+		const existing = this.plugin.settings.suggestionConfig;
+		if (!existing) {
+			this.plugin.settings.suggestionConfig = { ...DEFAULT_SUGGESTION_CONFIG };
+		} else {
+			this.plugin.settings.suggestionConfig = {
+				...DEFAULT_SUGGESTION_CONFIG,
+				...existing,
+				suggestionTypes: {
+					...DEFAULT_SUGGESTION_CONFIG.suggestionTypes,
+					...(existing.suggestionTypes || {})
+				}
+			};
+		}
+		return this.plugin.settings.suggestionConfig;
+	}
+
+	private addSuggestionSettings(containerEl: HTMLElement): void {
+		containerEl.createEl('h3', { text: 'Intelligent Suggestions' });
+		const config = this.getSuggestionConfig();
+
+		new Setting(containerEl)
+			.setName('Enable Suggestions')
+			.setDesc('Analyze the current note and propose improvements automatically')
+			.addToggle(toggle => toggle
+				.setValue(config.enabled)
+				.onChange(async (value) => {
+					config.enabled = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Auto Analyze Notes')
+			.setDesc('Run analysis automatically when you stop typing')
+			.addToggle(toggle => toggle
+				.setValue(config.autoAnalyze)
+				.onChange(async (value) => {
+					config.autoAnalyze = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Max Suggestions per Note')
+			.setDesc('Keep the list focused on the most useful actions')
+			.addSlider(slider => slider
+				.setLimits(1, 10, 1)
+				.setDynamicTooltip()
+				.setValue(config.maxSuggestions)
+				.onChange(async (value) => {
+					config.maxSuggestions = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Privacy Mode')
+			.setDesc('Choose whether to use cloud, local, or hybrid analysis models')
+			.addDropdown(dropdown => dropdown
+				.addOption('cloud', 'Cloud')
+				.addOption('local', 'Local only')
+				.addOption('hybrid', 'Hybrid (auto choose)')
+				.setValue(config.privacyMode)
+				.onChange(async (value: 'cloud' | 'local' | 'hybrid') => {
+					config.privacyMode = value;
+					await this.plugin.saveSettings();
+				}));
+
+		const typeLabels: Record<keyof SuggestionConfig['suggestionTypes'], string> = {
+			links: 'Link suggestions',
+			tags: 'Tag suggestions',
+			summaries: 'Summary prompts',
+			todos: 'TODO extraction',
+			improvements: 'Writing improvements',
+			expansions: 'Expansion ideas',
+			organization: 'Organization hints'
+		};
+
+		containerEl.createEl('h4', { text: 'Suggestion Types' });
+		Object.entries(typeLabels).forEach(([key, label]) => {
+			new Setting(containerEl)
+				.setName(label)
+				.addToggle(toggle => toggle
+					.setValue(config.suggestionTypes[key as keyof SuggestionConfig['suggestionTypes']])
+					.onChange(async (value) => {
+						config.suggestionTypes[key as keyof SuggestionConfig['suggestionTypes']] = value;
+						await this.plugin.saveSettings();
+					}));
+		});
 	}
 
 	private addConversationPersistenceSetting(containerEl: HTMLElement): void {

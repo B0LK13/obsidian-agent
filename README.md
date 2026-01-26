@@ -70,11 +70,42 @@ The plugin provides the following commands (accessible via Command Palette - `Ct
    - **System Prompt**: Define the AI's behavior and personality
    - **Context Awareness**: Enable/disable sharing note context with AI
 
+### Inline Completion & Suggestions
+
+Under **Settings → Obsidian Agent → Inline Completions / Intelligent Suggestions** you can now tune:
+
+- Enable/disable inline completions, choose manual vs. auto triggers, and set per-folder exclusions.
+- Adjust phrase triggers, max suggestions per request, and token limits for ghost text.
+- Toggle individual suggestion types (links, tags, summaries, TODO extraction, etc.), cap the number of tips shown, and choose privacy mode (cloud/local/hybrid).
+
 ### API Keys
 
 - **OpenAI**: Get your API key from [OpenAI Platform](https://platform.openai.com/api-keys)
 - **Anthropic**: Get your API key from [Anthropic Console](https://console.anthropic.com/)
 - **Custom API**: Use any OpenAI-compatible API endpoint
+
+### Custom / Self-Hosted API Providers
+
+If you select **Custom API** in the settings tab, Obsidian Agent sends standard OpenAI Chat Completions payloads:
+
+```json
+{
+  "model": "gpt-4o",
+  "messages": [
+    {"role": "system", "content": "..."},
+    {"role": "user", "content": "..."}
+  ],
+  "temperature": 0.7,
+  "max_tokens": 2000,
+  "stream": true
+}
+```
+
+Point the **Custom API URL** at any service that accepts this schema (e.g., Together, Groq, self-hosted OpenAI proxy). Errors now include the upstream response body to simplify debugging.
+
+### Local Ollama Streaming Support
+
+When you select the **Ollama** provider, inline completions and chat requests stream partial tokens via the local `ollama serve` endpoint. Make sure the container or local daemon exposes `http://localhost:11434`, and choose your Ollama model directly in the profile or global settings.
 
 ## Usage Examples
 
@@ -108,6 +139,11 @@ npm run dev
 # Production build
 npm run build
 ```
+
+### Testing & CI
+
+- `npm test` runs the Vitest suite (jsdom) and automatically provisions a runtime stub for the Obsidian API.
+- GitHub Actions (`.github/workflows/ci.yml`) executes both `npm run build` and `npm test` on every push/PR to `main`.
 
 ### Project Structure
 
