@@ -140,15 +140,23 @@ class SyncServer:
         
         Args:
             event: Either a SyncEvent object or a SyncEventType
-            data: Optional data dict (used when event is SyncEventType)
+            data: Optional data dict (required when event is SyncEventType)
             exclude: Optional set of clients to exclude from broadcast
+        
+        Raises:
+            TypeError: If event type is invalid or data is missing for SyncEventType
         """
         # Fix for Issue #86: Handle both SyncEvent and (event_type, data) calling patterns
         if isinstance(event, SyncEvent):
             sync_event = event
         elif isinstance(event, SyncEventType):
+            # Validate that data is provided when using SyncEventType
+            if data is None:
+                raise TypeError(
+                    "data parameter is required when event is SyncEventType"
+                )
             # Create SyncEvent from event_type and data
-            sync_event = SyncEvent(event_type=event, data=data or {})
+            sync_event = SyncEvent(event_type=event, data=data)
         else:
             raise TypeError(
                 f"event must be SyncEvent or SyncEventType, got {type(event)}"

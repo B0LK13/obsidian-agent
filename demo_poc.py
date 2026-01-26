@@ -95,14 +95,21 @@ async def demo_issue_85():
     import websockets
     try:
         print("\n2. Testing client connection...")
-        async with websockets.connect(f"ws://{server.host}:{server.port}") as websocket:
+        async with websockets.connect(
+            f"ws://{server.host}:{server.port}",
+            timeout=5.0,
+        ) as websocket:
             # Receive welcome message
-            message = await websocket.recv()
+            message = await asyncio.wait_for(websocket.recv(), timeout=2.0)
             data = json.loads(message)
             print(f"   ✓ Connected successfully")
             print(f"     Received: {data.get('event_type')} - {data.get('data', {}).get('message')}")
+    except asyncio.TimeoutError:
+        print(f"   Note: Connection timeout (this is expected in some environments)")
+    except ConnectionRefusedError:
+        print(f"   Note: Connection refused (server may not be fully started)")
     except Exception as e:
-        print(f"   Note: {e}")
+        print(f"   Note: Connection issue: {type(e).__name__}: {e}")
     finally:
         await server.stop()
         print("\n3. Server stopped")
