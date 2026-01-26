@@ -1,4 +1,4 @@
-import { Editor, MarkdownView, Notice, Plugin, TFile, Menu } from 'obsidian';
+import { Editor, MarkdownView, Notice, Plugin } from 'obsidian';
 import { ObsidianAgentSettings, DEFAULT_SETTINGS } from './settings';
 import { ObsidianAgentSettingTab } from './settingsTab';
 import { AIService } from './aiService';
@@ -297,7 +297,6 @@ export default class ObsidianAgentPlugin extends Plugin {
 					const toc = await this.aiService.generateCompletion(
 						`Generate a table of contents for the following document. Use markdown links:\n\n${content}`
 					);
-					const cursor = editor.getCursor();
 					editor.replaceRange(`\n\n## Table of Contents\n${toc}\n\n`, { line: 0, ch: 0 });
 					new Notice('Table of contents generated!');
 				} catch (error) {

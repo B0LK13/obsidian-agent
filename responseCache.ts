@@ -22,9 +22,6 @@ export class ResponseCache {
 
 	private async hashPrompt(prompt: string): Promise<string> {
 		// Use Web Crypto API for robust hashing
-		const encoder = new TextEncoder();
-		const data = encoder.encode(prompt);
-		
 		// For browser compatibility, use a simple but better hash
 		// In production, consider using crypto.subtle.digest for SHA-256
 		let hash = 0;

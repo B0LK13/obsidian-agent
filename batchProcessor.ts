@@ -1,4 +1,4 @@
-import { TFile, Vault, Notice } from 'obsidian';
+import { TFile, Vault } from 'obsidian';
 import { AIService } from './aiService';
 
 export interface BatchTask {

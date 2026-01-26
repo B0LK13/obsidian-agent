@@ -1,4 +1,4 @@
-import { ObsidianAgentSettings, ConversationMessage } from './settings';
+import { ObsidianAgentSettings } from './settings';
 import { requestUrl, RequestUrlResponse } from 'obsidian';
 import { ConversationHistory } from './conversationHistory';
 import { TokenTracker } from './tokenTracker';
@@ -107,10 +107,11 @@ export class AIService {
 	private async callAPI(messages: Array<{role: string, content: string}>): Promise<string> {
 		let url: string;
 		let headers: Record<string, string>;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		let body: any;
 
 		switch (this.settings.apiProvider) {
-			case 'openai':
+			case 'openai': {
 				url = 'https://api.openai.com/v1/chat/completions';
 				headers = {
 					'Content-Type': 'application/json',
@@ -123,8 +124,9 @@ export class AIService {
 					max_tokens: this.settings.maxTokens
 				};
 				break;
+			}
 
-			case 'anthropic':
+			case 'anthropic': {
 				url = 'https://api.anthropic.com/v1/messages';
 				headers = {
 					'Content-Type': 'application/json',
@@ -142,8 +144,9 @@ export class AIService {
 					messages: userMessages
 				};
 				break;
+			}
 
-			case 'custom':
+			case 'custom': {
 				if (!this.settings.customApiUrl) {
 					throw new Error('Custom API URL not configured');
 				}
@@ -159,6 +162,7 @@ export class AIService {
 					max_tokens: this.settings.maxTokens
 				};
 				break;
+			}
 
 			default:
 				throw new Error(`Unknown API provider: ${this.settings.apiProvider}`);
