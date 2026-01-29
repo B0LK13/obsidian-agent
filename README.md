@@ -1,27 +1,54 @@
 # Obsidian Agent
 
-AI-enhanced Obsidian Agent for intelligent note-taking, knowledge management, and content generation.
+AI-enhanced Obsidian Agent for intelligent note-taking, knowledge management, and content generation. Now featuring a **2025 Chat UI Design** with liquid glass aesthetics, real-time interactions, and enhanced accessibility.
 
-## Features
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Obsidian](https://img.shields.io/badge/Obsidian-0.15.0+-purple.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-- 🤖 **AI-Powered Assistance**: Integrate powerful AI models (OpenAI, Anthropic, or custom) directly into your Obsidian workflow
+## ✨ Features
+
+### Core AI Capabilities
+- 🤖 **AI-Powered Assistance**: Integrate powerful AI models (OpenAI, Anthropic, Ollama, or custom) directly into your Obsidian workflow
 - 📝 **Smart Commands**: Multiple built-in commands for common writing tasks
-- 🔍 **Context-Aware**: Agent understands your current note context
+- 🔍 **Context-Aware**: Agent understands your current note context and linked notes
 - ⚙️ **Configurable**: Customize AI behavior, model selection, and parameters
-- 🔐 **Secure**: Your API keys are stored locally
+- 🔐 **Secure**: Your API keys are stored locally, no cloud dependencies
 
-## Commands
+### 🎨 2025 Chat UI Design (New!)
+- **Liquid Glass Interface**: Translucent backgrounds with backdrop blur effects
+- **Typing Indicator**: Real-time AI activity feedback with animated dots
+- **Message Reactions**: Quick emoji feedback (👍 ❤️ 😄 🎉 🤔 👀 🔥 ✅)
+- **Enhanced Message Bubbles**: Gradient effects with smooth animations
+- **Voice Messages**: Waveform visualization for audio content
+- **Smart Search**: Progressive conversation search with highlighted matches
+- **Scroll to Bottom**: Auto-appearing navigation with unread badge
+- **Micro-Interactions**: Subtle hover effects and transitions throughout
 
-The plugin provides the following commands (accessible via Command Palette - `Ctrl/Cmd + P`):
+### Additional Features
+- 🔄 **AI Profiles**: Switch between different AI configurations instantly
+- 💬 **Conversation Persistence**: Save and resume chat sessions
+- 📊 **Token Tracking**: Monitor usage and estimated costs
+- 🎯 **Inline Completions**: Smart text suggestions as you type
+- 🔗 **Vault Context**: Include linked notes and backlinks in context
+- ♿ **Accessibility**: High contrast mode and reduced motion support
 
-1. **Ask AI Agent**: Open a dialog to ask the AI anything about your current note
-2. **Generate Summary**: Automatically summarize selected text or entire note
-3. **Expand Ideas**: Take brief notes and expand them into detailed content
-4. **Improve Writing**: Enhance clarity, grammar, and style of selected text
-5. **Generate Outline**: Create a structured outline from a topic
-6. **Answer Question Based on Note**: Ask questions about your note content
+## 🚀 Commands
 
-## Installation
+Access via Command Palette (`Ctrl/Cmd + P`):
+
+| Command | Description |
+|---------|-------------|
+| **Ask AI Agent** | Open enhanced chat dialog with AI |
+| **Ask AI Agent (with Linked Notes)** | Include vault context in conversation |
+| **Generate Summary** | Summarize selected text or entire note |
+| **Expand Ideas** | Expand brief notes into detailed content |
+| **Improve Writing** | Enhance clarity, grammar, and style |
+| **Generate Outline** | Create structured outline from topic |
+| **Answer Question Based on Note** | Ask questions about note content |
+| **Switch AI Profile** | Quickly change between AI configurations |
+
+## 📦 Installation
 
 ### From Obsidian Community Plugins (Coming Soon)
 
@@ -32,102 +59,94 @@ The plugin provides the following commands (accessible via Command Palette - `Ct
 
 ### Manual Installation
 
-1. Download the latest release from GitHub
-2. Extract the files to your vault's plugins folder: `<vault>/.obsidian/plugins/obsidian-agent/`
+1. Download `obsidian-agent-1.0.0.zip` from the [latest release](https://github.com/B0LK13/obsidian-agent/releases)
+2. Extract to your vault's plugins folder: `<vault>/.obsidian/plugins/obsidian-agent/`
 3. Reload Obsidian
 4. Enable "Obsidian Agent" in Settings → Community Plugins
 
 ### Development Installation
 
-1. Clone this repository into your vault's plugins folder:
-   ```bash
-   cd <vault>/.obsidian/plugins/
-   git clone https://github.com/B0LK13/obsidian-agent.git
-   ```
-
-2. Install dependencies:
-   ```bash
-   cd obsidian-agent
-   npm install
-   ```
-
-3. Build the plugin:
-   ```bash
-   npm run build
-   ```
-
-4. Reload Obsidian and enable the plugin
-
-## Configuration
-
-1. Open Settings → Obsidian Agent
-2. Choose your AI provider (OpenAI, Anthropic, or Custom API)
-3. Enter your API key
-4. Configure model and parameters:
-   - **Model**: The AI model to use (e.g., `gpt-4`, `claude-3-opus-20240229`)
-   - **Temperature**: Controls randomness (0-1, higher = more creative)
-   - **Max Tokens**: Maximum length of AI responses
-   - **System Prompt**: Define the AI's behavior and personality
-   - **Context Awareness**: Enable/disable sharing note context with AI
-
-### Inline Completion & Suggestions
-
-Under **Settings → Obsidian Agent → Inline Completions / Intelligent Suggestions** you can now tune:
-
-- Enable/disable inline completions, choose manual vs. auto triggers, and set per-folder exclusions.
-- Adjust phrase triggers, max suggestions per request, and token limits for ghost text.
-- Toggle individual suggestion types (links, tags, summaries, TODO extraction, etc.), cap the number of tips shown, and choose privacy mode (cloud/local/hybrid).
-
-### API Keys
-
-- **OpenAI**: Get your API key from [OpenAI Platform](https://platform.openai.com/api-keys)
-- **Anthropic**: Get your API key from [Anthropic Console](https://console.anthropic.com/)
-- **Custom API**: Use any OpenAI-compatible API endpoint
-
-### Custom / Self-Hosted API Providers
-
-If you select **Custom API** in the settings tab, Obsidian Agent sends standard OpenAI Chat Completions payloads:
-
-```json
-{
-  "model": "gpt-4o",
-  "messages": [
-    {"role": "system", "content": "..."},
-    {"role": "user", "content": "..."}
-  ],
-  "temperature": 0.7,
-  "max_tokens": 2000,
-  "stream": true
-}
+```bash
+cd <vault>/.obsidian/plugins/
+git clone https://github.com/B0LK13/obsidian-agent.git
+cd obsidian-agent
+npm install
+npm run build
 ```
 
-Point the **Custom API URL** at any service that accepts this schema (e.g., Together, Groq, self-hosted OpenAI proxy). Errors now include the upstream response body to simplify debugging.
+## ⚙️ Configuration
 
-### Local Ollama Streaming Support
+### Quick Setup
 
-When you select the **Ollama** provider, inline completions and chat requests stream partial tokens via the local `ollama serve` endpoint. Make sure the container or local daemon exposes `http://localhost:11434`, and choose your Ollama model directly in the profile or global settings.
+1. Open Settings → Obsidian Agent
+2. Choose your AI provider (OpenAI, Anthropic, Ollama, or Custom)
+3. Enter your API key
+4. Select your preferred model
 
-## Usage Examples
+### AI Profiles
+
+Create multiple AI profiles for different use cases:
+- **Research**: Deep analysis with GPT-4
+- **Quick Notes**: Fast responses with GPT-3.5
+- **Local Privacy**: Offline with Ollama
+- **Custom API**: Your own AI endpoint
+
+### Settings Options
+
+| Setting | Description |
+|---------|-------------|
+| **Model** | AI model to use (e.g., `gpt-4`, `claude-3-opus`, `llama2`) |
+| **Temperature** | Controls randomness (0-1, higher = more creative) |
+| **Max Tokens** | Maximum length of AI responses |
+| **System Prompt** | Define the AI's behavior and personality |
+| **Context Awareness** | Include note context in AI requests |
+| **Conversation Persistence** | Save chat history across sessions |
+| **Token Tracking** | Monitor usage and estimated costs |
+
+### Inline Completions & Suggestions
+
+Configure under **Settings → Obsidian Agent → Inline Completions**:
+
+- Trigger mode (Manual, Auto, or Both)
+- Auto-trigger delay
+- Manual shortcut (default: `Ctrl+Space`)
+- Phrase triggers (`...`, `//`)
+- Excluded folders
+- Max completions and tokens
+
+## 🎯 Usage Examples
 
 ### Quick Summary
-1. Open a note with content you want to summarize
-2. Press `Ctrl/Cmd + P` to open Command Palette
-3. Type "Generate Summary"
-4. The AI will append a summary to your note
+```
+1. Open a note with content to summarize
+2. Press Ctrl/Cmd + P → "Generate Summary"
+3. AI appends summary to your note
+```
 
-### Expand Brief Notes
-1. Select text you want to expand
-2. Use "Expand Ideas" command
-3. The selected text will be replaced with an expanded version
+### Expand Ideas
+```
+1. Select brief notes
+2. Ctrl/Cmd + P → "Expand Ideas"
+3. Selected text expands with detail
+```
 
-### Interactive Questions
-1. Use "Ask AI Agent" command
-2. Enter your question in the dialog
-3. The AI response will be inserted at your cursor
+### Interactive Chat with Vault Context
+```
+1. Ctrl/Cmd + P → "Ask AI Agent (with Linked Notes)"
+2. Type your question
+3. AI responds using context from linked notes
+```
 
-## Development
+### Switch AI Profiles
+```
+1. Ctrl/Cmd + P → "Switch AI Profile"
+2. Select from your configured profiles
+3. Continue with different AI settings
+```
 
-### Build from Source
+## 🛠️ Development
+
+### Build Commands
 
 ```bash
 # Install dependencies
@@ -138,53 +157,130 @@ npm run dev
 
 # Production build
 npm run build
+
+# Run tests
+npm test
+
+# Run linter
+npm run lint
+
+# Create distribution package
+npm run package
+
+# Full verification
+node scripts/verify.mjs
 ```
-
-### Testing & CI
-
-- `npm test` runs the Vitest suite (jsdom) and automatically provisions a runtime stub for the Obsidian API.
-- GitHub Actions (`.github/workflows/ci.yml`) executes both `npm run build` and `npm test` on every push/PR to `main`.
 
 ### Project Structure
 
-- `main.ts`: Main plugin entry point and command definitions
-- `settings.ts`: Settings interface and defaults
-- `settingsTab.ts`: Settings UI
-- `aiService.ts`: AI API integration layer
-- `agentModal.ts`: Interactive modal for AI conversations
-- `manifest.json`: Plugin metadata
-- `esbuild.config.mjs`: Build configuration
+```
+obsidian-agent/
+├── src/
+│   └── dashboard/              # Dashboard components
+├── tests/
+│   ├── inlineCompletionService.test.ts
+│   └── uiComponents.test.ts    # UI component tests
+├── scripts/
+│   ├── verify.mjs              # Verification script
+│   ├── release.mjs             # Release automation
+│   └── package.mjs             # Package creation
+├── main.ts                     # Plugin entry point
+├── agentModal.ts               # Original chat modal
+├── agentModalEnhanced.ts       # 2025 UI enhanced modal ⭐
+├── uiComponents.ts             # Reusable UI components ⭐
+├── aiService.ts                # AI API integration
+├── settings.ts                 # Settings interface
+├── settingsTab.ts              # Settings UI
+├── styles.css                  # Base styles
+├── styles-enhanced.css         # 2025 UI styles ⭐
+├── manifest.json               # Plugin metadata
+└── README.md                   # This file
+```
 
-## Privacy & Security
+### Technologies Used
 
-- All API keys are stored locally in your Obsidian vault
-- No data is sent to third parties except your chosen AI provider
-- Note content is only sent to the AI when you explicitly use a command
-- You have full control over what context is shared with the AI
+- **TypeScript**: Type-safe development
+- **ESBuild**: Fast bundling and minification
+- **Vitest**: Unit testing framework
+- **ESLint**: Code quality and linting
+- **Web Animations API**: Smooth animations
+- **CSS Custom Properties**: Dynamic theming
 
-## Contributing
+## 🔒 Privacy & Security
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+- ✅ All API keys stored locally in your Obsidian vault
+- ✅ No data sent to third parties except your chosen AI provider
+- ✅ Note content only sent when you explicitly use a command
+- ✅ Full control over what context is shared
+- ✅ Optional local AI with Ollama (no internet required)
+- ✅ Response caching to reduce API calls
 
-## License
+## ♿ Accessibility
+
+The plugin includes comprehensive accessibility features:
+
+- **High Contrast Mode**: Enhanced visibility
+- **Reduced Motion**: Respects `prefers-reduced-motion`
+- **Screen Reader Support**: ARIA labels and live regions
+- **Keyboard Navigation**: Full keyboard control
+- **Focus Indicators**: Clear visual focus states
+- **Scalable Typography**: Adjustable font sizes
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Issue**: Plugin won't load  
+**Solution**: Ensure all files are extracted to `<vault>/.obsidian/plugins/obsidian-agent/`
+
+**Issue**: API errors  
+**Solution**: Check your API key in settings and verify internet connection
+
+**Issue**: Ollama not connecting  
+**Solution**: Ensure Ollama is running with `ollama serve` on port 11434
+
+### Getting Help
+
+- 📖 [Full Documentation](https://github.com/B0LK13/obsidian-agent/wiki)
+- 🐛 [Report Issues](https://github.com/B0LK13/obsidian-agent/issues)
+- 💬 [Discussions](https://github.com/B0LK13/obsidian-agent/discussions)
+
+## 📝 Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
+
+### v1.0.0 (2026-01-29)
+
+#### Added
+- 2025 Chat UI Design with Liquid Glass aesthetics
+- Typing indicator for AI responses
+- Message reactions (emoji support)
+- Voice message UI components
+- Enhanced search interface
+- Scroll to bottom button with unread badge
+- AI Profiles system for quick switching
+- Conversation persistence
+- Comprehensive test suite
+- Automated verification scripts
+
+#### Changed
+- Enhanced esbuild configuration
+- Updated TypeScript strict mode
+- Improved build pipeline
+- Optimized bundle size (94.30 KB)
+
+## 📄 License
 
 MIT License - see [LICENSE](LICENSE) file for details
 
-## Support
+## 🙏 Acknowledgments
 
-If you encounter any issues or have questions:
-- Open an issue on [GitHub](https://github.com/B0LK13/obsidian-agent/issues)
-- Check existing issues for solutions
-
-## Roadmap
-
-- [ ] Support for more AI providers
-- [ ] Custom command creation
-- [ ] Batch processing of multiple notes
-- [ ] Integration with Obsidian templates
-- [ ] Voice input support
-- [ ] Multi-language support
+- UI design patterns inspired by modern chat applications (2025)
+- Obsidian Plugin API documentation
+- Community contributions and feedback
 
 ---
 
-**Note**: This plugin requires an active API key from your chosen AI provider. API usage may incur costs based on your provider's pricing.
+**Made with ❤️ for the Obsidian community**
+
+**Version**: 1.0.0 | **Status**: Production Ready ✅

@@ -1,5 +1,5 @@
 import { ObsidianAgentSettings } from './settings';
-import { requestUrl, RequestUrlResponse, Notice } from 'obsidian';
+import { requestUrl, RequestUrlResponse } from 'obsidian';
 import { CacheService, CacheEntry } from './cacheService';
 
 export interface CompletionResult {
@@ -302,7 +302,7 @@ export class AIService {
 				};
 				break;
 
-			case 'anthropic':
+			case 'anthropic': {
 				url = 'https://api.anthropic.com/v1/messages';
 				headers = {
 					'Content-Type': 'application/json',
@@ -320,8 +320,9 @@ export class AIService {
 					stream: true
 				};
 				break;
+			}
 
-			case 'ollama':
+			case 'ollama': {
 				const ollamaStreamUrl = this.settings.customApiUrl || 'http://localhost:11434';
 				url = `${ollamaStreamUrl}/api/chat`;
 				headers = {
@@ -337,8 +338,9 @@ export class AIService {
 					stream: true
 				};
 				break;
+			}
 
-			case 'custom':
+			case 'custom': {
 				if (!this.settings.customApiUrl) {
 					throw new Error('Custom API URL not configured');
 				}
@@ -355,6 +357,7 @@ export class AIService {
 					stream: true
 				};
 				break;
+			}
 
 			default:
 				throw new Error(`Unknown API provider: ${this.settings.apiProvider}`);
@@ -365,100 +368,96 @@ export class AIService {
 		let inputTokens = 0;
 		let outputTokens = 0;
 
-		try {
-			const response = await requestUrl({
-				url: url,
-				method: 'POST',
-				headers: headers,
-				body: JSON.stringify(body),
-				throw: false
-			});
+		const response = await requestUrl({
+			url: url,
+			method: 'POST',
+			headers: headers,
+			body: JSON.stringify(body),
+			throw: false
+		});
 
-			if (response.status !== 200) {
-				const errorText = response.text || '';
-				throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+		if (response.status !== 200) {
+			const errorText = response.text || '';
+			throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+		}
+
+		const responseText = response.text || '';
+		if (this.settings.apiProvider === 'ollama') {
+			const chunks = responseText.split('\n').filter(Boolean);
+			for (const chunk of chunks) {
+				try {
+					const json = JSON.parse(chunk);
+					if (json.message?.content) {
+						fullText += json.message.content;
+						if (onProgress) {
+							onProgress(fullText);
+						}
+					}
+					if (json.eval_count) {
+						outputTokens = json.eval_count;
+					}
+					if (json.prompt_eval_count) {
+						inputTokens = json.prompt_eval_count;
+					}
+					if (json.done) {
+						tokensUsed = (json.eval_count || 0) + (json.prompt_eval_count || 0);
+						onChunk({
+							content: fullText,
+							done: true,
+							tokensUsed,
+							inputTokens,
+							outputTokens
+						});
+					}
+				} catch (err) {
+					console.error('Failed to parse Ollama chunk:', chunk);
+				}
 			}
+		} else {
+			const lines = responseText.split('\n');
+			for (const line of lines) {
+				if (line.startsWith('data: ')) {
+					const data = line.slice(6);
+					if (data.trim() === '[DONE]') {
+						onChunk({
+							content: fullText,
+							done: true,
+							tokensUsed: tokensUsed,
+							inputTokens,
+							outputTokens
+						});
+						break;
+					}
 
-			const responseText = response.text || '';
-			if (this.settings.apiProvider === 'ollama') {
-				const chunks = responseText.split('\n').filter(Boolean);
-				for (const chunk of chunks) {
 					try {
-						const json = JSON.parse(chunk);
-						if (json.message?.content) {
-							fullText += json.message.content;
+						const json = JSON.parse(data);
+						let content = '';
+
+						if (json.choices?.[0]?.delta?.content) {
+							content = json.choices[0].delta.content || '';
+						}
+
+						if (json.usage) {
+							tokensUsed = (json.usage.total_tokens || 0);
+							if (json.usage.prompt_tokens) {
+								inputTokens = json.usage.prompt_tokens;
+							}
+							if (json.usage.completion_tokens) {
+								outputTokens = json.usage.completion_tokens;
+							}
+						}
+
+						if (content) {
+							fullText += content;
 							if (onProgress) {
 								onProgress(fullText);
 							}
 						}
-						if (json.eval_count) {
-							outputTokens = json.eval_count;
-						}
-						if (json.prompt_eval_count) {
-							inputTokens = json.prompt_eval_count;
-						}
-						if (json.done) {
-							tokensUsed = (json.eval_count || 0) + (json.prompt_eval_count || 0);
-							onChunk({
-								content: fullText,
-								done: true,
-								tokensUsed,
-								inputTokens,
-								outputTokens
-							});
-						}
-					} catch (err) {
-						console.error('Failed to parse Ollama chunk:', chunk);
-					}
-				}
-			} else {
-				const lines = responseText.split('\n');
-				for (const line of lines) {
-					if (line.startsWith('data: ')) {
-						const data = line.slice(6);
-						if (data.trim() === '[DONE]') {
-							onChunk({
-								content: fullText,
-								done: true,
-								tokensUsed: tokensUsed,
-								inputTokens,
-								outputTokens
-							});
-							break;
-						}
-
-						try {
-							const json = JSON.parse(data);
-							let content = '';
-
-							if (json.choices?.[0]?.delta?.content) {
-								content = json.choices[0].delta.content || '';
-							}
-
-							if (json.usage) {
-								tokensUsed = (json.usage.total_tokens || 0);
-								if (json.usage.prompt_tokens) {
-									inputTokens = json.usage.prompt_tokens;
-								}
-								if (json.usage.completion_tokens) {
-									outputTokens = json.usage.completion_tokens;
-								}
-							}
-
-							if (content) {
-								fullText += content;
-								if (onProgress) {
-									onProgress(fullText);
-								}
-							}
-						} catch (e) {
-							console.error('Failed to parse SSE data:', data);
-						}
+					} catch (e) {
+						console.error('Failed to parse SSE data:', data);
 					}
 				}
 			}
-		} catch (error: any) {
-			throw error;
 		}
 
 		return {
@@ -510,7 +509,7 @@ export class AIService {
 				};
 				break;
 
-			case 'anthropic':
+			case 'anthropic': {
 				url = 'https://api.anthropic.com/v1/messages';
 				headers = {
 					'Content-Type': 'application/json',
@@ -527,8 +526,9 @@ export class AIService {
 					messages: userMessages
 				};
 				break;
+			}
 
-			case 'ollama':
+			case 'ollama': {
 				const ollamaUrl = this.settings.customApiUrl || 'http://localhost:11434';
 				url = `${ollamaUrl}/api/chat`;
 				headers = {
@@ -544,8 +544,9 @@ export class AIService {
 					stream: false
 				};
 				break;
+			}
 
-			case 'custom':
+			case 'custom': {
 				if (!this.settings.customApiUrl) {
 					throw new Error('Custom API URL not configured');
 				}
@@ -561,6 +562,7 @@ export class AIService {
 					max_tokens: this.settings.maxTokens
 				};
 				break;
+			}
 
 			default:
 				throw new Error(`Unknown API provider: ${this.settings.apiProvider}`);

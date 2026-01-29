@@ -1,35 +1,70 @@
-# Node modules
+# Dependencies
 node_modules/
+.pnp
+.pnp.js
 
 # Build output
+dist/
 main.js
+main.js.map
 *.js.map
+build-meta.json
 
 # Environment variables
 .env
 .env.local
+.env.*.local
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
 # Obsidian
 data.json
+.obsidian/
 
 # TypeScript
 *.tsbuildinfo
+.tsbuildinfo
+
+# Testing
+coverage/
+.nyc_output/
 
 # Logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
 
 # Temp
+tmp/
+temp/
 *.tmp
 *.temp
 .cache/
+
+# Release artifacts
+release/
+*.zip
+*.tar.gz
+.obsidian-agent-*.zip
+
+# Misc
+.eslintcache
+.stylelintcache

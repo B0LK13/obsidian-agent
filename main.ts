@@ -1,9 +1,27 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, TFile } from 'obsidian';
-import { ObsidianAgentSettings, DEFAULT_SETTINGS, AIProfile, createDefaultProfile, generateProfileId } from './settings';
+import { ObsidianAgentSettings, DEFAULT_SETTINGS, AIProfile, createDefaultProfile } from './settings';
 import { ObsidianAgentSettingTab } from './settingsTab';
 import { AIService, CompletionResult } from './aiService';
-import { AgentModal } from './agentModal';
-import { ContextProvider, ContextConfig, GatheredContext } from './contextProvider';
+import { EnhancedAgentModal } from './agentModalEnhanced';
+import { ContextProvider, ContextConfig } from './contextProvider';
+
+// Import enhanced UI styles
+const ENHANCED_STYLES = `
+/* Enhanced UI RGB Variables */
+:root {
+  --background-primary-rgb: 255, 255, 255;
+  --background-secondary-rgb: 245, 245, 245;
+  --text-muted-rgb: 128, 128, 128;
+  --interactive-accent-rgb: 0, 122, 255;
+}
+
+.theme-dark {
+  --background-primary-rgb: 30, 30, 30;
+  --background-secondary-rgb: 45, 45, 45;
+  --text-muted-rgb: 150, 150, 150;
+  --interactive-accent-rgb: 100, 170, 255;
+}
+`;
 
 class ProfileSwitcherModal extends Modal {
 	private profiles: AIProfile[];
@@ -66,9 +84,9 @@ class ProfileSwitcherModal extends Modal {
 }
 
 export default class ObsidianAgentPlugin extends Plugin {
-	settings: ObsidianAgentSettings;
-	aiService: AIService;
-	contextProvider: ContextProvider;
+	settings!: ObsidianAgentSettings;
+	aiService!: AIService;
+	contextProvider!: ContextProvider;
 
 	async onload() {
 		await this.loadSettings();
@@ -89,10 +107,11 @@ export default class ObsidianAgentPlugin extends Plugin {
 		this.addCommand({
 			id: 'ask-ai-agent',
 			name: 'Ask AI Agent',
-			editorCallback: async (editor: Editor, view: MarkdownView) => {
+			editorCallback: async (editor: Editor, ctx) => {
+				const view = ctx as MarkdownView;
 				const currentContent = editor.getValue();
 				const context = await this.gatherFullContext(view.file, currentContent);
-				new AgentModal(
+				new EnhancedAgentModal(
 					this.app, 
 					this.aiService, 
 					this.settings,
@@ -109,10 +128,11 @@ export default class ObsidianAgentPlugin extends Plugin {
 		this.addCommand({
 			id: 'ask-ai-agent-vault-context',
 			name: 'Ask AI Agent (with Linked Notes)',
-			editorCallback: async (editor: Editor, view: MarkdownView) => {
+			editorCallback: async (editor: Editor, ctx) => {
+				const view = ctx as MarkdownView;
 				const currentContent = editor.getValue();
 				const context = await this.gatherFullContext(view.file, currentContent, true);
-				new AgentModal(
+				new EnhancedAgentModal(
 					this.app, 
 					this.aiService, 
 					this.settings,
@@ -129,7 +149,7 @@ export default class ObsidianAgentPlugin extends Plugin {
 		this.addCommand({
 			id: 'generate-summary',
 			name: 'Generate Summary',
-			editorCallback: async (editor: Editor, view: MarkdownView) => {
+			editorCallback: async (editor: Editor) => {
 				const selection = editor.getSelection();
 				const textToSummarize = selection || editor.getValue();
 
@@ -147,7 +167,7 @@ export default class ObsidianAgentPlugin extends Plugin {
 					await this.trackTokenUsage(summaryResult);
 					editor.replaceSelection(`\n\n## Summary\n${summaryResult.text}\n`);
 					new Notice('Summary generated!');
-				} catch (error) {
+				} catch (error: any) {
 					new Notice(`Error: ${error.message}`);
 					console.error('Summary Error:', error);
 				}
@@ -158,7 +178,7 @@ export default class ObsidianAgentPlugin extends Plugin {
 		this.addCommand({
 			id: 'expand-ideas',
 			name: 'Expand Ideas',
-			editorCallback: async (editor: Editor, view: MarkdownView) => {
+			editorCallback: async (editor: Editor) => {
 				const selection = editor.getSelection();
 
 				if (!selection.trim()) {
@@ -175,7 +195,7 @@ export default class ObsidianAgentPlugin extends Plugin {
 					await this.trackTokenUsage(expansionResult);
 					editor.replaceSelection(expansionResult.text);
 					new Notice('Ideas expanded!');
-				} catch (error) {
+				} catch (error: any) {
 					new Notice(`Error: ${error.message}`);
 					console.error('Expand Error:', error);
 				}
@@ -186,7 +206,7 @@ export default class ObsidianAgentPlugin extends Plugin {
 		this.addCommand({
 			id: 'improve-writing',
 			name: 'Improve Writing',
-			editorCallback: async (editor: Editor, view: MarkdownView) => {
+			editorCallback: async (editor: Editor) => {
 				const selection = editor.getSelection();
 
 				if (!selection.trim()) {
@@ -203,7 +223,7 @@ export default class ObsidianAgentPlugin extends Plugin {
 					await this.trackTokenUsage(improvedResult);
 					editor.replaceSelection(improvedResult.text);
 					new Notice('Writing improved!');
-				} catch (error) {
+				} catch (error: any) {
 					new Notice(`Error: ${error.message}`);
 					console.error('Improve Writing Error:', error);
 				}
@@ -214,7 +234,7 @@ export default class ObsidianAgentPlugin extends Plugin {
 		this.addCommand({
 			id: 'generate-outline',
 			name: 'Generate Outline',
-			editorCallback: async (editor: Editor, view: MarkdownView) => {
+			editorCallback: async (editor: Editor) => {
 				const topic = editor.getSelection();
 
 				if (!topic.trim()) {
@@ -231,7 +251,7 @@ export default class ObsidianAgentPlugin extends Plugin {
 					await this.trackTokenUsage(outlineResult);
 					editor.replaceSelection(`\n\n${outlineResult.text}\n`);
 					new Notice('Outline generated!');
-				} catch (error) {
+				} catch (error: any) {
 					new Notice(`Error: ${error.message}`);
 					console.error('Outline Error:', error);
 				}
@@ -242,9 +262,9 @@ export default class ObsidianAgentPlugin extends Plugin {
 		this.addCommand({
 			id: 'answer-question',
 			name: 'Answer Question Based on Note',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
+			editorCallback: (editor: Editor) => {
 				const noteContent = editor.getValue();
-				new AgentModal(
+				new EnhancedAgentModal(
 					this.app, 
 					this.aiService, 
 					this.settings,
@@ -442,6 +462,7 @@ export default class ObsidianAgentPlugin extends Plugin {
 	}
 
 	private registerStyles(): void {
+		// Load original styles
 		const styleContent = this.app.vault.adapter.read('styles.css');
 		styleContent.then((content) => {
 			if (content) {
@@ -451,6 +472,18 @@ export default class ObsidianAgentPlugin extends Plugin {
 				document.head.appendChild(styleEl);
 			}
 		});
+		
+		// Load enhanced styles
+		const enhancedStyleContent = this.app.vault.adapter.read('styles-enhanced.css');
+		enhancedStyleContent.then((content) => {
+			if (content) {
+				const styleEl = document.createElement('style');
+				styleEl.textContent = ENHANCED_STYLES + '\n' + content;
+				styleEl.className = 'obsidian-agent-styles-enhanced';
+				document.head.appendChild(styleEl);
+			}
+		});
+		
 		this.applyAccessibilitySettings();
 	}
 

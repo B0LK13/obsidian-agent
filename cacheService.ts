@@ -1,4 +1,3 @@
-import { ObsidianAgentSettings } from './settings';
 
 export interface CacheEntry {
 	id: string;
@@ -74,6 +73,14 @@ export class CacheService {
 		const contextHash = this.hashString((context || '').trim().toLowerCase());
 		const tempStr = temperature.toFixed(2);
 		return `${promptHash}_${contextHash}_${model}_${tempStr}`;
+	}
+
+	private generateKeyFromEntry(entry: CacheEntry): string {
+		const tempStr = entry.temperature?.toFixed(2) ?? '0.00';
+		if (entry.promptHash && entry.contextHash) {
+			return `${entry.promptHash}_${entry.contextHash}_${entry.model}_${tempStr}`;
+		}
+		return this.generateCacheKey(entry.prompt, '', entry.model, entry.temperature);
 	}
 
 	/**
@@ -323,7 +330,7 @@ export class CacheService {
 					continue;
 				}
 
-				const key = this.generateCacheKey(entry.prompt, '', entry.model, entry.temperature);
+				const key = this.generateKeyFromEntry(entry);
 				this.cache.set(key, entry);
 
 				// Stop if we've reached max entries

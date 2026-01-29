@@ -1,7 +1,7 @@
-import { App, Modal, Notice, TextAreaComponent, setTooltip, MarkdownRenderer, DropdownComponent } from 'obsidian';
+import { App, Modal, Notice, TextAreaComponent, setTooltip } from 'obsidian';
 import { AIService } from './aiService';
 import { ChatMessage, Conversation, ObsidianAgentSettings } from './settings';
-import { PromptTemplate, BUILT_IN_TEMPLATES, getTemplateCategories, filterTemplates, applyTemplate, generateTemplateId } from './promptTemplates';
+import { PromptTemplate, BUILT_IN_TEMPLATES, getTemplateCategories, filterTemplates } from './promptTemplates';
 import { calculateTokenCount, getUsageLevel, getUsageColor, formatTokenCount, TokenCount } from './tokenCounter';
 
 export class AgentModal extends Modal {
@@ -227,11 +227,10 @@ export class AgentModal extends Modal {
 		// Update text
 		this.tokenCounterText.empty();
 		
-		const leftText = this.tokenCounterText.createDiv();
+		const leftText = this.tokenCounterText.createDiv({ cls: 'token-text-left' });
 		leftText.innerHTML = `<strong>${formatTokenCount(tokenCount.total)}</strong> / ${formatTokenCount(tokenCount.limit)} tokens`;
 		
-		const rightText = this.tokenCounterText.createDiv();
-		rightText.style.cursor = 'pointer';
+		const rightText = this.tokenCounterText.createDiv({ cls: 'token-text-right' });
 		rightText.textContent = 'Details';
 		setTooltip(rightText, this.getTokenBreakdown(tokenCount));
 
@@ -256,26 +255,17 @@ export class AgentModal extends Modal {
 	onOpen() {
 		const {contentEl} = this;
 
-		contentEl.createEl('h2', {text: 'AI Agent Assistant'});
+		this.modalEl.addClass('obsidian-agent-modal');
+		contentEl.addClass('oa-modal-content');
+		contentEl.createEl('h2', {text: 'AI Agent Assistant', cls: 'oa-modal-title'});
 
 		// Conversation selector row
 		if (this.settings.enableConversationPersistence) {
 			const conversationRow = contentEl.createDiv({ cls: 'conversation-selector-row' });
-			conversationRow.style.display = 'flex';
-			conversationRow.style.alignItems = 'center';
-			conversationRow.style.gap = '0.5rem';
-			conversationRow.style.marginBottom = '0.75rem';
 
-			const selectorLabel = conversationRow.createEl('span', { text: 'Conversation:' });
-			selectorLabel.style.fontSize = 'var(--font-smaller)';
-			selectorLabel.style.color = 'var(--text-muted)';
+			conversationRow.createEl('span', { text: 'Conversation:', cls: 'conversation-label' });
 
-			this.conversationSelector = conversationRow.createEl('select') as HTMLSelectElement;
-			this.conversationSelector.style.flex = '1';
-			this.conversationSelector.style.padding = '0.25rem';
-			this.conversationSelector.style.borderRadius = 'var(--radius-s)';
-			this.conversationSelector.style.border = '1px solid var(--background-modifier-border)';
-			this.conversationSelector.style.backgroundColor = 'var(--background-primary)';
+			this.conversationSelector = conversationRow.createEl('select', { cls: 'conversation-select' }) as HTMLSelectElement;
 			this.updateConversationSelector();
 			
 			this.conversationSelector.addEventListener('change', async (e) => {
@@ -287,8 +277,7 @@ export class AgentModal extends Modal {
 				}
 			});
 
-			const exportButton = conversationRow.createEl('button', { text: 'Export' });
-			exportButton.style.fontSize = 'var(--font-smaller)';
+			const exportButton = conversationRow.createEl('button', { text: 'Export', cls: 'oa-button' });
 			setTooltip(exportButton, 'Export conversation as markdown');
 			exportButton.addEventListener('click', () => {
 				const markdown = this.exportConversationAsMarkdown();
@@ -301,8 +290,7 @@ export class AgentModal extends Modal {
 			});
 
 			if (this.currentConversationId) {
-				const deleteButton = conversationRow.createEl('button', { text: 'Delete', cls: 'mod-warning' });
-				deleteButton.style.fontSize = 'var(--font-smaller)';
+				const deleteButton = conversationRow.createEl('button', { text: 'Delete', cls: 'oa-button mod-warning' });
 				setTooltip(deleteButton, 'Delete this conversation');
 				deleteButton.addEventListener('click', async () => {
 					if (this.currentConversationId && confirm('Delete this conversation?')) {
@@ -312,49 +300,34 @@ export class AgentModal extends Modal {
 			}
 		}
 
-		const headerContainer = contentEl.createDiv({ cls: 'modal-header' });
-		headerContainer.style.display = 'flex';
-		headerContainer.style.justifyContent = 'space-between';
-		headerContainer.style.alignItems = 'center';
-		headerContainer.style.marginBottom = '1rem';
+		const headerContainer = contentEl.createDiv({ cls: 'oa-modal-header' });
 
-		const headerText = headerContainer.createDiv();
+		const headerText = headerContainer.createDiv({ cls: 'oa-header-text' });
 		headerText.createEl('p', {
 			text: 'Enter your prompt below. The agent will use current note as context.',
-			cls: 'setting-item-description'
+			cls: 'setting-item-description oa-header-description'
 		});
 
-		const shortcutsHint = headerText.createEl('p', {
+		headerText.createEl('p', {
 			text: 'Shortcuts: Enter to send, Ctrl/Cmd+K to clear, Escape to close',
-			cls: 'setting-item-description'
+			cls: 'setting-item-description oa-shortcuts-hint'
 		});
-		shortcutsHint.style.fontSize = 'var(--font-smaller)';
-		shortcutsHint.style.color = 'var(--text-muted)';
-		shortcutsHint.style.marginTop = '0.25rem';
 
 		const clearButton = headerContainer.createEl('button', {
 			text: 'Clear Chat',
-			cls: 'mod-warning'
+			cls: 'oa-button mod-warning'
 		});
-		clearButton.style.fontSize = 'var(--font-smaller)';
 		setTooltip(clearButton, 'Clear all conversation history');
 		clearButton.addEventListener('click', () => this.clearChatWithConfirmation());
 
-		this.chatHistoryContainer = contentEl.createDiv({ cls: 'chat-history' });
-		this.chatHistoryContainer.style.maxHeight = '300px';
-		this.chatHistoryContainer.style.overflowY = 'auto';
-		this.chatHistoryContainer.style.marginBottom = '1rem';
-		this.chatHistoryContainer.style.border = '1px solid var(--background-modifier-border)';
-		this.chatHistoryContainer.style.borderRadius = 'var(--radius-s)';
-		this.chatHistoryContainer.style.padding = '0.5rem';
+		this.chatHistoryContainer = contentEl.createDiv({ cls: 'chat-history-container' });
 		this.chatHistoryContainer.style.display = 'none';
 
-		this.promptContainer = contentEl.createDiv('prompt-container');
+		this.promptContainer = contentEl.createDiv({ cls: 'prompt-container' });
 		
 		const textArea = new TextAreaComponent(this.promptContainer);
 		this.textAreaElement = textArea.inputEl as HTMLTextAreaElement;
-		this.textAreaElement.style.width = '100%';
-		this.textAreaElement.style.minHeight = '100px';
+		this.textAreaElement.addClass('oa-prompt-input');
 		this.textAreaElement.placeholder = 'What would you like AI to help with?';
 		this.textAreaElement.addEventListener('keydown', (e) => this.handleKeyDown(e));
 		textArea.onChange((value) => {
@@ -363,58 +336,33 @@ export class AgentModal extends Modal {
 		});
 
 		// Token counter
-		this.tokenCounterContainer = contentEl.createDiv({ cls: 'token-counter' });
-		this.tokenCounterContainer.style.marginTop = '0.5rem';
-		this.tokenCounterContainer.style.padding = '0.5rem';
-		this.tokenCounterContainer.style.backgroundColor = 'var(--background-secondary)';
-		this.tokenCounterContainer.style.borderRadius = 'var(--radius-s)';
-		this.tokenCounterContainer.style.fontSize = 'var(--font-smaller)';
+		this.tokenCounterContainer = contentEl.createDiv({ cls: 'token-counter-container' });
 
 		// Token counter bar
 		const barContainer = this.tokenCounterContainer.createDiv({ cls: 'token-bar-container' });
-		barContainer.style.height = '4px';
-		barContainer.style.backgroundColor = 'var(--background-modifier-border)';
-		barContainer.style.borderRadius = '2px';
-		barContainer.style.marginBottom = '0.5rem';
-		barContainer.style.overflow = 'hidden';
 
-		this.tokenCounterBar = barContainer.createDiv({ cls: 'token-bar' });
-		this.tokenCounterBar.style.height = '100%';
-		this.tokenCounterBar.style.width = '0%';
-		this.tokenCounterBar.style.backgroundColor = 'var(--interactive-accent)';
-		this.tokenCounterBar.style.transition = 'width 0.2s ease, background-color 0.2s ease';
+		this.tokenCounterBar = barContainer.createDiv({ cls: 'token-bar-fill' });
 
 		// Token counter text
 		this.tokenCounterText = this.tokenCounterContainer.createDiv({ cls: 'token-text' });
-		this.tokenCounterText.style.display = 'flex';
-		this.tokenCounterText.style.justifyContent = 'space-between';
-		this.tokenCounterText.style.color = 'var(--text-muted)';
 
 		this.updateTokenCounter();
 
 		// Templates button row
 		const templatesRow = contentEl.createDiv({ cls: 'templates-row' });
-		templatesRow.style.marginTop = '0.5rem';
-		templatesRow.style.marginBottom = '0.5rem';
 
-		const templatesButton = templatesRow.createEl('button', { text: 'Templates' });
-		templatesButton.style.fontSize = 'var(--font-smaller)';
+		const templatesButton = templatesRow.createEl('button', { text: 'Templates', cls: 'oa-button' });
 		setTooltip(templatesButton, 'Use a prompt template');
 		templatesButton.addEventListener('click', () => this.openTemplatesPicker());
 
-		const buttonContainer = contentEl.createDiv('button-container');
-		buttonContainer.style.marginTop = '1rem';
-		buttonContainer.style.display = 'flex';
-		buttonContainer.style.justifyContent = 'flex-end';
-		buttonContainer.style.gap = '0.5rem';
+		const buttonContainer = contentEl.createDiv({ cls: 'button-container' });
 
-		const cancelButton = buttonContainer.createEl('button', {text: 'Cancel'});
+		const cancelButton = buttonContainer.createEl('button', {text: 'Cancel', cls: 'oa-button'});
 		cancelButton.addEventListener('click', () => {
 			this.close();
 		});
 
-		const refreshButton = buttonContainer.createEl('button', {text: 'Refresh'});
-		refreshButton.style.fontSize = 'var(--font-smaller)';
+		const refreshButton = buttonContainer.createEl('button', {text: 'Refresh', cls: 'oa-button'});
 		setTooltip(refreshButton, 'Regenerate response (bypass cache)');
 		refreshButton.addEventListener('click', async () => {
 			if (this.submitButton && !this.submitButton.disabled && this.prompt.trim()) {
@@ -424,7 +372,7 @@ export class AgentModal extends Modal {
 
 		this.submitButton = buttonContainer.createEl('button', {
 			text: 'Generate',
-			cls: 'mod-cta'
+			cls: 'oa-button mod-cta'
 		}) as HTMLButtonElement;
 		this.submitButton.addEventListener('click', async () => {
 			if (this.submitButton) {
@@ -434,7 +382,7 @@ export class AgentModal extends Modal {
 
 		this.stopButton = buttonContainer.createEl('button', {
 			text: 'Stop',
-			cls: 'mod-warning'
+			cls: 'oa-button mod-warning'
 		}) as HTMLButtonElement;
 		this.stopButton.style.display = 'none';
 		this.stopButton.addEventListener('click', () => this.stopGeneration());
@@ -443,7 +391,7 @@ export class AgentModal extends Modal {
 	}
 
 	private renderMarkdown(text: string): string {
-		let html = text
+		const html = text
 			.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
 			.replace(/`([^`]+)`/g, '<code>$1</code>')
 			.replace(/\*\*([^*]+)\*\*/g, '<em>$1</em>')
@@ -454,7 +402,7 @@ export class AgentModal extends Modal {
 			.replace(/^- (.+)/gm, '<li>$1</li>')
 			.replace(/\n/g, '<br>');
 		
-		const listWrap = html.replace(/<li>(.+?)<\/li>/g, (match, content) => {
+		const listWrap = html.replace(/<li>(.+?)<\/li>/g, (_match, content) => {
 			return `<ul style="margin: 0; padding-left: 1.5rem;">${content}</ul>`;
 		});
 		
@@ -608,58 +556,38 @@ export class AgentModal extends Modal {
 		this.chatHistoryContainer.setAttribute('aria-label', 'AI conversation history');
 
 		const container = this.chatHistoryContainer;
-		this.chatHistory.forEach((message, index) => {
-			const messageEl = container.createDiv({ cls: 'chat-message' });
-			messageEl.style.marginBottom = '0.75rem';
+		this.chatHistory.forEach((message) => {
+			const roleClass = message.role === 'user' ? 'is-user' : 'is-assistant';
+			const messageEl = container.createDiv({ cls: `chat-message ${roleClass}` });
+			messageEl.setAttribute('data-role', message.role);
 			messageEl.setAttribute('role', 'article');
 			messageEl.setAttribute('aria-label', `${message.role === 'user' ? 'You' : 'AI Agent'} message at ${new Date(message.timestamp).toLocaleTimeString()}`);
 			messageEl.setAttribute('tabindex', '0');
 
 			const headerEl = messageEl.createDiv({ cls: 'message-header' });
-			headerEl.style.display = 'flex';
-			headerEl.style.justifyContent = 'space-between';
-			headerEl.style.fontSize = 'var(--font-smaller)';
-			headerEl.style.color = 'var(--text-muted)';
 
-			const headerLeft = headerEl.createDiv();
-			headerLeft.style.display = 'flex';
-			headerLeft.style.alignItems = 'center';
-			headerLeft.style.gap = '0.5rem';
+			const headerLeft = headerEl.createDiv({ cls: 'message-meta message-meta-left' });
 
-			const roleLabel = headerLeft.createEl('span', {
+			headerLeft.createEl('span', {
 				text: message.role === 'user' ? 'You' : 'AI Agent',
-				cls: message.role === 'user' ? 'user-label' : 'assistant-label'
+				cls: `role-label ${roleClass}`
 			});
-			roleLabel.style.fontWeight = 'bold';
 
 			if (message.fromCache) {
-				const cacheBadge = headerLeft.createEl('span', { text: 'Cached', cls: 'cache-badge' });
-				cacheBadge.style.backgroundColor = 'var(--interactive-accent)';
-				cacheBadge.style.color = 'var(--text-on-accent)';
-				cacheBadge.style.padding = '0.125rem 0.5rem';
-				cacheBadge.style.borderRadius = 'var(--radius-s)';
-				cacheBadge.style.fontSize = 'var(--font-smaller)';
-				cacheBadge.style.fontWeight = 'bold';
+				headerLeft.createEl('span', { text: 'Cached', cls: 'cache-badge' });
 			}
 
-			const headerRight = headerEl.createDiv();
-			headerRight.style.display = 'flex';
-			headerRight.style.alignItems = 'center';
-			headerRight.style.gap = '0.5rem';
+			const headerRight = headerEl.createDiv({ cls: 'message-meta message-meta-right' });
 
 			const timestamp = new Date(message.timestamp).toLocaleTimeString();
-			headerRight.createEl('span', { text: timestamp });
+			headerRight.createEl('span', { text: timestamp, cls: 'message-timestamp' });
 
 			if (message.tokensUsed) {
-				headerRight.createEl('span', { text: `${message.tokensUsed} tokens` });
+				headerRight.createEl('span', { text: `${message.tokensUsed} tokens`, cls: 'message-tokens' });
 			}
 
 			const contentEl = messageEl.createDiv({ cls: 'message-content' });
-			contentEl.style.padding = '0.5rem';
-			contentEl.style.borderRadius = 'var(--radius-s)';
-			contentEl.style.backgroundColor = message.role === 'user' ? 'var(--background-secondary)' : 'var(--background-primary)';
-			contentEl.style.whiteSpace = 'pre-wrap';
-			contentEl.style.wordBreak = 'break-word';
+			contentEl.setAttribute('data-role', message.role);
 
 			if (message.role === 'assistant') {
 				contentEl.innerHTML = this.renderMarkdown(message.content);
@@ -730,33 +658,25 @@ class TemplatesPickerModal extends Modal {
 
 	onOpen() {
 		const { contentEl } = this;
-		contentEl.createEl('h2', { text: 'Prompt Templates' });
+		this.modalEl.addClass('obsidian-agent-modal');
+		contentEl.addClass('oa-modal-content');
+		contentEl.createEl('h2', { text: 'Prompt Templates', cls: 'oa-modal-title' });
 
 		// Search and filter row
 		const filterRow = contentEl.createDiv({ cls: 'filter-row' });
-		filterRow.style.display = 'flex';
-		filterRow.style.gap = '0.5rem';
-		filterRow.style.marginBottom = '1rem';
 
 		// Search input
-		const searchInput = filterRow.createEl('input', { type: 'text' });
+		const searchInput = filterRow.createEl('input', { type: 'text', cls: 'filter-search-input' });
 		searchInput.placeholder = 'Search templates...';
-		searchInput.style.flex = '1';
-		searchInput.style.padding = '0.5rem';
-		searchInput.style.borderRadius = 'var(--radius-s)';
-		searchInput.style.border = '1px solid var(--background-modifier-border)';
 		searchInput.addEventListener('input', (e) => {
 			this.searchQuery = (e.target as HTMLInputElement).value;
 			this.renderTemplates();
 		});
 
 		// Category filter
-		const categorySelect = filterRow.createEl('select');
-		categorySelect.style.padding = '0.5rem';
-		categorySelect.style.borderRadius = 'var(--radius-s)';
-		categorySelect.style.border = '1px solid var(--background-modifier-border)';
+		const categorySelect = filterRow.createEl('select', { cls: 'filter-category-select' });
 		
-		const allOption = categorySelect.createEl('option', { text: 'All Categories', value: 'All' });
+		categorySelect.createEl('option', { text: 'All Categories', value: 'All' });
 		const categories = getTemplateCategories(this.templates);
 		categories.forEach(cat => {
 			categorySelect.createEl('option', { text: cat, value: cat });
@@ -769,8 +689,6 @@ class TemplatesPickerModal extends Modal {
 
 		// Templates container
 		this.templatesContainer = contentEl.createDiv({ cls: 'templates-container' });
-		this.templatesContainer.style.maxHeight = '400px';
-		this.templatesContainer.style.overflowY = 'auto';
 
 		this.renderTemplates();
 	}
@@ -782,11 +700,7 @@ class TemplatesPickerModal extends Modal {
 		const filtered = filterTemplates(this.templates, this.selectedCategory, this.searchQuery);
 
 		if (filtered.length === 0) {
-			const empty = this.templatesContainer.createDiv({ cls: 'empty-state' });
-			empty.style.textAlign = 'center';
-			empty.style.padding = '2rem';
-			empty.style.color = 'var(--text-muted)';
-			empty.textContent = 'No templates found';
+			this.templatesContainer.createDiv({ cls: 'empty-state', text: 'No templates found' });
 			return;
 		}
 
@@ -800,47 +714,19 @@ class TemplatesPickerModal extends Modal {
 		});
 
 		Object.entries(byCategory).forEach(([category, templates]) => {
-			const categoryHeader = this.templatesContainer!.createEl('h4', { text: category });
-			categoryHeader.style.marginTop = '1rem';
-			categoryHeader.style.marginBottom = '0.5rem';
-			categoryHeader.style.color = 'var(--text-muted)';
+			this.templatesContainer!.createEl('h4', { text: category, cls: 'template-category-header' });
 
 			templates.forEach(template => {
 				const item = this.templatesContainer!.createDiv({ cls: 'template-item' });
-				item.style.padding = '0.75rem';
-				item.style.marginBottom = '0.5rem';
-				item.style.borderRadius = 'var(--radius-s)';
-				item.style.border = '1px solid var(--background-modifier-border)';
-				item.style.cursor = 'pointer';
-				item.style.backgroundColor = 'var(--background-secondary)';
-
-				item.addEventListener('mouseenter', () => {
-					item.style.backgroundColor = 'var(--background-modifier-hover)';
-				});
-				item.addEventListener('mouseleave', () => {
-					item.style.backgroundColor = 'var(--background-secondary)';
-				});
 
 				const header = item.createDiv({ cls: 'template-header' });
-				header.style.display = 'flex';
-				header.style.justifyContent = 'space-between';
-				header.style.alignItems = 'center';
 
 				header.createEl('strong', { text: template.name });
 				if (!template.isBuiltIn) {
-					const badge = header.createEl('span', { text: 'Custom' });
-					badge.style.fontSize = 'var(--font-smallest)';
-					badge.style.padding = '0.1rem 0.3rem';
-					badge.style.borderRadius = 'var(--radius-s)';
-					badge.style.backgroundColor = 'var(--interactive-accent)';
-					badge.style.color = 'var(--text-on-accent)';
+					header.createEl('span', { text: 'Custom', cls: 'template-badge' });
 				}
 
-				const desc = item.createDiv({ cls: 'template-desc' });
-				desc.style.fontSize = 'var(--font-smaller)';
-				desc.style.color = 'var(--text-muted)';
-				desc.style.marginTop = '0.25rem';
-				desc.textContent = template.description;
+				item.createDiv({ cls: 'template-desc', text: template.description });
 
 				item.addEventListener('click', () => {
 					this.applyTemplate(template);

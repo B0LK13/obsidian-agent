@@ -1,33 +1,61 @@
 {
   "name": "obsidian-agent",
   "version": "1.0.0",
-  "description": "AI-enhanced Obsidian Agent for intelligent note-taking and knowledge management",
+  "description": "AI-enhanced Obsidian Agent for intelligent note-taking, knowledge management, and content generation",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "build:analyze": "npm run build && npx esbuild-visualizer --metadata build-meta.json --open",
     "test": "node scripts/ensure-obsidian-runtime.js && vitest run",
-    "version": "node version-bump.mjs && git add manifest.json versions.json"
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "typecheck": "tsc --noEmit",
+    "version": "node version-bump.mjs && git add manifest.json versions.json",
+    "prerelease": "npm run lint && npm run typecheck && npm run test",
+    "release": "npm run prerelease && npm run build && node scripts/release.mjs",
+    "package": "npm run build && node scripts/package.mjs",
+    "clean": "rimraf main.js main.js.map build-meta.json .cache"
   },
   "keywords": [
     "obsidian",
     "plugin",
     "ai",
     "agent",
-    "assistant"
+    "assistant",
+    "llm",
+    "openai",
+    "anthropic",
+    "ollama"
   ],
   "author": "B0LK13",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/B0LK13/obsidian-agent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/B0LK13/obsidian-agent/issues"
+  },
+  "homepage": "https://github.com/B0LK13/obsidian-agent#readme",
   "devDependencies": {
     "@types/node": "^20.10.0",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
     "builtin-modules": "^3.3.0",
     "esbuild": "^0.19.10",
+    "eslint": "^8.56.0",
     "jsdom": "^27.4.0",
     "obsidian": "latest",
+    "rimraf": "^5.0.5",
     "tslib": "^2.6.2",
     "typescript": "^5.3.3",
-    "vitest": "^4.0.18"
+    "vitest": "^1.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   }
 }

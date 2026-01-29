@@ -15,19 +15,16 @@ export interface Suggestion {
 export class SuggestionService {
 	private app: App;
 	private settings: ObsidianAgentSettings;
-	private aiService: AIService;
 	private config: SuggestionConfig;
 	private currentSuggestions: Suggestion[] = [];
-	private currentNote: TFile | null = null;
 	private lastAnalysisTime: number = 0;
 	private analysisCooldown: number = 30000; // 30 seconds in ms
 	private tagIndexCache: { tags: Set<string>; timestamp: number } | null = null;
 	private tagIndexTtlMs = 60000;
 
-	constructor(app: App, settings: ObsidianAgentSettings, aiService: AIService, config?: SuggestionConfig) {
+	constructor(app: App, settings: ObsidianAgentSettings, _aiService: AIService, config?: SuggestionConfig) {
 		this.app = app;
 		this.settings = settings;
-		this.aiService = aiService;
 		this.config = config || this.loadConfigFromSettings();
 	}
 
@@ -64,7 +61,7 @@ export class SuggestionService {
 			return [];
 		}
 
-		this.currentNote = file;
+
 		this.lastAnalysisTime = now;
 		this.currentSuggestions = [];
 
@@ -73,7 +70,7 @@ export class SuggestionService {
 			const suggestions: Suggestion[] = [];
 
 			if (this.config.suggestionTypes.links) {
-				suggestions.push(...await this.generateLinkSuggestions(content));
+				suggestions.push(...await this.generateLinkSuggestions(content, file));
 			}
 
 			if (this.config.suggestionTypes.tags) {
@@ -121,25 +118,27 @@ export class SuggestionService {
 	/**
 	 * Generate link suggestions based on [[wikilink]] syntax
 	 */
-	private async generateLinkSuggestions(content: string): Promise<Suggestion[]> {
+	private async generateLinkSuggestions(content: string, file: TFile | null): Promise<Suggestion[]> {
 		const suggestions: Suggestion[] = [];
 		
 		// Extract wikilinks from content
 		const wikiLinkRegex = /\[\[([^\]]+)\]\]/g;
 		const links: string[] = [];
+		const normalizedLinks = new Set<string>();
 		let match;
 
 		while ((match = wikiLinkRegex.exec(content)) !== null) {
-			links.push(match[1]);
+			const rawLink = match[1];
+			const linkTarget = rawLink.split('|')[0].split('#')[0].trim();
+			if (!linkTarget) continue;
+			links.push(linkTarget);
+			normalizedLinks.add(linkTarget.toLowerCase());
 		}
 
 		// Check if linked notes exist
 		for (const link of links) {
-			const linkedFiles = this.app.vault.getMarkdownFiles().filter(f => 
-				f.path.toLowerCase().includes(link.toLowerCase())
-			);
-
-			if (linkedFiles.length === 0) {
+			const resolved = this.app.metadataCache.getFirstLinkpathDest(link, file?.path ?? '');
+			if (!resolved) {
 				suggestions.push({
 					id: `link_${Date.now()}_${Math.random()}`,
 					type: 'link',
@@ -154,7 +153,7 @@ export class SuggestionService {
 		// Find potential links (keywords that look like they should be linked)
 		const potentialLinkKeywords = this.findPotentialLinks(content);
 		for (const keyword of potentialLinkKeywords) {
-			if (!links.includes(keyword)) {
+			if (!normalizedLinks.has(keyword.toLowerCase())) {
 				suggestions.push({
 					id: `link_pot_${Date.now()}_${Math.random()}`,
 					type: 'link',
@@ -279,7 +278,6 @@ export class SuggestionService {
 		const suggestions: Suggestion[] = [];
 		
 		// Look for TODO-like patterns
-		const todoKeywords = ['todo:', 'fixme:', 'hack:', 'note:', 'question:', 'idea:'];
 		const hasExistingTodos = /[-*]\s*(todo|fixme|hack|note|question|idea):/i.test(content);
 		
 		if (!hasExistingTodos) {
@@ -452,7 +450,7 @@ export class SuggestionService {
 	 */
 	clearSuggestions(): void {
 		this.currentSuggestions = [];
-		this.currentNote = null;
+
 	}
 
 	/**

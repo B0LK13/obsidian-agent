@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, Notice, Modal, TextComponent, DropdownComponent, TextAreaComponent } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice, Modal } from 'obsidian';
 import ObsidianAgentPlugin from './main';
 import { AIService } from './aiService';
 import { AIProfile, generateProfileId, DEFAULT_PROFILES, DEFAULT_COMPLETION_CONFIG, DEFAULT_SUGGESTION_CONFIG, CompletionConfig, SuggestionConfig } from './settings';
@@ -276,8 +276,8 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 				.addOption('anthropic', 'Anthropic')
 				.addOption('custom', 'Custom API')
 				.setValue(this.plugin.settings.apiProvider)
-				.onChange(async (value: 'openai' | 'anthropic' | 'custom') => {
-					this.plugin.settings.apiProvider = value;
+				.onChange(async (value) => {
+					this.plugin.settings.apiProvider = value as 'openai' | 'anthropic' | 'ollama' | 'custom';
 					await this.plugin.saveSettings();
 					this.display();
 				}));
@@ -687,8 +687,8 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 				.addOption('auto', 'Auto')
 				.addOption('both', 'Both')
 				.setValue(config.triggerMode)
-				.onChange(async (value: 'manual' | 'auto' | 'both') => {
-					config.triggerMode = value;
+				.onChange(async (value) => {
+					config.triggerMode = value as 'manual' | 'auto' | 'both';
 					await this.plugin.saveSettings();
 				}));
 
@@ -837,8 +837,8 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 				.addOption('local', 'Local only')
 				.addOption('hybrid', 'Hybrid (auto choose)')
 				.setValue(config.privacyMode)
-				.onChange(async (value: 'cloud' | 'local' | 'hybrid') => {
-					config.privacyMode = value;
+				.onChange(async (value) => {
+					config.privacyMode = value as 'cloud' | 'local' | 'hybrid';
 					await this.plugin.saveSettings();
 				}));
 
@@ -1294,7 +1294,7 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 		errorEl.textContent = message;
 	}
 
-	private clearError(key: string, settingEl: HTMLElement): void {
+	private clearError(key: string, _settingEl: HTMLElement): void {
 		const errorEl = this.errorElements.get(key);
 		if (errorEl) {
 			errorEl.remove();
@@ -1409,8 +1409,8 @@ class ProfileEditorModal extends Modal {
 				.addOption('ollama', 'Ollama (Local)')
 				.addOption('custom', 'Custom API')
 				.setValue(this.formData.apiProvider)
-				.onChange((value: 'openai' | 'anthropic' | 'ollama' | 'custom') => {
-					this.formData.apiProvider = value;
+				.onChange((value) => {
+					this.formData.apiProvider = value as 'openai' | 'anthropic' | 'ollama' | 'custom';
 					if (value === 'ollama') {
 						this.formData.customApiUrl = 'http://localhost:11434';
 					}
@@ -1540,7 +1540,7 @@ class TemplateEditorModal extends Modal {
 				.setValue(this.formData.category)
 				.onChange(value => this.formData.category = value));
 
-		const promptSetting = new Setting(contentEl)
+		new Setting(contentEl)
 			.setName('Prompt Template')
 			.setDesc('Use {text}, {topic}, {code}, etc. as placeholders');
 		

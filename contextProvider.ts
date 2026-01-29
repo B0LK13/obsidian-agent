@@ -1,4 +1,4 @@
-import { App, TFile, CachedMetadata } from 'obsidian';
+import { App, TFile } from 'obsidian';
 import { estimateTokens, truncateToTokenLimit } from './tokenCounter';
 
 export interface ContextSource {
@@ -94,7 +94,7 @@ export class ContextProvider {
 			contexts.push(...folderContexts);
 		}
 
-		return contexts;
+		return this.dedupeContexts(contexts);
 	}
 
 	/**
@@ -169,28 +169,20 @@ export class ContextProvider {
 		provider: string
 	): Promise<GatheredContext[]> {
 		const contexts: GatheredContext[] = [];
-		
-		// Find all files that link to this file by scanning all files
-		const allFiles = this.app.vault.getMarkdownFiles();
+
 		const backlinkFiles: TFile[] = [];
-		
-		for (const otherFile of allFiles) {
-			if (otherFile.path === file.path) continue;
-			
-			const cache = this.app.metadataCache.getFileCache(otherFile);
-			if (!cache?.links) continue;
-			
-			// Check if any link points to our file
-			const hasLinkToFile = cache.links.some(link => {
-				const linkedFile = this.app.metadataCache.getFirstLinkpathDest(link.link, otherFile.path);
-				return linkedFile?.path === file.path;
-			});
-			
-			if (hasLinkToFile) {
-				backlinkFiles.push(otherFile);
+		const resolvedLinks = this.app.metadataCache.resolvedLinks || {};
+
+		for (const [sourcePath, dests] of Object.entries(resolvedLinks)) {
+			if (!dests || !dests[file.path]) continue;
+			if (sourcePath === file.path) continue;
+
+			const abstractFile = this.app.vault.getAbstractFileByPath(sourcePath);
+			if (abstractFile instanceof TFile) {
+				backlinkFiles.push(abstractFile);
 			}
 		}
-		
+
 		for (const backlinkFile of backlinkFiles.slice(0, config.maxNotesPerSource)) {
 			if (this.isExcluded(backlinkFile.path, config.excludeFolders)) continue;
 
@@ -313,8 +305,33 @@ export class ContextProvider {
 	 * Check if a path should be excluded
 	 */
 	private isExcluded(path: string, excludeFolders: string[]): boolean {
-		const pathLower = path.toLowerCase();
-		return excludeFolders.some(folder => pathLower.startsWith(folder.toLowerCase()));
+		const normalizedPath = path.replace(/\\/g, '/').toLowerCase();
+		const segments = normalizedPath.split('/').filter(Boolean);
+
+		return excludeFolders.some(folder => {
+			const normalizedFolder = folder.trim().replace(/\\/g, '/').toLowerCase();
+			if (!normalizedFolder) return false;
+			if (normalizedFolder.includes('/')) {
+				const trimmed = normalizedFolder.replace(/^\/+|\/+$/g, '');
+				return normalizedPath === trimmed ||
+					normalizedPath.startsWith(`${trimmed}/`) ||
+					normalizedPath.includes(`/${trimmed}/`);
+			}
+			return segments.includes(normalizedFolder);
+		});
+	}
+
+	private dedupeContexts(contexts: GatheredContext[]): GatheredContext[] {
+		const seen = new Set<string>();
+		const unique: GatheredContext[] = [];
+
+		for (const ctx of contexts) {
+			if (seen.has(ctx.notePath)) continue;
+			seen.add(ctx.notePath);
+			unique.push(ctx);
+		}
+
+		return unique;
 	}
 
 	/**

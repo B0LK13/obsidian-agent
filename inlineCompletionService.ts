@@ -112,8 +112,7 @@ export class InlineCompletionService {
 		if (!this.editor) return;
 
 		const cursor = this.editor.getCursor();
-		const content = this.editor.getValue();
-		const context = this.getContext(cursor, content);
+		const context = this.getContext(cursor);
 
 		this.showLoadingIndicator();
 
@@ -136,18 +135,31 @@ export class InlineCompletionService {
 	/**
 	 * Get context around cursor
 	 */
-	private getContext(cursor: EditorPosition, content: string): CompletionContext {
+	private getContext(cursor: EditorPosition, content: string = ''): CompletionContext {
+		if (this.editor) {
+			const currentLine = this.editor.getLine(cursor.line) || '';
+			const cursorCh = cursor.ch;
+			const beforeCursor = currentLine.substring(0, cursorCh);
+
+			const startLine = Math.max(0, cursor.line - 3);
+			const endLine = Math.min(this.editor.lineCount() - 1, cursor.line + 3);
+			const lines: string[] = [];
+
+			for (let line = startLine; line <= endLine; line++) {
+				lines.push(this.editor.getLine(line) || '');
+			}
+
+			const surroundingLines = lines.join('\n');
+			return { beforeCursor, currentLine, surroundingLines };
+		}
+
 		const lines = content.split('\n');
 		const currentLine = lines[cursor.line] || '';
 		const cursorCh = cursor.ch;
-
-		// Get text before cursor in current line
 		const beforeCursor = currentLine.substring(0, cursorCh);
-
-		// Get some surrounding lines for context
 		const startLine = Math.max(0, cursor.line - 3);
 		const endLine = Math.min(lines.length - 1, cursor.line + 3);
-		const surroundingLines = lines.slice(startLine, endLine + 1).join('\n\n');
+		const surroundingLines = lines.slice(startLine, endLine + 1).join('\n');
 
 		return { beforeCursor, currentLine, surroundingLines };
 	}
@@ -155,7 +167,7 @@ export class InlineCompletionService {
 	/**
 	 * Generate completions using AI service
 	 */
-	private async generateCompletions(context: CompletionContext, cursor: EditorPosition): Promise<CompletionSuggestion[]> {
+	private async generateCompletions(context: CompletionContext, _cursor: EditorPosition): Promise<CompletionSuggestion[]> {
 		const { beforeCursor, currentLine, surroundingLines } = context;
 
 		// Cancel any pending request
@@ -205,7 +217,7 @@ export class InlineCompletionService {
 		}
 
 		// End with colon, hyphen, or dash
-		if (/[:\-\—]\s*$/.test(trimmed)) {
+		if (/[:-]\s*$/.test(trimmed)) {
 			return 'continue';
 		}
 
@@ -293,7 +305,7 @@ export class InlineCompletionService {
 		if (!this.editor) return;
 
 		const cursor = this.editor.getCursor();
-		const line = this.editor.getLine(cursor.line);
+		this.editor.getLine(cursor.line);
 
 		this.ghostTextEl = document.createElement('span');
 		this.ghostTextEl.className = 'oa-ghost-text';
