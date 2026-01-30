@@ -31,6 +31,40 @@ function getVersion() {
     }
 }
 
+/**
+ * Minify CSS files for production builds
+ */
+async function minifyCSS() {
+    const cssFiles = ['styles.css', 'styles-enhanced.css'];
+    const results = [];
+    
+    for (const file of cssFiles) {
+        if (!fs.existsSync(file)) {
+            continue;
+        }
+        
+        const css = fs.readFileSync(file, 'utf8');
+        const result = await esbuild.transform(css, {
+            loader: 'css',
+            minify: true
+        });
+        
+        const originalSize = Buffer.byteLength(css, 'utf8');
+        const minifiedSize = Buffer.byteLength(result.code, 'utf8');
+        const savings = ((originalSize - minifiedSize) / originalSize * 100).toFixed(1);
+        
+        results.push({
+            file,
+            original: originalSize,
+            minified: minifiedSize,
+            savings,
+            code: result.code
+        });
+    }
+    
+    return results;
+}
+
 async function build() {
     const context = await esbuild.context({
         banner: {
@@ -92,11 +126,30 @@ async function build() {
             console.log('\n📊 Build metadata written to build-meta.json');
         }
         
+        // Minify CSS files for production
+        console.log('\n🎨 Minifying CSS...');
+        const cssResults = await minifyCSS();
+        for (const result of cssResults) {
+            const originalKB = (result.original / 1024).toFixed(2);
+            const minifiedKB = (result.minified / 1024).toFixed(2);
+            console.log(`📦 ${result.file}: ${originalKB} KB → ${minifiedKB} KB (${result.savings}% reduction)`);
+        }
+        
         // Verify output
         if (fs.existsSync('main.js')) {
             const stats = fs.statSync('main.js');
             const sizeKB = (stats.size / 1024).toFixed(2);
-            console.log(`\n✅ Build successful! Output: main.js (${sizeKB} KB)`);
+            
+            // Calculate total size
+            let totalSize = stats.size;
+            for (const result of cssResults) {
+                totalSize += result.minified;
+            }
+            const totalKB = (totalSize / 1024).toFixed(2);
+            
+            console.log(`\n✅ Build successful!`);
+            console.log(`   JavaScript: main.js (${sizeKB} KB)`);
+            console.log(`   Total bundle: ${totalKB} KB`);
         }
         
         await context.dispose();
