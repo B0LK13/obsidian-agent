@@ -33,13 +33,22 @@ function readManifest() {
 
 /**
  * Minify a CSS file using esbuild
+ * @param {string} content - The CSS content to minify
+ * @param {string} filename - The filename for error reporting
+ * @returns {Promise<string>} The minified CSS content
  */
-async function minifyCSS(content) {
-    const result = await esbuild.transform(content, {
-        loader: 'css',
-        minify: true
-    });
-    return result.code;
+async function minifyCSS(content, filename) {
+    try {
+        const result = await esbuild.transform(content, {
+            loader: 'css',
+            minify: true
+        });
+        return result.code;
+    } catch (error) {
+        console.warn(`  ⚠️ CSS minification failed for ${filename}: ${error.message}`);
+        console.warn(`     Using original unminified CSS`);
+        return content;
+    }
 }
 
 function checkRequiredFiles() {
@@ -81,7 +90,7 @@ async function copyToDist(distDir) {
             // Minify CSS files
             if (CSS_FILES.includes(file)) {
                 const content = fs.readFileSync(src, 'utf8');
-                const minified = await minifyCSS(content);
+                const minified = await minifyCSS(content, file);
                 const originalSize = Buffer.byteLength(content, 'utf8');
                 const minifiedSize = Buffer.byteLength(minified, 'utf8');
                 const savings = ((originalSize - minifiedSize) / originalSize * 100).toFixed(1);

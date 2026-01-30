@@ -32,9 +32,11 @@ function getVersion() {
 }
 
 /**
- * Minify CSS files for production builds
+ * Report CSS minification savings for production builds.
+ * This function calculates and reports potential size savings without modifying files.
+ * Actual CSS minification is performed by the package script during distribution.
  */
-async function minifyCSS() {
+async function reportCSSMinificationSavings() {
     const cssFiles = ['styles.css', 'styles-enhanced.css'];
     const results = [];
     
@@ -43,23 +45,26 @@ async function minifyCSS() {
             continue;
         }
         
-        const css = fs.readFileSync(file, 'utf8');
-        const result = await esbuild.transform(css, {
-            loader: 'css',
-            minify: true
-        });
-        
-        const originalSize = Buffer.byteLength(css, 'utf8');
-        const minifiedSize = Buffer.byteLength(result.code, 'utf8');
-        const savings = ((originalSize - minifiedSize) / originalSize * 100).toFixed(1);
-        
-        results.push({
-            file,
-            original: originalSize,
-            minified: minifiedSize,
-            savings,
-            code: result.code
-        });
+        try {
+            const css = fs.readFileSync(file, 'utf8');
+            const result = await esbuild.transform(css, {
+                loader: 'css',
+                minify: true
+            });
+            
+            const originalSize = Buffer.byteLength(css, 'utf8');
+            const minifiedSize = Buffer.byteLength(result.code, 'utf8');
+            const savings = ((originalSize - minifiedSize) / originalSize * 100).toFixed(1);
+            
+            results.push({
+                file,
+                original: originalSize,
+                minified: minifiedSize,
+                savings
+            });
+        } catch (error) {
+            console.warn(`  ⚠️ Could not analyze ${file}: ${error.message}`);
+        }
     }
     
     return results;
@@ -126,9 +131,9 @@ async function build() {
             console.log('\n📊 Build metadata written to build-meta.json');
         }
         
-        // Minify CSS files for production
-        console.log('\n🎨 Minifying CSS...');
-        const cssResults = await minifyCSS();
+        // Report CSS minification savings (actual minification happens during packaging)
+        console.log('\n🎨 CSS Minification Preview...');
+        const cssResults = await reportCSSMinificationSavings();
         for (const result of cssResults) {
             const originalKB = (result.original / 1024).toFixed(2);
             const minifiedKB = (result.minified / 1024).toFixed(2);
