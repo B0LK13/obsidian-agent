@@ -8,6 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 import os from 'os';
+import esbuild from 'esbuild';
 
 const REQUIRED_FILES = [
     'main.js',
@@ -15,6 +16,8 @@ const REQUIRED_FILES = [
     'styles.css',
     'styles-enhanced.css'
 ];
+
+const CSS_FILES = ['styles.css', 'styles-enhanced.css'];
 
 const OPTIONAL_FILES = [
     'README.md',
@@ -26,6 +29,26 @@ const OPTIONAL_FILES = [
 function readManifest() {
     const manifestPath = path.join(process.cwd(), 'manifest.json');
     return JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+}
+
+/**
+ * Minify a CSS file using esbuild
+ * @param {string} content - The CSS content to minify
+ * @param {string} filename - The filename for error reporting
+ * @returns {Promise<string>} The minified CSS content
+ */
+async function minifyCSS(content, filename) {
+    try {
+        const result = await esbuild.transform(content, {
+            loader: 'css',
+            minify: true
+        });
+        return result.code;
+    } catch (error) {
+        console.warn(`  ⚠️ CSS minification failed for ${filename}: ${error.message}`);
+        console.warn(`     Using original unminified CSS`);
+        return content;
+    }
 }
 
 function checkRequiredFiles() {
@@ -51,21 +74,32 @@ function checkRequiredFiles() {
     }
 }
 
-function copyToDist(distDir) {
-    console.log('\n📦 Copying files to dist...\n');
+async function copyToDist(distDir) {
+    console.log('\n📦 Copying and optimizing files for dist...\n');
     
     // Create dist directory
     if (!fs.existsSync(distDir)) {
         fs.mkdirSync(distDir, { recursive: true });
     }
     
-    // Copy required files
+    // Copy required files (with CSS minification)
     for (const file of REQUIRED_FILES) {
         const src = path.join(process.cwd(), file);
         const dest = path.join(distDir, file);
         if (fs.existsSync(src)) {
-            fs.copyFileSync(src, dest);
-            console.log(`  ✅ Copied: ${file}`);
+            // Minify CSS files
+            if (CSS_FILES.includes(file)) {
+                const content = fs.readFileSync(src, 'utf8');
+                const minified = await minifyCSS(content, file);
+                const originalSize = Buffer.byteLength(content, 'utf8');
+                const minifiedSize = Buffer.byteLength(minified, 'utf8');
+                const savings = ((originalSize - minifiedSize) / originalSize * 100).toFixed(1);
+                fs.writeFileSync(dest, minified);
+                console.log(`  ✅ Minified: ${file} (${(minifiedSize / 1024).toFixed(2)} KB, ${savings}% reduction)`);
+            } else {
+                fs.copyFileSync(src, dest);
+                console.log(`  ✅ Copied: ${file}`);
+            }
         }
     }
     
@@ -145,7 +179,7 @@ Generated on ${new Date().toISOString().split('T')[0]}
     console.log(`  ✅ Created: RELEASE_NOTES.md`);
 }
 
-function main() {
+async function main() {
     console.log('\n📦 Obsidian Agent Plugin Packager\n');
     
     const manifest = readManifest();
@@ -166,8 +200,8 @@ function main() {
         fs.rmSync(distDir, { recursive: true });
     }
     
-    // Copy files
-    copyToDist(distDir);
+    // Copy files (with CSS minification)
+    await copyToDist(distDir);
     
     // Create archive
     const archivePath = createZipArchive(distDir, outputName);
@@ -187,4 +221,7 @@ function main() {
     console.log('  3. Copy RELEASE_NOTES.md content to release description\n');
 }
 
-main();
+main().catch(err => {
+    console.error('❌ Packaging failed:', err);
+    process.exit(1);
+});

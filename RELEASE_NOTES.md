@@ -26,4 +26,4 @@ Search for "Obsidian Agent" in Settings → Community Plugins → Browse
 - API key from OpenAI, Anthropic, or Ollama (local)
 
 ---
-Generated on 2026-01-29
+Generated on 2026-01-30

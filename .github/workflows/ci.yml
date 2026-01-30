@@ -44,6 +44,7 @@ jobs:
             main.js
             manifest.json
             styles.css
+            styles-enhanced.css
           retention-days: 7
 
   release:
