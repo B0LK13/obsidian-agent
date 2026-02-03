@@ -47,6 +47,8 @@ Access via Command Palette (`Ctrl/Cmd + P`):
 | **Generate Outline** | Create structured outline from topic |
 | **Answer Question Based on Note** | Ask questions about note content |
 | **Switch AI Profile** | Quickly change between AI configurations |
+| **Scan Vault for Dead Links** | Find and report broken links in your vault |
+| **Scan Current File for Dead Links** | Check active file for broken links |
 
 ## 📦 Installation
 

@@ -2,6 +2,8 @@
 
 Complete installation instructions for the Obsidian Agent plugin.
 
+> 💡 **Windows Users:** See the detailed [Windows Installation Guide](WINDOWS_INSTALL_GUIDE.md) for step-by-step instructions specific to Windows 10/11.
+
 ## 📋 Prerequisites
 
 - **Obsidian**: Version 0.15.0 or higher
@@ -116,6 +118,8 @@ If you have the BRAT plugin installed:
 5. Enable the plugin in Community Plugins settings
 
 ## ⚙️ Initial Configuration
+
+> 💡 **Windows Users:** Having trouble? Check the [Windows Installation Guide](WINDOWS_INSTALL_GUIDE.md) for detailed troubleshooting.
 
 ### Step 1: Open Settings
 

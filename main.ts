@@ -5,6 +5,7 @@ import { AIService, CompletionResult } from './aiService';
 import { EnhancedAgentModal } from './agentModalEnhanced';
 import { ContextProvider, ContextConfig } from './contextProvider';
 import { ValidationError, APIError, ConfigurationError } from './src/errors';
+import { DeadLinkDetector } from './src/deadLinkDetector';
 
 // Import enhanced UI styles
 const ENHANCED_STYLES = `
@@ -328,6 +329,69 @@ export default class ObsidianAgentPlugin extends Plugin {
 					await this.switchProfile(profileId);
 				});
 				modal.open();
+			}
+		});
+
+		// Command: Scan for Dead Links
+		this.addCommand({
+			id: 'scan-dead-links',
+			name: 'Scan Vault for Dead Links',
+			callback: async () => {
+				try {
+					new Notice('Scanning vault for dead links...');
+					const detector = new DeadLinkDetector(this.app);
+					
+					const result = await detector.scanVault((progress, total) => {
+						if (progress % 10 === 0) {
+							new Notice(`Scanning... ${progress}/${total} files`);
+						}
+					});
+
+					// Generate and display report
+					const report = detector.generateReport(result);
+					const reportFile = await this.app.vault.create(
+						`Dead Links Report ${new Date().toISOString().split('T')[0]}.md`,
+						report
+					);
+					
+					// Open the report
+					await this.app.workspace.getLeaf().openFile(reportFile);
+					
+					new Notice(`Scan complete: ${result.brokenCount} dead links found`);
+				} catch (error: any) {
+					this.handleError(error, 'Failed to scan for dead links');
+				}
+			}
+		});
+
+		// Command: Scan Current File for Dead Links
+		this.addCommand({
+			id: 'scan-file-dead-links',
+			name: 'Scan Current File for Dead Links',
+			callback: async () => {
+				try {
+					const file = this.app.workspace.getActiveFile();
+					if (!file) {
+						new Notice('No active file');
+						return;
+					}
+
+					new Notice('Scanning file for dead links...');
+					const detector = new DeadLinkDetector(this.app);
+					const deadLinks = await detector.scanFile(file);
+
+					if (deadLinks.length === 0) {
+						new Notice('✅ No dead links found in this file!');
+					} else {
+						const message = `Found ${deadLinks.length} dead link${deadLinks.length > 1 ? 's' : ''} in ${file.basename}`;
+						new Notice(message);
+						
+						// Show detailed list in console
+						console.log('Dead links:', deadLinks);
+					}
+				} catch (error: any) {
+					this.handleError(error, 'Failed to scan file for dead links');
+				}
 			}
 		});
 
