@@ -7,6 +7,7 @@ import { ContextProvider, ContextConfig } from './contextProvider';
 import { ValidationError, APIError, ConfigurationError } from './src/errors';
 import { DeadLinkDetector } from './src/deadLinkDetector';
 import { AutoLinkSuggester } from './src/autoLinkSuggester';
+import { SmartTagger } from './src/smartTagger';
 
 // Import enhanced UI styles
 const ENHANCED_STYLES = `
@@ -431,6 +432,77 @@ export default class ObsidianAgentPlugin extends Plugin {
 			}
 		});
 
+		// Command: Suggest Tags for Current Note
+		this.addCommand({
+			id: 'suggest-tags',
+			name: 'Suggest Tags for Current Note',
+			callback: async () => {
+				try {
+					const file = this.app.workspace.getActiveFile();
+					if (!file) {
+						new Notice('No active file');
+						return;
+					}
+
+					new Notice('Analyzing note for tag suggestions...');
+					const tagger = new SmartTagger(this.app);
+					const suggestions = await tagger.suggestTags(file);
+
+					if (suggestions.length === 0) {
+						new Notice('No tag suggestions found');
+						return;
+					}
+
+					// Show suggestions in a modal
+					new TagSuggestionModal(
+						this.app,
+						suggestions,
+						async (selectedTags) => {
+							if (selectedTags.length > 0) {
+								await tagger.applyTags(file, selectedTags);
+								new Notice(`Applied ${selectedTags.length} tags`);
+							}
+						}
+					).open();
+				} catch (error: any) {
+					this.handleError(error, 'Failed to suggest tags');
+				}
+			}
+		});
+
+		// Command: Auto-Tag Current Note (apply top suggestions automatically)
+		this.addCommand({
+			id: 'auto-tag-note',
+			name: 'Auto-Tag Current Note (Top Suggestions)',
+			callback: async () => {
+				try {
+					const file = this.app.workspace.getActiveFile();
+					if (!file) {
+						new Notice('No active file');
+						return;
+					}
+
+					new Notice('Auto-tagging note...');
+					const tagger = new SmartTagger(this.app);
+					const suggestions = await tagger.suggestTags(file, {
+						minConfidence: 0.6, // Higher threshold for auto-apply
+						maxSuggestions: 3
+					});
+
+					if (suggestions.length === 0) {
+						new Notice('No confident tag suggestions found');
+						return;
+					}
+
+					const tags = suggestions.map(s => s.tag);
+					await tagger.applyTags(file, tags);
+					new Notice(`Auto-tagged with: ${tags.join(', ')}`);
+				} catch (error: any) {
+					this.handleError(error, 'Failed to auto-tag note');
+				}
+			}
+		});
+
 		// Add settings tab
 		this.addSettingTab(new ObsidianAgentSettingTab(this.app, this));
 
@@ -710,4 +782,177 @@ export default class ObsidianAgentPlugin extends Plugin {
 		}
 		this.aiService = newService;
 	}
+}
+
+// Tag Suggestion Modal
+class TagSuggestionModal extends Modal {
+private suggestions: any[];
+private onSelect: (tags: string[]) => void;
+private selectedTags: Set<string> = new Set();
+
+constructor(app: App, suggestions: any[], onSelect: (tags: string[]) => void) {
+super(app);
+this.suggestions = suggestions;
+this.onSelect = onSelect;
+}
+
+onOpen() {
+const { contentEl } = this;
+contentEl.empty();
+
+contentEl.createEl('h2', { text: 'Suggested Tags' });
+contentEl.createEl('p', {
+text: 'Select tags to apply to this note:',
+cls: 'setting-item-description'
+});
+
+const list = contentEl.createEl('div', { cls: 'tag-suggestion-list' });
+
+this.suggestions.forEach((suggestion) => {
+const item = list.createEl('div', {
+cls: 'tag-suggestion-item',
+attr: { 'data-tag': suggestion.tag }
+});
+
+const checkbox = item.createEl('input', {
+type: 'checkbox',
+cls: 'tag-checkbox'
+});
+
+const label = item.createEl('label', { cls: 'tag-label' });
+
+label.createEl('span', {
+text: `#${suggestion.tag}`,
+cls: 'tag-name'
+});
+
+const confidence = Math.round(suggestion.confidence * 100);
+label.createEl('span', {
+text: `% `,
+cls: 'tag-confidence'
+});
+
+const reason = label.createEl('span', {
+text: this.getReasonText(suggestion.reason),
+cls: 'tag-reason'
+});
+
+if (suggestion.examples && suggestion.examples.length > 0) {
+reason.createEl('span', {
+text: ` ()`,
+cls: 'tag-examples'
+});
+}
+
+checkbox.addEventListener('change', () => {
+if (checkbox.checked) {
+this.selectedTags.add(suggestion.tag);
+item.addClass('selected');
+} else {
+this.selectedTags.delete(suggestion.tag);
+item.removeClass('selected');
+}
+});
+
+// Select high-confidence tags by default
+if (confidence >= 70) {
+checkbox.checked = true;
+this.selectedTags.add(suggestion.tag);
+item.addClass('selected');
+}
+});
+
+// Buttons
+const buttonContainer = contentEl.createEl('div', { cls: 'modal-button-container' });
+
+const applyButton = buttonContainer.createEl('button', {
+text: 'Apply Selected Tags',
+cls: 'mod-cta'
+});
+applyButton.addEventListener('click', () => {
+this.onSelect([...this.selectedTags]);
+this.close();
+});
+
+const cancelButton = buttonContainer.createEl('button', {
+text: 'Cancel'
+});
+cancelButton.addEventListener('click', () => {
+this.close();
+});
+
+// Add styles
+const style = contentEl.createEl('style');
+style.textContent = `
+.tag-suggestion-list {
+margin: 20px 0;
+max-height: 400px;
+overflow-y: auto;
+}
+.tag-suggestion-item {
+padding: 10px;
+margin: 5px 0;
+border: 1px solid var(--background-modifier-border);
+border-radius: 5px;
+display: flex;
+align-items: center;
+cursor: pointer;
+transition: all 0.2s;
+}
+.tag-suggestion-item:hover {
+background-color: var(--background-modifier-hover);
+}
+.tag-suggestion-item.selected {
+background-color: var(--interactive-accent);
+color: var(--text-on-accent);
+border-color: var(--interactive-accent);
+}
+.tag-checkbox {
+margin-right: 10px;
+}
+.tag-label {
+flex: 1;
+display: flex;
+flex-wrap: wrap;
+align-items: center;
+gap: 5px;
+}
+.tag-name {
+font-weight: 600;
+margin-right: 10px;
+}
+.tag-confidence {
+color: var(--text-accent);
+font-size: 0.9em;
+}
+.tag-reason {
+color: var(--text-muted);
+font-size: 0.85em;
+}
+.tag-examples {
+font-style: italic;
+}
+.modal-button-container {
+display: flex;
+justify-content: flex-end;
+gap: 10px;
+margin-top: 20px;
+}
+`;
+}
+
+private getReasonText(reason: string): string {
+const reasons: Record<string, string> = {
+'content_match': 'content match',
+'pattern_learned': 'learned pattern',
+'similar_notes': 'similar notes',
+'frequency': 'frequently co-occurs'
+};
+return reasons[reason] || reason;
+}
+
+onClose() {
+const { contentEl } = this;
+contentEl.empty();
+}
 }

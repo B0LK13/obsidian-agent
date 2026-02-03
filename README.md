@@ -50,6 +50,8 @@ Access via Command Palette (`Ctrl/Cmd + P`):
 | **Scan Vault for Dead Links** | Find and report broken links in your vault |
 | **Scan Current File for Dead Links** | Check active file for broken links |
 | **Suggest Internal Links for Current File** | AI-powered link suggestions based on content similarity |
+| **Suggest Tags for Current Note** | AI-powered smart tagging with confidence scores |
+| **Auto-Tag Current Note (Top Suggestions)** | Automatically apply high-confidence tags |
 
 ## 📦 Installation
 
