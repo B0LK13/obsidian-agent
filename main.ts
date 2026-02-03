@@ -8,6 +8,7 @@ import { ValidationError, APIError, ConfigurationError } from './src/errors';
 import { DeadLinkDetector } from './src/deadLinkDetector';
 import { AutoLinkSuggester } from './src/autoLinkSuggester';
 import { SmartTagger } from './src/smartTagger';
+import { MultiLevelSummarizer } from './src/multiLevelSummarizer';
 
 // Import enhanced UI styles
 const ENHANCED_STYLES = `
@@ -207,6 +208,92 @@ export default class ObsidianAgentPlugin extends Plugin {
 				} catch (error: any) {
 					new Notice(`Error: ${error.message}`);
 					console.error('Summary Error:', error);
+				}
+			}
+		});
+
+		// Command: Multi-Level Summary
+		this.addCommand({
+			id: 'multi-level-summary',
+			name: 'Multi-Level Summary (Quick/Standard/Detailed)',
+			callback: async () => {
+				try {
+					const file = this.app.workspace.getActiveFile();
+					if (!file) {
+						new Notice('No active file');
+						return;
+					}
+
+					new Notice('Generating multi-level summaries...');
+					const summarizer = new MultiLevelSummarizer(this.app, this.aiService);
+					
+					const summaries = await summarizer.generateProgressiveSummary(file);
+					
+					// Create summary note
+					const summaryNote = `# Summaries: ${file.basename}
+
+## 🚀 Quick Summary (TL;DR)
+${summaries.get('quick') || 'N/A'}
+
+## 📋 Standard Summary  
+${summaries.get('standard') || 'N/A'}
+
+## 📚 Detailed Summary
+${summaries.get('detailed') || 'N/A'}
+
+---
+*Generated on ${new Date().toLocaleString()}*
+*Source: [[${file.basename}]]*
+`;
+
+					const summaryFile = await this.app.vault.create(
+						`Summaries - ${file.basename} - ${new Date().toISOString().split('T')[0]}.md`,
+						summaryNote
+					);
+					
+					await this.app.workspace.getLeaf().openFile(summaryFile);
+					new Notice('Multi-level summaries generated!');
+				} catch (error: any) {
+					this.handleError(error, 'Failed to generate multi-level summary');
+				}
+			}
+		});
+
+		// Command: Academic Summary
+		this.addCommand({
+			id: 'academic-summary',
+			name: 'Generate Academic Summary',
+			callback: async () => {
+				try {
+					const file = this.app.workspace.getActiveFile();
+					if (!file) {
+						new Notice('No active file');
+						return;
+					}
+
+					new Notice('Generating academic summary...');
+					const summarizer = new MultiLevelSummarizer(this.app, this.aiService);
+					
+					const result = await summarizer.summarizeNote(file, {
+						level: 'academic',
+						includeSections: true,
+						includeKeyPoints: true
+					});
+					
+					// Insert at top of file
+					const content = await this.app.vault.read(file);
+					const newContent = `# Academic Summary
+
+${result.summary}
+
+---
+
+${content}`;
+					
+					await this.app.vault.modify(file, newContent);
+					new Notice('Academic summary added to note!');
+				} catch (error: any) {
+					this.handleError(error, 'Failed to generate academic summary');
 				}
 			}
 		});

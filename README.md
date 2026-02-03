@@ -42,6 +42,8 @@ Access via Command Palette (`Ctrl/Cmd + P`):
 | **Ask AI Agent** | Open enhanced chat dialog with AI |
 | **Ask AI Agent (with Linked Notes)** | Include vault context in conversation |
 | **Generate Summary** | Summarize selected text or entire note |
+| **Multi-Level Summary (Quick/Standard/Detailed)** | Progressive summaries at 3 levels |
+| **Generate Academic Summary** | Academic-style structured summary |
 | **Expand Ideas** | Expand brief notes into detailed content |
 | **Improve Writing** | Enhance clarity, grammar, and style |
 | **Generate Outline** | Create structured outline from topic |
