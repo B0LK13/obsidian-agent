@@ -9,6 +9,7 @@ import { DeadLinkDetector } from './src/deadLinkDetector';
 import { AutoLinkSuggester } from './src/autoLinkSuggester';
 import { SmartTagger } from './src/smartTagger';
 import { MultiLevelSummarizer } from './src/multiLevelSummarizer';
+import { DuplicateDetector } from './src/duplicateDetector';
 
 // Import enhanced UI styles
 const ENHANCED_STYLES = `
@@ -590,6 +591,65 @@ ${content}`;
 			}
 		});
 
+		// Command: Find Duplicate Notes
+		this.addCommand({
+			id: 'find-duplicates',
+			name: 'Find Duplicate & Similar Notes',
+			callback: async () => {
+				try {
+					new Notice('Scanning vault for duplicates...');
+					const detector = new DuplicateDetector(this.app);
+					
+					const groups = await detector.findDuplicates({
+						exactMatchThreshold: 1.0,
+						nearDuplicateThreshold: 0.95,
+						semanticThreshold: 0.7,
+						minContentLength: 50
+					});
+
+					if (groups.length === 0) {
+						new Notice('✅ No duplicates found!');
+						return;
+					}
+
+					// Generate report
+					const report = this.generateDuplicateReport(groups);
+					const reportFile = await this.app.vault.create(
+						`Duplicate Notes Report - ${new Date().toISOString().split('T')[0]}.md`,
+						report
+					);
+					
+					await this.app.workspace.getLeaf().openFile(reportFile);
+					new Notice(`Found ${groups.length} duplicate groups`);
+				} catch (error: any) {
+					this.handleError(error, 'Failed to find duplicates');
+				}
+			}
+		});
+
+		// Command: Compare Two Notes
+		this.addCommand({
+			id: 'compare-notes',
+			name: 'Compare Current Note with Another',
+			callback: async () => {
+				try {
+					const currentFile = this.app.workspace.getActiveFile();
+					if (!currentFile) {
+						new Notice('No active file');
+						return;
+					}
+
+					// Show file suggester modal
+					new Notice('Select a note to compare with...');
+					// TODO: Implement file selector modal
+					// For now, show message
+					new Notice('File comparison feature coming soon!');
+				} catch (error: any) {
+					this.handleError(error, 'Failed to compare notes');
+				}
+			}
+		});
+
 		// Add settings tab
 		this.addSettingTab(new ObsidianAgentSettingTab(this.app, this));
 
@@ -747,6 +807,84 @@ ${content}`;
 			}
 			new Notice(`Profile deleted: ${profileName}`);
 		}
+	}
+
+	/**
+	 * Generate duplicate detection report
+	 */
+	private generateDuplicateReport(groups: any[]): string {
+		const lines: string[] = [];
+		
+		lines.push('# Duplicate & Similar Notes Report\n');
+		lines.push(`**Scan Date:** ${new Date().toISOString()}\n`);
+		lines.push(`**Groups Found:** ${groups.length}\n`);
+
+		// Group by type
+		const exact = groups.filter(g => g.duplicateType === 'exact');
+		const nearExact = groups.filter(g => g.duplicateType === 'near-exact');
+		const semantic = groups.filter(g => g.duplicateType === 'semantic');
+
+		lines.push(`- Exact Duplicates: ${exact.length}`);
+		lines.push(`- Near-Exact Duplicates: ${nearExact.length}`);
+		lines.push(`- Semantic Duplicates: ${semantic.length}\n`);
+
+		// Exact duplicates
+		if (exact.length > 0) {
+			lines.push('## 🔴 Exact Duplicates\n');
+			lines.push('These notes have identical content and should be merged.\n');
+			
+			exact.forEach((group, idx) => {
+				lines.push(`### Group ${idx + 1} (${group.notes.length} notes)`);
+				lines.push(`**Similarity:** 100%\n`);
+				group.notes.forEach((note: any) => {
+					lines.push(`- [[${note.path}]]`);
+				});
+				if (group.commonContent) {
+					lines.push(`\n**Preview:**\n> ${group.commonContent}\n`);
+				}
+				lines.push('');
+			});
+		}
+
+		// Near-exact duplicates
+		if (nearExact.length > 0) {
+			lines.push('## 🟡 Near-Exact Duplicates\n');
+			lines.push('These notes are 95%+ similar with minor differences.\n');
+			
+			nearExact.forEach((group, idx) => {
+				lines.push(`### Group ${idx + 1} (${group.notes.length} notes)`);
+				const similarity = Math.round(group.similarity * 100);
+				lines.push(`**Similarity:** ${similarity}%\n`);
+				group.notes.forEach((note: any) => {
+					lines.push(`- [[${note.path}]]`);
+				});
+				lines.push('');
+			});
+		}
+
+		// Semantic duplicates
+		if (semantic.length > 0) {
+			lines.push('## 🟢 Semantic Duplicates\n');
+			lines.push('These notes cover similar topics or themes.\n');
+			
+			semantic.forEach((group, idx) => {
+				lines.push(`### Group ${idx + 1} (${group.notes.length} notes)`);
+				const similarity = Math.round(group.similarity * 100);
+				lines.push(`**Similarity:** ${similarity}%\n`);
+				group.notes.forEach((note: any) => {
+					lines.push(`- [[${note.path}]]`);
+				});
+				lines.push('');
+			});
+		}
+
+		lines.push('---\n');
+		lines.push('## 💡 Recommendations\n');
+		lines.push('- **Exact Duplicates:** Delete all but one copy');
+		lines.push('- **Near-Exact:** Review differences and merge if appropriate');
+		lines.push('- **Semantic:** Consider linking or consolidating related content\n');
+
+		return lines.join('\n');
 	}
 
 	private async trackTokenUsage(result: CompletionResult): Promise<void> {

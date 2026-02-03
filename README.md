@@ -54,6 +54,8 @@ Access via Command Palette (`Ctrl/Cmd + P`):
 | **Suggest Internal Links for Current File** | AI-powered link suggestions based on content similarity |
 | **Suggest Tags for Current Note** | AI-powered smart tagging with confidence scores |
 | **Auto-Tag Current Note (Top Suggestions)** | Automatically apply high-confidence tags |
+| **Find Duplicate & Similar Notes** | Detect exact, near-exact, and semantic duplicates |
+| **Compare Current Note with Another** | Side-by-side note comparison |
 
 ## 📦 Installation
 
