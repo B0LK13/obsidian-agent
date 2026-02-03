@@ -6,6 +6,7 @@ import { EnhancedAgentModal } from './agentModalEnhanced';
 import { ContextProvider, ContextConfig } from './contextProvider';
 import { ValidationError, APIError, ConfigurationError } from './src/errors';
 import { DeadLinkDetector } from './src/deadLinkDetector';
+import { AutoLinkSuggester } from './src/autoLinkSuggester';
 
 // Import enhanced UI styles
 const ENHANCED_STYLES = `
@@ -391,6 +392,41 @@ export default class ObsidianAgentPlugin extends Plugin {
 					}
 				} catch (error: any) {
 					this.handleError(error, 'Failed to scan file for dead links');
+				}
+			}
+		});
+
+		// Command: Suggest Links for Current File
+		this.addCommand({
+			id: 'suggest-links',
+			name: 'Suggest Internal Links for Current File',
+			callback: async () => {
+				try {
+					const file = this.app.workspace.getActiveFile();
+					if (!file) {
+						new Notice('No active file');
+						return;
+					}
+
+					new Notice('Analyzing file for link suggestions...');
+					const suggester = new AutoLinkSuggester(this.app);
+					const suggestions = await suggester.suggestLinks(file);
+
+					if (suggestions.length === 0) {
+						new Notice('No link suggestions found');
+					} else {
+						// Generate and display report
+						const report = suggester.generateReport(file, suggestions);
+						const reportFile = await this.app.vault.create(
+							`Link Suggestions - ${file.basename} - ${new Date().toISOString().split('T')[0]}.md`,
+							report
+						);
+						
+						await this.app.workspace.getLeaf().openFile(reportFile);
+						new Notice(`Found ${suggestions.length} link suggestions`);
+					}
+				} catch (error: any) {
+					this.handleError(error, 'Failed to suggest links');
 				}
 			}
 		});
