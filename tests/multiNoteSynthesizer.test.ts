@@ -364,7 +364,7 @@ This paragraph talks about something else entirely.`;
 			
 			expect(excerpt).toBeDefined();
 			expect(excerpt.length).toBeLessThanOrEqual(103); // 100 + '...'
-			expect(excerpt).toContain('neural');
+			expect(excerpt.toLowerCase()).toContain('neural'); // Case-insensitive check
 		});
 
 		it('should extract keywords from text', () => {

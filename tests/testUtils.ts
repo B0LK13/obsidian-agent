@@ -4,7 +4,7 @@
  */
 
 import { TFile, Vault, MetadataCache, CachedMetadata } from 'obsidian';
-import { vi } from 'vitest';
+import { vi, expect } from 'vitest';
 
 /**
  * Create mock TFile
@@ -74,7 +74,7 @@ export function createMockMetadataCache(
 		getFileCache: vi.fn((file: TFile) => {
 			return metadata.get(file.path) || null;
 		}),
-		getFirstLinkpathDest: vi.fn((linkpath: string, sourcePath: string) => {
+		getFirstLinkpathDest: vi.fn((linkpath: string, _sourcePath: string) => {
 			// Simple mock: return file if it exists in metadata
 			for (const [path] of metadata) {
 				if (path.includes(linkpath)) {

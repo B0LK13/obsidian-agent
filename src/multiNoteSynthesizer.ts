@@ -427,7 +427,7 @@ ANSWER:`;
 		const scored: ContextScore[] = [];
 		for (const file of candidates) {
 			const score = await this.contextEngine.scoreNoteRelevance(file, query.query);
-			if (score.score > 20) {
+			if (score.score > 30) { // Increased threshold from 20 to 30 for better filtering
 				scored.push(score);
 			}
 		}

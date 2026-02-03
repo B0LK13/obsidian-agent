@@ -59,7 +59,7 @@ export class IntelligentContextEngine {
 	private linkGraphCache: Map<string, Set<string>> | null = null;
 	
 	// Configuration
-	private readonly MIN_CLUSTER_SIZE = 3;
+	private readonly MIN_CLUSTER_SIZE = 2; // Lowered to work with small vaults
 	private readonly MAX_CLUSTERS = 20;
 	private readonly RECENCY_DECAY_DAYS = 30;
 	private readonly MAX_LINK_DISTANCE = 3;
@@ -139,6 +139,11 @@ export class IntelligentContextEngine {
 		query: string,
 		currentNote?: TFile
 	): Promise<ContextScore> {
+		// Auto-initialize TF-IDF cache if not built
+		if (!this.tfidfCache || !this.idfCache) {
+			await this.buildTFIDFCache(this.vault.getMarkdownFiles());
+		}
+
 		// Semantic score
 		const queryVector = this.computeQueryVector(query);
 		const noteVector = this.tfidfCache?.get(note.path);
@@ -251,20 +256,30 @@ export class IntelligentContextEngine {
 		for (const file of files) {
 			const metadata = this.metadataCache.getFileCache(file);
 			
-			// Group by tags
+			// Group by tags (both frontmatter and inline)
+			const allTags: string[] = [];
+			
+			// Frontmatter tags
 			if (metadata?.frontmatter?.tags) {
 				const tags = Array.isArray(metadata.frontmatter.tags)
 					? metadata.frontmatter.tags
 					: [metadata.frontmatter.tags];
-				
-				for (const tag of tags) {
-					const tagStr = String(tag);
-					if (tagStr.startsWith('project-') || tagStr.includes('project')) {
-						if (!tagGroups.has(tagStr)) {
-							tagGroups.set(tagStr, []);
-						}
-						tagGroups.get(tagStr)!.push(file);
+				allTags.push(...tags.map(String));
+			}
+			
+			// Inline tags
+			if (metadata?.tags) {
+				allTags.push(...metadata.tags.map((t: any) => t.tag));
+			}
+			
+			// Group by project-related tags
+			for (const tag of allTags) {
+				const tagStr = String(tag).replace(/^#/, ''); // Remove leading #
+				if (tagStr.startsWith('project-') || tagStr.includes('project')) {
+					if (!tagGroups.has(tagStr)) {
+						tagGroups.set(tagStr, []);
 					}
+					tagGroups.get(tagStr)!.push(file);
 				}
 			}
 
@@ -276,9 +291,9 @@ export class IntelligentContextEngine {
 			folderGroups.get(folder)!.push(file);
 		}
 
-		// Create project boundaries from tag groups
+		// Create project boundaries from tag groups (lowered threshold)
 		for (const [tag, notes] of tagGroups) {
-			if (notes.length < 3) continue; // Minimum project size
+			if (notes.length < 2) continue; // Minimum project size (lowered from 3)
 
 			const stats = this.computeProjectStats(notes);
 			projects.set(`tag-${tag}`, {
@@ -293,7 +308,7 @@ export class IntelligentContextEngine {
 
 		// Create project boundaries from folders (if substantial)
 		for (const [folder, notes] of folderGroups) {
-			if (notes.length < 5) continue; // Higher threshold for folders
+			if (notes.length < 3) continue; // Lower threshold for folders (was 5)
 			if (projects.has(`folder-${folder}`)) continue;
 
 			const stats = this.computeProjectStats(notes);
