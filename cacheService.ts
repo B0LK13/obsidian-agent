@@ -416,4 +416,186 @@ export class CacheService {
 		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
 		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 	}
+
+	/**
+	 * Get most frequently accessed entries (top N)
+	 * Useful for prefetching optimization
+	 */
+	getMostFrequentEntries(limit: number = 10): CacheEntry[] {
+		return Array.from(this.cache.values())
+			.sort((a, b) => b.accessCount - a.accessCount)
+			.slice(0, limit);
+	}
+
+	/**
+	 * Get recently accessed entries (top N)
+	 * Useful for LRU-based optimizations
+	 */
+	getRecentlyAccessedEntries(limit: number = 10): CacheEntry[] {
+		return Array.from(this.cache.values())
+			.sort((a, b) => b.accessedAt - a.accessedAt)
+			.slice(0, limit);
+	}
+
+	/**
+	 * Prefetch predictions for likely next queries
+	 * Returns cache entries that might be needed soon based on access patterns
+	 */
+	getPrefetchCandidates(currentPrompt: string, limit: number = 5): CacheEntry[] {
+		const currentWords = new Set(currentPrompt.toLowerCase().split(/\s+/));
+		const candidates: Array<{ entry: CacheEntry; score: number }> = [];
+
+		for (const entry of this.cache.values()) {
+			const entryWords = new Set(entry.prompt.toLowerCase().split(/\s+/));
+			
+			// Calculate word overlap score
+			let overlap = 0;
+			for (const word of currentWords) {
+				if (entryWords.has(word)) overlap++;
+			}
+			
+			const score = (overlap / Math.max(currentWords.size, 1)) * 
+			              (entry.accessCount / 10); // Weight by popularity
+			
+			if (score > 0.3) {  // Minimum threshold
+				candidates.push({ entry, score });
+			}
+		}
+
+		return candidates
+			.sort((a, b) => b.score - a.score)
+			.slice(0, limit)
+			.map(c => c.entry);
+	}
+
+	/**
+	 * Optimize cache by evicting low-value entries
+	 * Considers access count, recency, and size
+	 */
+	optimize(): number {
+		const entries = Array.from(this.cache.entries());
+		const now = Date.now();
+		let evictedCount = 0;
+
+		// Calculate value score for each entry
+		const scored = entries.map(([key, entry]) => {
+			const ageScore = 1 / (1 + (now - entry.accessedAt) / (1000 * 60 * 60 * 24)); // Decay over days
+			const popularityScore = Math.min(entry.accessCount / 100, 1); // Normalize
+			const sizeScore = 1 / (1 + entry.response.length / 1000); // Prefer smaller entries
+			
+			const value = (ageScore * 0.4) + (popularityScore * 0.4) + (sizeScore * 0.2);
+			
+			return { key, entry, value };
+		});
+
+		// Sort by value (ascending) and evict bottom 20% if cache is near full
+		const threshold = this.settings.maxEntries * 0.8;
+		if (this.cache.size > threshold) {
+			scored.sort((a, b) => a.value - b.value);
+			const toEvict = Math.floor((this.cache.size - threshold) * 1.2);
+			
+			for (let i = 0; i < toEvict && i < scored.length; i++) {
+				this.cache.delete(scored[i].key);
+				evictedCount++;
+			}
+
+			this.stats.totalEntries = this.cache.size;
+			this.updateCacheSize();
+		}
+
+		return evictedCount;
+	}
+
+	/**
+	 * Batch get multiple cache entries
+	 * Returns Map of key -> entry for found items
+	 */
+	batchGet(queries: Array<{ prompt: string; context: string; model: string; temperature: number }>): Map<string, CacheEntry> {
+		const results = new Map<string, CacheEntry>();
+		
+		for (const query of queries) {
+			const entry = this.get(query.prompt, query.context, query.model, query.temperature);
+			if (entry) {
+				const key = this.generateCacheKey(query.prompt, query.context, query.model, query.temperature);
+				results.set(key, entry);
+			}
+		}
+
+		return results;
+	}
+
+	/**
+	 * Batch set multiple cache entries
+	 * More efficient than multiple individual sets
+	 */
+	batchSet(entries: Array<{
+		prompt: string;
+		context: string;
+		model: string;
+		temperature: number;
+		response: string;
+		tokensUsed: number;
+		inputTokens?: number;
+		outputTokens?: number;
+	}>): number {
+		let addedCount = 0;
+
+		for (const entry of entries) {
+			this.set(
+				entry.prompt,
+				entry.context,
+				entry.model,
+				entry.temperature,
+				entry.response,
+				entry.tokensUsed,
+				entry.inputTokens || 0,
+				entry.outputTokens || 0
+			);
+			addedCount++;
+		}
+
+		return addedCount;
+	}
+
+	/**
+	 * Get cache performance metrics
+	 * Useful for monitoring and optimization
+	 */
+	getPerformanceMetrics(): {
+		hitRate: number;
+		avgAccessCount: number;
+		medianAccessCount: number;
+		totalSavings: number;
+		estimatedCostSavings: number;
+		cacheEfficiency: number;
+	} {
+		const entries = Array.from(this.cache.values());
+		const total = this.stats.totalHits + this.stats.totalMisses;
+		
+		// Calculate hit rate
+		const hitRate = total > 0 ? (this.stats.totalHits / total) * 100 : 0;
+		
+		// Calculate average and median access count
+		const accessCounts = entries.map(e => e.accessCount).sort((a, b) => a - b);
+		const avgAccessCount = accessCounts.length > 0
+			? accessCounts.reduce((sum, count) => sum + count, 0) / accessCounts.length
+			: 0;
+		const medianAccessCount = accessCounts.length > 0
+			? accessCounts[Math.floor(accessCounts.length / 2)]
+			: 0;
+
+		// Calculate cache efficiency (hits per entry)
+		const cacheEfficiency = entries.length > 0
+			? this.stats.totalHits / entries.length
+			: 0;
+
+		return {
+			hitRate,
+			avgAccessCount,
+			medianAccessCount,
+			totalSavings: this.stats.estimatedSavings,
+			estimatedCostSavings: this.getEstimatedCostSavings(),
+			cacheEfficiency
+		};
+	}
 }
