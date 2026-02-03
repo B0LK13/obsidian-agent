@@ -239,6 +239,12 @@ The plugin includes comprehensive accessibility features:
 **Issue**: Ollama not connecting  
 **Solution**: Ensure Ollama is running with `ollama serve` on port 11434
 
+**Issue**: Windows Defender false positive (Windows only)  
+**Solution**: See detailed instructions in [INSTALLATION.md](INSTALLATION.md#windows-defender-false-positive-windows-only) or run `scripts/setup-defender-exclusions.ps1` as Administrator
+
+**Issue**: Out of Memory errors with large models (GPU)  
+**Solution**: Reduce context size, use more quantized models (Q4 instead of Q6), or enable automatic GPU memory management in settings
+
 ### Getting Help
 
 - 📖 [Full Documentation](https://github.com/B0LK13/obsidian-agent/wiki)

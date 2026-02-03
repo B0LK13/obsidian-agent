@@ -1,6 +1,8 @@
 import { ObsidianAgentSettings } from './settings';
 import { requestUrl, RequestUrlResponse } from 'obsidian';
 import { CacheService, CacheEntry } from './cacheService';
+import { ValidationError, APIError, NetworkError, ConfigurationError } from './src/errors';
+import { Validators } from './src/validators';
 
 export interface CompletionResult {
 	text: string;
@@ -33,16 +35,26 @@ export class AIService {
 	private bypassCache: boolean = false;
 
 	constructor(settings: ObsidianAgentSettings) {
+		// Validate settings
+		if (!settings) {
+			throw new ValidationError('Settings are required');
+		}
+		
 		this.settings = settings;
 		this.cacheService = new CacheService(settings.cacheConfig);
 		
-		// Import persisted cache data if available
-		if (settings.cacheData?.entries?.length > 0) {
-			this.cacheService.importCache({
-				entries: settings.cacheData.entries,
-				stats: settings.cacheData.stats,
-				settings: settings.cacheConfig
-			});
+		// Import persisted cache data if available (with safety checks)
+		if (settings.cacheData?.entries && Array.isArray(settings.cacheData.entries) && settings.cacheData.entries.length > 0) {
+			try {
+				this.cacheService.importCache({
+					entries: settings.cacheData.entries,
+					stats: settings.cacheData.stats || { hits: 0, misses: 0, evictions: 0 },
+					settings: settings.cacheConfig
+				});
+			} catch (error) {
+				console.error('Failed to import cache data:', error);
+				// Continue without cached data
+			}
 		}
 	}
 
@@ -75,7 +87,8 @@ export class AIService {
 	}
 
 	async testConnection(): Promise<{ success: boolean; message: string; responseTime?: number }> {
-		if (!this.settings.apiKey) {
+		// Validate API key for non-Ollama providers
+		if (this.settings.apiProvider !== 'ollama' && !this.settings.apiKey) {
 			return {
 				success: false,
 				message: 'API key not configured'
@@ -91,6 +104,14 @@ export class AIService {
 			}], 1);
 			
 			const responseTime = Date.now() - startTime;
+			
+			// Validate result
+			if (!result || typeof result.text !== 'string') {
+				return {
+					success: false,
+					message: 'Connection succeeded but received invalid response'
+				};
+			}
 			
 			if (result.text.trim().toLowerCase() === 'ok' || result.text.length > 0) {
 				return {
@@ -115,28 +136,45 @@ export class AIService {
 	}
 
 	async generateCompletion(prompt: string, context?: string, stream?: boolean, onChunk?: StreamCallback, onProgress?: StreamProgressCallback): Promise<CompletionResult> {
-		if (!this.settings.apiKey && this.settings.apiProvider !== 'ollama') {
-			throw new Error('API key not configured. Please set it in settings.');
+		// Input validation
+		try {
+			Validators.notEmpty(prompt, 'prompt');
+		} catch (error) {
+			throw new ValidationError('Prompt cannot be empty');
+		}
+
+		// Validate settings
+		if (this.settings.apiProvider !== 'ollama' && !this.settings.apiKey) {
+			throw new ConfigurationError('API key not configured. Please set it in settings.', 'apiKey');
+		}
+
+		// Validate model is set
+		if (!this.settings.model || this.settings.model.trim().length === 0) {
+			throw new ConfigurationError('Model not configured. Please select a model in settings.', 'model');
 		}
 
 		// Check cache first (only for non-streaming requests)
 		if (!stream && !this.bypassCache && this.cacheService.isEnabled()) {
-			const cachedEntry = this.cacheService.get(
-				prompt,
-				context || '',
-				this.settings.model,
-				this.settings.temperature
-			);
+			try {
+				const cachedEntry = this.cacheService.get(
+					prompt,
+					context || '',
+					this.settings.model,
+					this.settings.temperature
+				);
 
-			if (cachedEntry) {
-				return {
-					text: cachedEntry.response,
-					tokensUsed: cachedEntry.tokensUsed,
-					inputTokens: cachedEntry.inputTokens,
-					outputTokens: cachedEntry.outputTokens,
-					fromCache: true,
-					cacheEntry: cachedEntry
-				};
+				if (cachedEntry) {
+					return {
+						text: cachedEntry.response,
+						tokensUsed: cachedEntry.tokensUsed,
+						inputTokens: cachedEntry.inputTokens,
+						outputTokens: cachedEntry.outputTokens,
+						fromCache: true,
+						cacheEntry: cachedEntry
+					};
+				}
+			} catch (error) {
+				console.warn('Cache lookup failed, continuing with API call:', error);
 			}
 		}
 
@@ -145,14 +183,14 @@ export class AIService {
 
 		const messages = [];
 		
-		if (this.settings.systemPrompt) {
+		if (this.settings.systemPrompt && this.settings.systemPrompt.trim().length > 0) {
 			messages.push({
 				role: 'system',
 				content: this.settings.systemPrompt
 			});
 		}
 
-		if (context && this.settings.enableContextAwareness) {
+		if (context && this.settings.enableContextAwareness && context.trim().length > 0) {
 			messages.push({
 				role: 'system',
 				content: `Context from current note:\n${context}`
@@ -175,26 +213,46 @@ export class AIService {
 				result = await this.callAPIWithRetry(messages);
 			}
 
+			// Validate result
+			if (!result || typeof result.text !== 'string') {
+				throw new APIError('Received invalid response from API');
+			}
+
 			// Store in cache (for non-streaming or after streaming completes)
-			if (this.cacheService.isEnabled() && result.text) {
-				const cacheEntry = this.cacheService.set(
-					prompt,
-					context || '',
-					this.settings.model,
-					this.settings.temperature,
-					result.text,
-					result.tokensUsed || 0,
-					result.inputTokens || 0,
-					result.outputTokens || 0
-				);
-				result.cacheEntry = cacheEntry;
+			if (this.cacheService.isEnabled() && result.text && result.text.length > 0) {
+				try {
+					const cacheEntry = this.cacheService.set(
+						prompt,
+						context || '',
+						this.settings.model,
+						this.settings.temperature,
+						result.text,
+						result.tokensUsed || 0,
+						result.inputTokens || 0,
+						result.outputTokens || 0
+					);
+					result.cacheEntry = cacheEntry;
+				} catch (error) {
+					console.warn('Failed to cache result:', error);
+					// Continue without caching
+				}
 			}
 
 			result.fromCache = false;
 			return result;
 		} catch (error: any) {
 			console.error('AI Service Error:', error);
-			throw new Error(this.getErrorMessage(error));
+			
+			// Re-throw known error types
+			if (error instanceof ValidationError || 
+			    error instanceof APIError || 
+			    error instanceof ConfigurationError ||
+			    error instanceof NetworkError) {
+				throw error;
+			}
+			
+			// Wrap unknown errors
+			throw new APIError(this.getErrorMessage(error));
 		}
 	}
 

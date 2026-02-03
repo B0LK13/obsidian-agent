@@ -4,6 +4,7 @@ import { ObsidianAgentSettingTab } from './settingsTab';
 import { AIService, CompletionResult } from './aiService';
 import { EnhancedAgentModal } from './agentModalEnhanced';
 import { ContextProvider, ContextConfig } from './contextProvider';
+import { ValidationError, APIError, ConfigurationError } from './src/errors';
 
 // Import enhanced UI styles
 const ENHANCED_STYLES = `
@@ -89,38 +90,60 @@ export default class ObsidianAgentPlugin extends Plugin {
 	contextProvider!: ContextProvider;
 
 	async onload() {
-		await this.loadSettings();
-		await this.migrateToProfiles();
+		try {
+			await this.loadSettings();
+			await this.migrateToProfiles();
 
-		this.registerStyles();
+			this.registerStyles();
 
-		this.aiService = new AIService(this.settings);
-		this.contextProvider = new ContextProvider(this.app);
+			// Validate settings before creating services
+			if (!this.settings) {
+				throw new ConfigurationError('Failed to load plugin settings');
+			}
 
-		if (!this.settings.totalRequests) {
-			this.settings.totalRequests = 0;
-			this.settings.totalTokensUsed = 0;
-			this.settings.estimatedCost = 0;
-		}
+			this.aiService = new AIService(this.settings);
+			this.contextProvider = new ContextProvider(this.app);
+
+			// Initialize usage stats with defaults
+			if (!this.settings.totalRequests) {
+				this.settings.totalRequests = 0;
+			}
+			if (!this.settings.totalTokensUsed) {
+				this.settings.totalTokensUsed = 0;
+			}
+			if (!this.settings.estimatedCost) {
+				this.settings.estimatedCost = 0;
+			}
 
 		// Command: Ask AI Agent
 		this.addCommand({
 			id: 'ask-ai-agent',
 			name: 'Ask AI Agent',
 			editorCallback: async (editor: Editor, ctx) => {
-				const view = ctx as MarkdownView;
-				const currentContent = editor.getValue();
-				const context = await this.gatherFullContext(view.file, currentContent);
-				new EnhancedAgentModal(
-					this.app, 
-					this.aiService, 
-					this.settings,
-					() => this.saveSettings(),
-					context, 
-					(result) => {
-						editor.replaceSelection(result);
+				try {
+					const view = ctx as MarkdownView;
+					if (!view || !view.file) {
+						new Notice('No active file found');
+						return;
 					}
-				).open();
+
+					const currentContent = editor.getValue();
+					const context = await this.gatherFullContext(view.file, currentContent);
+					new EnhancedAgentModal(
+						this.app, 
+						this.aiService, 
+						this.settings,
+						() => this.saveSettings(),
+						context, 
+						(result) => {
+							if (result && typeof result === 'string') {
+								editor.replaceSelection(result);
+							}
+						}
+					).open();
+				} catch (error: any) {
+					this.handleError(error, 'Failed to open AI Agent');
+				}
 			}
 		});
 
@@ -129,19 +152,30 @@ export default class ObsidianAgentPlugin extends Plugin {
 			id: 'ask-ai-agent-vault-context',
 			name: 'Ask AI Agent (with Linked Notes)',
 			editorCallback: async (editor: Editor, ctx) => {
-				const view = ctx as MarkdownView;
-				const currentContent = editor.getValue();
-				const context = await this.gatherFullContext(view.file, currentContent, true);
-				new EnhancedAgentModal(
-					this.app, 
-					this.aiService, 
-					this.settings,
-					() => this.saveSettings(),
-					context, 
-					(result) => {
-						editor.replaceSelection(result);
+				try {
+					const view = ctx as MarkdownView;
+					if (!view || !view.file) {
+						new Notice('No active file found');
+						return;
 					}
-				).open();
+
+					const currentContent = editor.getValue();
+					const context = await this.gatherFullContext(view.file, currentContent, true);
+					new EnhancedAgentModal(
+						this.app, 
+						this.aiService, 
+						this.settings,
+						() => this.saveSettings(),
+						context, 
+						(result) => {
+							if (result && typeof result === 'string') {
+								editor.replaceSelection(result);
+							}
+						}
+					).open();
+				} catch (error: any) {
+					this.handleError(error, 'Failed to open AI Agent with vault context');
+				}
 			}
 		});
 
@@ -301,7 +335,10 @@ export default class ObsidianAgentPlugin extends Plugin {
 		this.addSettingTab(new ObsidianAgentSettingTab(this.app, this));
 
 		console.log('Obsidian Agent plugin loaded');
+	} catch (error: any) {
+		this.handleError(error, 'Failed to load plugin');
 	}
+}
 
 	onunload() {
 		console.log('Obsidian Agent plugin unloaded');
@@ -312,6 +349,11 @@ export default class ObsidianAgentPlugin extends Plugin {
 	}
 
 	private async gatherFullContext(file: TFile | null, currentContent: string, forceVaultContext: boolean = false): Promise<string> {
+		// Validate inputs
+		if (!currentContent) {
+			currentContent = '';
+		}
+
 		const config = this.settings.contextConfig;
 		
 		// Check if any vault context is enabled
@@ -321,11 +363,11 @@ export default class ObsidianAgentPlugin extends Plugin {
 			config?.enableTagContext || 
 			config?.enableFolderContext;
 
-		if (!hasVaultContext) {
+		if (!hasVaultContext || !file) {
 			return currentContent;
 		}
 
-		// Build context config
+		// Build context config with defaults
 		const contextConfig: ContextConfig = {
 			sources: [
 				{ type: 'current', enabled: true },
@@ -334,10 +376,10 @@ export default class ObsidianAgentPlugin extends Plugin {
 				{ type: 'tags', enabled: config?.enableTagContext || false },
 				{ type: 'folder', enabled: config?.enableFolderContext || false }
 			],
-			maxNotesPerSource: config?.maxNotesPerSource || 5,
-			maxTokensPerNote: config?.maxTokensPerNote || 1000,
-			linkDepth: config?.linkDepth || 1,
-			excludeFolders: (config?.excludeFolders || 'templates, .obsidian').split(',').map(s => s.trim())
+			maxNotesPerSource: Math.max(1, config?.maxNotesPerSource || 5),
+			maxTokensPerNote: Math.max(100, config?.maxTokensPerNote || 1000),
+			linkDepth: Math.max(1, Math.min(3, config?.linkDepth || 1)),
+			excludeFolders: (config?.excludeFolders || 'templates, .obsidian').split(',').map(s => s.trim()).filter(s => s.length > 0)
 		};
 
 		try {
@@ -348,6 +390,10 @@ export default class ObsidianAgentPlugin extends Plugin {
 				this.settings.apiProvider
 			);
 
+			if (!contexts || contexts.length === 0) {
+				return currentContent;
+			}
+
 			const formattedContext = this.contextProvider.formatContextsForPrompt(contexts);
 			
 			if (contexts.length > 1) {
@@ -355,9 +401,10 @@ export default class ObsidianAgentPlugin extends Plugin {
 				new Notice(`Loaded context from ${additionalNotes} additional note(s)`);
 			}
 
-			return formattedContext;
+			return formattedContext || currentContent;
 		} catch (error) {
 			console.error('Failed to gather vault context:', error);
+			new Notice('Warning: Could not load vault context, using current note only');
 			return currentContent;
 		}
 	}
@@ -444,21 +491,49 @@ export default class ObsidianAgentPlugin extends Plugin {
 	}
 
 	private async trackTokenUsage(result: CompletionResult): Promise<void> {
-		if (!this.settings.enableTokenTracking || !result.tokensUsed) {
-			return;
+		try {
+			if (!this.settings.enableTokenTracking || !result.tokensUsed) {
+				return;
+			}
+
+			// Initialize with defaults if not set
+			this.settings.totalRequests = (this.settings.totalRequests || 0) + 1;
+			this.settings.totalTokensUsed = (this.settings.totalTokensUsed || 0) + result.tokensUsed;
+
+			const cost = this.estimateCost(result);
+			this.settings.estimatedCost = (this.settings.estimatedCost || 0) + cost;
+
+			// Cost threshold warning
+			const threshold = this.settings.costThreshold || 10;
+			if (this.settings.estimatedCost > threshold) {
+				new Notice(`Cost warning: You've spent approximately $${this.settings.estimatedCost.toFixed(2)} this session`, 5000);
+			}
+
+			await this.saveSettings();
+		} catch (error) {
+			console.error('Failed to track token usage:', error);
+			// Don't throw - token tracking is not critical
+		}
+	}
+
+	/**
+	 * Centralized error handler for better error messages
+	 */
+	private handleError(error: any, context: string): void {
+		let message = context;
+
+		if (error instanceof ValidationError) {
+			message = `Validation error: ${error.message}`;
+		} else if (error instanceof APIError) {
+			message = `API error: ${error.message}`;
+		} else if (error instanceof ConfigurationError) {
+			message = `Configuration error: ${error.message}`;
+		} else if (error.message) {
+			message = `${context}: ${error.message}`;
 		}
 
-		this.settings.totalRequests = (this.settings.totalRequests || 0) + 1;
-		this.settings.totalTokensUsed = (this.settings.totalTokensUsed || 0) + result.tokensUsed;
-
-		const cost = this.estimateCost(result);
-		this.settings.estimatedCost = (this.settings.estimatedCost || 0) + cost;
-
-		if (this.settings.estimatedCost > this.settings.costThreshold) {
-			new Notice(`Cost warning: You've spent approximately $${this.settings.estimatedCost.toFixed(2)} this session`, 5000);
-		}
-
-		await this.saveSettings();
+		console.error(context, error);
+		new Notice(message, 5000);
 	}
 
 	private registerStyles(): void {

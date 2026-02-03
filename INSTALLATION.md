@@ -232,6 +232,120 @@ npm run build
 
 ## 🐛 Troubleshooting
 
+### Windows Defender False Positive (Windows Only)
+
+**Problem**: Windows Defender flags the plugin or Python processes as suspicious, causing slow startup or quarantine
+
+**Symptoms**:
+- Slow plugin startup (>30 seconds)
+- Windows Defender notification about "Suspicious process"
+- Process gets quarantined in rare cases
+- AI features not working properly
+
+**Solutions**:
+
+#### Option 1: Add Exclusions via PowerShell (Recommended)
+
+Run PowerShell as Administrator and execute:
+
+```powershell
+# Add Python.exe to Windows Defender exclusions
+Add-MpPreference -ExclusionProcess "python.exe"
+
+# Add Obsidian vault plugins folder to exclusions
+# Replace <YourVault> with your actual vault name
+Add-MpPreference -ExclusionPath "$env:USERPROFILE\Documents\Obsidian Vaults\<YourVault>\.obsidian\plugins"
+
+# Add the specific plugin folder
+Add-MpPreference -ExclusionPath "$env:USERPROFILE\Documents\Obsidian Vaults\<YourVault>\.obsidian\plugins\obsidian-agent"
+
+# Verify exclusions were added
+Get-MpPreference | Select-Object -ExpandProperty ExclusionPath
+Get-MpPreference | Select-Object -ExpandProperty ExclusionProcess
+```
+
+#### Option 2: Add Exclusions via Windows Security GUI
+
+1. Open **Windows Security** (Windows key → type "Windows Security")
+2. Click **Virus & threat protection**
+3. Scroll down to **Virus & threat protection settings**
+4. Click **Manage settings**
+5. Scroll down to **Exclusions**
+6. Click **Add or remove exclusions**
+7. Click **Add an exclusion** → **Process**
+8. Type: `python.exe` and click **Add**
+9. Click **Add an exclusion** → **Folder**
+10. Browse to: `%USERPROFILE%\Documents\Obsidian Vaults\<YourVault>\.obsidian\plugins\obsidian-agent`
+11. Click **Select Folder**
+
+#### Option 3: Automated Setup Script
+
+Create a file named `setup-defender-exclusions.ps1` with the following content:
+
+```powershell
+# Obsidian Agent - Windows Defender Exclusion Setup Script
+# Run as Administrator
+
+param(
+    [Parameter(Mandatory=$true)]
+    [string]$VaultPath
+)
+
+Write-Host "Setting up Windows Defender exclusions for Obsidian Agent..." -ForegroundColor Green
+
+# Add Python process exclusion
+try {
+    Add-MpPreference -ExclusionProcess "python.exe" -ErrorAction Stop
+    Write-Host "✓ Added python.exe to process exclusions" -ForegroundColor Green
+} catch {
+    Write-Host "⚠ Could not add python.exe exclusion: $_" -ForegroundColor Yellow
+}
+
+# Add plugin folder exclusion
+$pluginPath = Join-Path -Path $VaultPath -ChildPath ".obsidian\plugins\obsidian-agent"
+if (Test-Path $pluginPath) {
+    try {
+        Add-MpPreference -ExclusionPath $pluginPath -ErrorAction Stop
+        Write-Host "✓ Added $pluginPath to path exclusions" -ForegroundColor Green
+    } catch {
+        Write-Host "⚠ Could not add path exclusion: $_" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "⚠ Plugin path not found: $pluginPath" -ForegroundColor Yellow
+}
+
+Write-Host "`nExclusions added successfully!" -ForegroundColor Green
+Write-Host "Please restart Obsidian for changes to take effect." -ForegroundColor Cyan
+```
+
+Run it with:
+```powershell
+# Run as Administrator
+.\setup-defender-exclusions.ps1 -VaultPath "C:\Users\YourName\Documents\Obsidian Vaults\YourVault"
+```
+
+#### Why This Happens
+
+Windows Defender may flag Python processes spawned by the AI stack as suspicious due to:
+- Behavioral heuristics detecting process spawning
+- Network activity from API calls
+- Dynamic code execution patterns
+- Unsigned executables
+
+#### Notes
+
+- These exclusions are **safe** and only affect the specific plugin folder and Python processes
+- Exclusions do not disable Windows Defender globally
+- The plugin does not contain malicious code (open source: verify on GitHub)
+- Consider these exclusions only if you trust the plugin source
+
+#### Alternative: Use Cloud AI Providers
+
+If you cannot modify Windows Defender settings:
+- Use cloud-based AI providers (OpenAI, Anthropic) instead of local models
+- This avoids Python process spawning entirely
+- Configure in Settings → Obsidian Agent → API Provider
+
 ### Plugin Not Appearing
 
 **Problem**: Plugin doesn't show in Community Plugins list
