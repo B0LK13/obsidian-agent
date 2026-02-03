@@ -56,6 +56,12 @@ Access via Command Palette (`Ctrl/Cmd + P`):
 | **Auto-Tag Current Note (Top Suggestions)** | Automatically apply high-confidence tags |
 | **Find Duplicate & Similar Notes** | Detect exact, near-exact, and semantic duplicates |
 | **Compare Current Note with Another** | Side-by-side note comparison |
+| **Synthesize Insights from Multiple Notes** | AI-powered multi-note synthesis with citations |
+| **Research Assistant - Answer from Vault** | Answer questions using your entire knowledge base |
+| **Identify Knowledge Gaps in Research** | Discover what's missing in your research |
+| **Suggest Next Research Directions** | AI-suggested research paths based on current work |
+| **Find Semantically Related Notes** | Discover connected notes using AI clustering |
+| **Discover Semantic Note Clusters** | Automatically group related notes by theme |
 
 ## 📦 Installation
 
