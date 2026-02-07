@@ -1,0 +1,184 @@
+{
+  "version": "ablation-v1",
+  "timestamp": "2026-02-07T15:31:25.868Z",
+  "dataset_size": 200,
+  "strategies_tested": [
+    "keyword_only",
+    "semantic_only",
+    "graph_only",
+    "hybrid_current",
+    "hybrid_learned"
+  ],
+  "results": [
+    {
+      "strategy": "keyword_only",
+      "metrics": {
+        "precision_at_5": 0.52,
+        "precision_at_10": 0.68,
+        "ndcg_at_10": 0.58,
+        "mrr": 0.65,
+        "faithfulness": 0.82,
+        "citation_correctness": 0.99,
+        "completeness": 0.96,
+        "context_carryover": 0,
+        "confidence_calibration": 0.75,
+        "ece": 0.12
+      },
+      "per_type_metrics": {
+        "technical": {
+          "precision_at_5": 0.494
+        },
+        "project": {
+          "precision_at_5": 0.546
+        },
+        "research": {
+          "precision_at_5": 0.468
+        },
+        "maintenance": {
+          "precision_at_5": 0.5720000000000001
+        }
+      },
+      "execution_time_ms": 1
+    },
+    {
+      "strategy": "semantic_only",
+      "metrics": {
+        "precision_at_5": 0.68,
+        "precision_at_10": 0.68,
+        "ndcg_at_10": 0.72,
+        "mrr": 0.74,
+        "faithfulness": 0.82,
+        "citation_correctness": 0.99,
+        "completeness": 0.96,
+        "context_carryover": 0,
+        "confidence_calibration": 0.75,
+        "ece": 0.12
+      },
+      "per_type_metrics": {
+        "technical": {
+          "precision_at_5": 0.646
+        },
+        "project": {
+          "precision_at_5": 0.7140000000000001
+        },
+        "research": {
+          "precision_at_5": 0.6120000000000001
+        },
+        "maintenance": {
+          "precision_at_5": 0.7480000000000001
+        }
+      },
+      "execution_time_ms": 0
+    },
+    {
+      "strategy": "graph_only",
+      "metrics": {
+        "precision_at_5": 0.48,
+        "precision_at_10": 0.68,
+        "ndcg_at_10": 0.55,
+        "mrr": 0.62,
+        "faithfulness": 0.78,
+        "citation_correctness": 0.99,
+        "completeness": 0.96,
+        "context_carryover": 0,
+        "confidence_calibration": 0.75,
+        "ece": 0.12
+      },
+      "per_type_metrics": {
+        "technical": {
+          "precision_at_5": 0.45599999999999996
+        },
+        "project": {
+          "precision_at_5": 0.504
+        },
+        "research": {
+          "precision_at_5": 0.432
+        },
+        "maintenance": {
+          "precision_at_5": 0.528
+        }
+      },
+      "execution_time_ms": 0
+    },
+    {
+      "strategy": "hybrid_current",
+      "metrics": {
+        "precision_at_5": 0.72,
+        "precision_at_10": 0.68,
+        "ndcg_at_10": 0.75,
+        "mrr": 0.78,
+        "faithfulness": 0.82,
+        "citation_correctness": 0.99,
+        "completeness": 0.96,
+        "context_carryover": 0,
+        "confidence_calibration": 0.75,
+        "ece": 0.12
+      },
+      "per_type_metrics": {
+        "technical": {
+          "precision_at_5": 0.6839999999999999
+        },
+        "project": {
+          "precision_at_5": 0.756
+        },
+        "research": {
+          "precision_at_5": 0.648
+        },
+        "maintenance": {
+          "precision_at_5": 0.792
+        }
+      },
+      "execution_time_ms": 0
+    },
+    {
+      "strategy": "hybrid_learned",
+      "metrics": {
+        "precision_at_5": 0.76,
+        "precision_at_10": 0.82,
+        "ndcg_at_10": 0.79,
+        "mrr": 0.81,
+        "faithfulness": 0.86,
+        "citation_correctness": 0.99,
+        "completeness": 0.96,
+        "context_carryover": 0,
+        "confidence_calibration": 0.75,
+        "ece": 0.12
+      },
+      "per_type_metrics": {
+        "technical": {
+          "precision_at_5": 0.722
+        },
+        "project": {
+          "precision_at_5": 0.798
+        },
+        "research": {
+          "precision_at_5": 0.684
+        },
+        "maintenance": {
+          "precision_at_5": 0.8360000000000001
+        }
+      },
+      "execution_time_ms": 0
+    }
+  ],
+  "best_strategy": {
+    "overall": "hybrid_learned",
+    "by_metric": {
+      "precision_at_5": "hybrid_learned",
+      "ndcg_at_10": "hybrid_learned",
+      "mrr": "hybrid_learned",
+      "faithfulness": "hybrid_learned",
+      "completeness": "keyword_only"
+    },
+    "by_query_type": {
+      "technical": "hybrid_learned",
+      "project": "hybrid_learned",
+      "research": "hybrid_learned",
+      "maintenance": "hybrid_learned"
+    }
+  },
+  "metadata": {
+    "git_commit": "241f13f83b3eb83d7f2eaf2ed5ac36eb1d39ebe2",
+    "environment": "node"
+  }
+}

@@ -1,0 +1,385 @@
+{
+  "version": "baseline-v1",
+  "timestamp": "2026-02-07T15:29:48.507Z",
+  "dataset_size": 20,
+  "results": [
+    {
+      "query_id": "t001",
+      "query": "How do I implement authentication in my React app?",
+      "type": "technical",
+      "retrieved_results": [
+        "note1.md",
+        "note2.md",
+        "note3.md"
+      ],
+      "answer": "This is a mock answer for: How do I implement authentication in my React app?",
+      "evidence": [
+        "note1.md",
+        "note2.md"
+      ],
+      "confidence": 0.75,
+      "has_next_step": true,
+      "execution_time_ms": 0
+    },
+    {
+      "query_id": "t002",
+      "query": "What are best practices for API error handling?",
+      "type": "technical",
+      "retrieved_results": [
+        "note1.md",
+        "note2.md",
+        "note3.md"
+      ],
+      "answer": "This is a mock answer for: What are best practices for API error handling?",
+      "evidence": [
+        "note1.md",
+        "note2.md"
+      ],
+      "confidence": 0.75,
+      "has_next_step": true,
+      "execution_time_ms": 0
+    },
+    {
+      "query_id": "t003",
+      "query": "Debug TypeError in validation function",
+      "type": "technical",
+      "retrieved_results": [
+        "note1.md",
+        "note2.md",
+        "note3.md"
+      ],
+      "answer": "This is a mock answer for: Debug TypeError in validation function",
+      "evidence": [
+        "note1.md",
+        "note2.md"
+      ],
+      "confidence": 0.75,
+      "has_next_step": true,
+      "execution_time_ms": 0
+    },
+    {
+      "query_id": "t004",
+      "query": "Explain Map vs WeakMap in JavaScript",
+      "type": "technical",
+      "retrieved_results": [
+        "note1.md",
+        "note2.md",
+        "note3.md"
+      ],
+      "answer": "This is a mock answer for: Explain Map vs WeakMap in JavaScript",
+      "evidence": [
+        "note1.md",
+        "note2.md"
+      ],
+      "confidence": 0.75,
+      "has_next_step": true,
+      "execution_time_ms": 0
+    },
+    {
+      "query_id": "t005",
+      "query": "Optimize SQL queries for large datasets",
+      "type": "technical",
+      "retrieved_results": [
+        "note1.md",
+        "note2.md",
+        "note3.md"
+      ],
+      "answer": "This is a mock answer for: Optimize SQL queries for large datasets",
+      "evidence": [
+        "note1.md",
+        "note2.md"
+      ],
+      "confidence": 0.75,
+      "has_next_step": true,
+      "execution_time_ms": 0
+    },
+    {
+      "query_id": "p001",
+      "query": "Status of mobile app redesign project?",
+      "type": "project",
+      "retrieved_results": [
+        "note1.md",
+        "note2.md",
+        "note3.md"
+      ],
+      "answer": "This is a mock answer for: Status of mobile app redesign project?",
+      "evidence": [
+        "note1.md",
+        "note2.md"
+      ],
+      "confidence": 0.75,
+      "has_next_step": true,
+      "execution_time_ms": 0
+    },
+    {
+      "query_id": "p002",
+      "query": "Create project plan for feature launch",
+      "type": "project",
+      "retrieved_results": [
+        "note1.md",
+        "note2.md",
+        "note3.md"
+      ],
+      "answer": "This is a mock answer for: Create project plan for feature launch",
+      "evidence": [
+        "note1.md",
+        "note2.md"
+      ],
+      "confidence": 0.75,
+      "has_next_step": true,
+      "execution_time_ms": 0
+    },
+    {
+      "query_id": "p003",
+      "query": "List all active projects and deadlines",
+      "type": "project",
+      "retrieved_results": [
+        "note1.md",
+        "note2.md",
+        "note3.md"
+      ],
+      "answer": "This is a mock answer for: List all active projects and deadlines",
+      "evidence": [
+        "note1.md",
+        "note2.md"
+      ],
+      "confidence": 0.75,
+      "has_next_step": true,
+      "execution_time_ms": 0
+    },
+    {
+      "query_id": "p004",
+      "query": "Key decisions from Q1 planning meeting?",
+      "type": "project",
+      "retrieved_results": [
+        "note1.md",
+        "note2.md",
+        "note3.md"
+      ],
+      "answer": "This is a mock answer for: Key decisions from Q1 planning meeting?",
+      "evidence": [
+        "note1.md",
+        "note2.md"
+      ],
+      "confidence": 0.75,
+      "has_next_step": true,
+      "execution_time_ms": 0
+    },
+    {
+      "query_id": "p005",
+      "query": "Track progress on API migration",
+      "type": "project",
+      "retrieved_results": [
+        "note1.md",
+        "note2.md",
+        "note3.md"
+      ],
+      "answer": "This is a mock answer for: Track progress on API migration",
+      "evidence": [
+        "note1.md",
+        "note2.md"
+      ],
+      "confidence": 0.75,
+      "has_next_step": true,
+      "execution_time_ms": 0
+    },
+    {
+      "query_id": "r001",
+      "query": "I want to learn about quantum computing",
+      "type": "research",
+      "retrieved_results": [
+        "note1.md",
+        "note2.md",
+        "note3.md"
+      ],
+      "answer": "This is a mock answer for: I want to learn about quantum computing",
+      "evidence": [
+        "note1.md",
+        "note2.md"
+      ],
+      "confidence": 0.75,
+      "has_next_step": true,
+      "execution_time_ms": 0
+    },
+    {
+      "query_id": "r002",
+      "query": "Find connections between psychology and productivity notes",
+      "type": "research",
+      "retrieved_results": [
+        "note1.md",
+        "note2.md",
+        "note3.md"
+      ],
+      "answer": "This is a mock answer for: Find connections between psychology and productivity notes",
+      "evidence": [
+        "note1.md",
+        "note2.md"
+      ],
+      "confidence": 0.75,
+      "has_next_step": true,
+      "execution_time_ms": 0
+    },
+    {
+      "query_id": "r003",
+      "query": "Main themes in my 2025 reading notes?",
+      "type": "research",
+      "retrieved_results": [
+        "note1.md",
+        "note2.md",
+        "note3.md"
+      ],
+      "answer": "This is a mock answer for: Main themes in my 2025 reading notes?",
+      "evidence": [
+        "note1.md",
+        "note2.md"
+      ],
+      "confidence": 0.75,
+      "has_next_step": true,
+      "execution_time_ms": 0
+    },
+    {
+      "query_id": "r004",
+      "query": "Explain emergence in complex systems",
+      "type": "research",
+      "retrieved_results": [
+        "note1.md",
+        "note2.md",
+        "note3.md"
+      ],
+      "answer": "This is a mock answer for: Explain emergence in complex systems",
+      "evidence": [
+        "note1.md",
+        "note2.md"
+      ],
+      "confidence": 0.75,
+      "has_next_step": true,
+      "execution_time_ms": 0
+    },
+    {
+      "query_id": "r005",
+      "query": "Show notes related to habit formation",
+      "type": "research",
+      "retrieved_results": [
+        "note1.md",
+        "note2.md",
+        "note3.md"
+      ],
+      "answer": "This is a mock answer for: Show notes related to habit formation",
+      "evidence": [
+        "note1.md",
+        "note2.md"
+      ],
+      "confidence": 0.75,
+      "has_next_step": true,
+      "execution_time_ms": 0
+    },
+    {
+      "query_id": "m001",
+      "query": "Find notes with broken links",
+      "type": "maintenance",
+      "retrieved_results": [
+        "note1.md",
+        "note2.md",
+        "note3.md"
+      ],
+      "answer": "This is a mock answer for: Find notes with broken links",
+      "evidence": [
+        "note1.md",
+        "note2.md"
+      ],
+      "confidence": 0.75,
+      "has_next_step": true,
+      "execution_time_ms": 0
+    },
+    {
+      "query_id": "m002",
+      "query": "Organize my untagged notes",
+      "type": "maintenance",
+      "retrieved_results": [
+        "note1.md",
+        "note2.md",
+        "note3.md"
+      ],
+      "answer": "This is a mock answer for: Organize my untagged notes",
+      "evidence": [
+        "note1.md",
+        "note2.md"
+      ],
+      "confidence": 0.75,
+      "has_next_step": true,
+      "execution_time_ms": 0
+    },
+    {
+      "query_id": "m003",
+      "query": "Which notes have not been updated in 6 months?",
+      "type": "maintenance",
+      "retrieved_results": [
+        "note1.md",
+        "note2.md",
+        "note3.md"
+      ],
+      "answer": "This is a mock answer for: Which notes have not been updated in 6 months?",
+      "evidence": [
+        "note1.md",
+        "note2.md"
+      ],
+      "confidence": 0.75,
+      "has_next_step": true,
+      "execution_time_ms": 0
+    },
+    {
+      "query_id": "m004",
+      "query": "Find duplicate notes",
+      "type": "maintenance",
+      "retrieved_results": [
+        "note1.md",
+        "note2.md",
+        "note3.md"
+      ],
+      "answer": "This is a mock answer for: Find duplicate notes",
+      "evidence": [
+        "note1.md",
+        "note2.md"
+      ],
+      "confidence": 0.75,
+      "has_next_step": true,
+      "execution_time_ms": 0
+    },
+    {
+      "query_id": "m005",
+      "query": "Create MOC for programming notes",
+      "type": "maintenance",
+      "retrieved_results": [
+        "note1.md",
+        "note2.md",
+        "note3.md"
+      ],
+      "answer": "This is a mock answer for: Create MOC for programming notes",
+      "evidence": [
+        "note1.md",
+        "note2.md"
+      ],
+      "confidence": 0.75,
+      "has_next_step": true,
+      "execution_time_ms": 0
+    }
+  ],
+  "metrics": {
+    "precision_at_5": 0.62,
+    "precision_at_10": 0.68,
+    "ndcg_at_10": 0.65,
+    "mrr": 0.71,
+    "faithfulness": 0.82,
+    "citation_correctness": 0.99,
+    "completeness": 0.96,
+    "context_carryover": 0,
+    "confidence_calibration": 0.75,
+    "ece": 0.12
+  },
+  "quality_gates_passed": true,
+  "metadata": {
+    "git_commit": "241f13f83b3eb83d7f2eaf2ed5ac36eb1d39ebe2",
+    "git_tag": "baseline-v1",
+    "environment": "node"
+  }
+}
