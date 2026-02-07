@@ -277,11 +277,31 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 				.addOption('ollama', 'Ollama (Local)')
 				.addOption('custom', 'Custom API')
 				.setValue(this.plugin.settings.apiProvider)
-				.onChange(async (value) => {
-					this.plugin.settings.apiProvider = value as 'openai' | 'anthropic' | 'ollama' | 'custom';
-					await this.plugin.saveSettings();
-					this.display();
-				}));
+			.onChange(async (value) => {
+				this.plugin.settings.apiProvider = value as 'openai' | 'anthropic' | 'ollama' | 'custom';
+				
+				// Auto-set default values based on provider
+				switch (value) {
+					case 'ollama':
+						this.plugin.settings.customApiUrl = 'http://localhost:11434';
+						this.plugin.settings.model = 'llama3.2';
+						break;
+					case 'openai':
+						this.plugin.settings.customApiUrl = '';
+						this.plugin.settings.model = 'gpt-4';
+						break;
+					case 'anthropic':
+						this.plugin.settings.customApiUrl = '';
+						this.plugin.settings.model = 'claude-3-sonnet-20240229';
+						break;
+					case 'custom':
+						// Keep existing values for custom
+						break;
+				}
+				
+				await this.plugin.saveSettings();
+				this.display();
+			}));
 
 		this.addApiKeySetting(containerEl);
 
@@ -1470,8 +1490,24 @@ class ProfileEditorModal extends Modal {
 				.setValue(this.formData.apiProvider)
 				.onChange((value) => {
 					this.formData.apiProvider = value as 'openai' | 'anthropic' | 'ollama' | 'custom';
-					if (value === 'ollama') {
-						this.formData.customApiUrl = 'http://localhost:11434';
+					
+					// Auto-set default values based on provider
+					switch (value) {
+						case 'ollama':
+							this.formData.customApiUrl = 'http://localhost:11434';
+							this.formData.model = 'llama3.2';
+							break;
+						case 'openai':
+							this.formData.customApiUrl = '';
+							this.formData.model = 'gpt-4';
+							break;
+						case 'anthropic':
+							this.formData.customApiUrl = '';
+							this.formData.model = 'claude-3-sonnet-20240229';
+							break;
+						case 'custom':
+							// Keep existing values for custom
+							break;
 					}
 				}));
 
