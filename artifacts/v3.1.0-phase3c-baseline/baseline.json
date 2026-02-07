@@ -1,0 +1,131 @@
+{
+  "version": "v3.1.0-phase3c-baseline",
+  "parent_release": "v3.0.0-phase3b",
+  "branch": "phase3c/durability-guardrails",
+  "created_at": "2026-02-08T00:05:00Z",
+  "commit": "14982cf",
+  "baseline_capture": {
+    "tests": {
+      "unit_passed": 138,
+      "benchmark_passed": 9,
+      "total_passed": 147,
+      "total_tests": 150,
+      "e2e_failures": 3,
+      "pass_rate": "98%"
+    },
+    "performance": {
+      "p50_latency_ms": 26500,
+      "p95_latency_ms": 35000,
+      "baseline_query_time_ms": 55000,
+      "improvement_percentage": 51.8
+    },
+    "typescript": {
+      "errors": 0,
+      "warnings": 0,
+      "status": "clean"
+    }
+  },
+  "sprint_objective": "Build a regression-proof runtime: no silent capability drift, no hidden latency creep, no context failures on note-centric intents",
+  "definition_of_done": {
+    "reliability": "≥99% tool success on supported intents",
+    "performance": "p95 latency regression ≤10% vs v3.0.0-phase3b baseline",
+    "quality_gates": "100% green in CI",
+    "cost": "stable or lower per query",
+    "active_note": "working in Obsidian runtime + deterministic fallback in headless mode"
+  },
+  "tasks": {
+    "P0_guardrails": {
+      "T1_tool_parity": {
+        "description": "Manifest↔Registry parity gate",
+        "week": 2,
+        "status": "pending"
+      },
+      "T2_schema_contract": {
+        "description": "JSON-schema contract snapshot tests",
+        "week": 2,
+        "status": "pending"
+      },
+      "T3_benchmark_budget": {
+        "description": "Benchmark budget gate (p50/p95 + runtime)",
+        "week": 3,
+        "status": "pending"
+      }
+    },
+    "P1_active_note": {
+      "T4_tool": {
+        "description": "Ship get_active_note_context tool",
+        "week": 3,
+        "status": "pending"
+      },
+      "T5_routing": {
+        "description": "Intent policy routing for note-centric intents",
+        "week": 3,
+        "status": "pending"
+      },
+      "T6_fallback": {
+        "description": "Headless deterministic fallback",
+        "week": 4,
+        "status": "pending"
+      },
+      "T7_tests": {
+        "description": "Integration tests for note flows",
+        "week": 4,
+        "status": "pending"
+      }
+    },
+    "P2_observability": {
+      "T8_events": {
+        "description": "Structured events (intent, tool, cost)",
+        "week": 5,
+        "status": "pending"
+      },
+      "T9_dashboard": {
+        "description": "Weekly trend dashboard",
+        "week": 5,
+        "status": "pending"
+      },
+      "T10_alerts": {
+        "description": "Alerting thresholds",
+        "week": 6,
+        "status": "pending"
+      }
+    },
+    "P3_eval_expansion": {
+      "T11_golden_set": {
+        "description": "Note-centric golden set",
+        "week": 7,
+        "status": "pending"
+      },
+      "T12_merge_gate": {
+        "description": "Merge gate enforcement",
+        "week": 8,
+        "status": "pending"
+      }
+    }
+  },
+  "risks": [
+    {
+      "id": "R1",
+      "description": "Tool surface drift after fast merges",
+      "mitigation": "mandatory parity gate + CODEOWNERS for tool manifest/registry"
+    },
+    {
+      "id": "R2", 
+      "description": "Latency creep from feature accretion",
+      "mitigation": "hard benchmark budget gate"
+    },
+    {
+      "id": "R3",
+      "description": "Headless/runtime behavior mismatch",
+      "mitigation": "dual-lane tests (runtime + headless deterministic fixtures)"
+    }
+  ],
+  "reporting_cadence": {
+    "weekly": "KPI delta report (reliability, p95, quality gates, cost)",
+    "biweekly": "Failure taxonomy trend + top 3 corrective actions",
+    "end_of_phase": "v3.1.0-phase3c release readiness review"
+  },
+  "created_by": "opencode agent",
+  "status": "baseline_captured",
+  "ready_for": "sprint_execution"
+}
