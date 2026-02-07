@@ -1,570 +1,215 @@
-/* Obsidian Agent Styles - Theme Compatible and Accessible */
-
-:root {
-	--oa-primary-color: var(--interactive-accent);
-	--oa-primary-text: var(--text-on-accent);
-	--oa-background-alt: var(--background-secondary);
-	--oa-surface: var(--background-primary);
-	--oa-surface-muted: var(--background-secondary);
-	--oa-border-color: var(--background-modifier-border);
-	--oa-border-strong: var(--background-modifier-border-hover, var(--background-modifier-border));
-	--oa-text-muted: var(--text-muted);
-	--oa-success-color: var(--text-success, #4caf50);
-	--oa-warning-color: var(--text-warning, #ff9800);
-	--oa-error-color: var(--text-error, #f44336);
-	--oa-message-user-bg: var(--background-secondary);
-	--oa-message-assistant-bg: var(--background-primary);
-	--oa-radius: var(--radius-s, 6px);
-	--oa-spacing-xs: 0.25rem;
-	--oa-spacing-sm: 0.5rem;
-	--oa-spacing-md: 0.75rem;
-	--oa-spacing-lg: 1rem;
-	--oa-transition: var(--transition-fast, 0.15s ease);
-	--oa-shadow: var(--shadow-l, 0 18px 40px rgba(0, 0, 0, 0.25));
-}
-
-.oa-high-contrast :root {
-	--oa-primary-color: #000000;
-	--oa-primary-text: #ffffff;
-	--oa-background-alt: #e0e0e0;
-	--oa-border-color: #000000;
-	--oa-text-muted: #404040;
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.obsidian-agent-modal *,
-	.obsidian-agent-modal *::before,
-	.obsidian-agent-modal *::after {
-		animation-duration: 0.01ms !important;
-		animation-iteration-count: 1 !important;
-		transition-duration: 0.01ms !important;
-		scroll-behavior: auto !important;
-	}
-}
-
-/* Modal Shell */
-.obsidian-agent-modal {
-	max-width: 860px;
-	width: min(96vw, 860px);
-	max-height: 90vh;
-}
-
-.obsidian-agent-modal .oa-modal-content {
-	display: flex;
-	flex-direction: column;
-	gap: var(--oa-spacing-lg);
-	padding: var(--oa-spacing-lg);
-	border-radius: var(--oa-radius);
-	background-color: var(--oa-surface);
-	box-shadow: var(--oa-shadow);
-}
-
-.oa-modal-title {
-	margin: 0;
-	font-size: var(--font-ui-large, 1.4em);
-	letter-spacing: 0.01em;
-}
-
-/* Conversation Row */
-.conversation-selector-row {
-	display: flex;
-	align-items: center;
-	gap: var(--oa-spacing-md);
-	margin-bottom: var(--oa-spacing-md);
-}
-
-.conversation-label {
-	font-size: var(--font-smaller, 0.85em);
-	color: var(--oa-text-muted);
-}
-
-.conversation-select {
-	flex: 1;
-	padding: 0.35rem 0.5rem;
-	border-radius: var(--oa-radius);
-	border: 1px solid var(--oa-border-color);
-	background-color: var(--oa-surface);
-	color: var(--text-normal);
-}
-
-/* Header */
-.oa-modal-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-start;
-	gap: var(--oa-spacing-lg);
-}
-
-.oa-header-text {
-	flex: 1;
-}
-
-.oa-shortcuts-hint {
-	font-size: var(--font-smaller, 0.85em);
-	color: var(--oa-text-muted);
-	margin-top: 0.25rem;
-}
-
-/* Button Styles */
-.obsidian-agent-modal button,
-.obsidian-agent-modal .oa-button {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--oa-spacing-xs);
-	padding: 0.4rem 0.85rem;
-	border-radius: var(--oa-radius);
-	border: 1px solid var(--oa-border-color);
-	background-color: var(--oa-background-alt);
-	color: var(--text-normal);
-	cursor: pointer;
-	font-size: var(--font-ui-small, 0.9em);
-	transition: background-color var(--oa-transition), border-color var(--oa-transition), transform var(--oa-transition);
-}
-
-.obsidian-agent-modal button:hover:not([disabled]),
-.obsidian-agent-modal .oa-button:hover:not([disabled]) {
-	background-color: var(--background-modifier-hover);
-	border-color: var(--oa-border-strong);
-}
-
-.obsidian-agent-modal button:active:not([disabled]),
-.obsidian-agent-modal .oa-button:active:not([disabled]) {
-	transform: translateY(1px);
-}
-
-.obsidian-agent-modal button.mod-cta,
-.obsidian-agent-modal .oa-button.mod-cta {
-	background-color: var(--interactive-accent);
-	color: var(--text-on-accent);
-	border-color: var(--interactive-accent);
-}
-
-.obsidian-agent-modal button.mod-cta:hover:not([disabled]),
-.obsidian-agent-modal .oa-button.mod-cta:hover:not([disabled]) {
-	background-color: var(--interactive-accent-hover);
-}
-
-.obsidian-agent-modal button.mod-warning,
-.obsidian-agent-modal .oa-button.mod-warning {
-	border-color: var(--oa-warning-color);
-	color: var(--oa-warning-color);
-}
-
-.obsidian-agent-modal button:disabled,
-.obsidian-agent-modal .oa-button:disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
-	transform: none;
-}
-
-.button-container {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--oa-spacing-md);
-	flex-wrap: wrap;
-}
-
-/* Prompt */
-.prompt-container {
-	margin: 0;
-}
-
-.obsidian-agent-modal textarea,
-.oa-prompt-input {
-	width: 100%;
-	min-height: 110px;
-	padding: var(--oa-spacing-md);
-	border: 1px solid var(--oa-border-color);
-	border-radius: var(--oa-radius);
-	background-color: var(--oa-surface);
-	color: var(--text-normal);
-	font-family: var(--font-monospace);
-	resize: vertical;
-	transition: border-color var(--oa-transition), box-shadow var(--oa-transition);
-}
-
-.obsidian-agent-modal textarea:focus,
-.oa-prompt-input:focus {
-	outline: 2px solid var(--oa-primary-color);
-	outline-offset: 2px;
-}
-
-/* Chat History */
-.chat-history-container {
-	max-height: 360px;
-	overflow-y: auto;
-	padding: var(--oa-spacing-md);
-	background: linear-gradient(180deg, var(--oa-surface) 0%, var(--oa-background-alt) 100%);
-	border-radius: var(--oa-radius);
-	border: 1px solid var(--oa-border-color);
-}
-
-.chat-history-container::-webkit-scrollbar {
-	width: 8px;
-}
-
-.chat-history-container::-webkit-scrollbar-track {
-	background: var(--oa-surface);
-	border-radius: var(--oa-radius);
-}
-
-.chat-history-container::-webkit-scrollbar-thumb {
-	background: var(--oa-border-color);
-	border-radius: var(--oa-radius);
-}
-
-.chat-history-container::-webkit-scrollbar-thumb:hover {
-	background: var(--oa-border-strong);
-}
-
-.chat-message {
-	display: flex;
-	flex-direction: column;
-	gap: var(--oa-spacing-sm);
-	padding: var(--oa-spacing-sm);
-	margin-bottom: var(--oa-spacing-md);
-	border-radius: calc(var(--oa-radius) + 2px);
-	border: 1px solid transparent;
-}
-
-.chat-message.is-user {
-	border-left: 3px solid var(--oa-primary-color);
-	background: var(--oa-message-user-bg);
-}
-
-.chat-message.is-assistant {
-	border-left: 3px solid var(--oa-success-color);
-	background: var(--oa-message-assistant-bg);
-}
-
-.message-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	font-size: var(--font-smaller, 0.85em);
-	color: var(--oa-text-muted);
-	gap: var(--oa-spacing-md);
-}
-
-.message-meta {
-	display: flex;
-	align-items: center;
-	gap: var(--oa-spacing-sm);
-}
-
-.role-label {
-	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-	font-size: 0.7rem;
-}
-
-.role-label.is-user {
-	color: var(--oa-primary-color);
-}
-
-.role-label.is-assistant {
-	color: var(--oa-success-color);
-}
-
-.message-content {
-	padding: var(--oa-spacing-md);
-	border-radius: var(--oa-radius);
-	line-height: 1.55;
-	word-break: break-word;
-	white-space: pre-wrap;
-	background-color: var(--oa-surface);
-	border: 1px solid var(--oa-border-color);
-}
-
-.message-content[data-role="user"] {
-	background-color: var(--oa-background-alt);
-}
-
-/* Cache Badge */
-.cache-badge {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.25rem;
-	background-color: var(--oa-primary-color);
-	color: var(--oa-primary-text);
-	padding: 0.1rem 0.5rem;
-	border-radius: var(--oa-radius);
-	font-size: 0.7rem;
-	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-}
-
-/* Code Blocks in Messages */
-.message-content pre {
-	background-color: var(--oa-background-alt);
-	border: 1px solid var(--oa-border-color);
-	border-radius: var(--oa-radius);
-	padding: var(--oa-spacing-md);
-	overflow-x: auto;
-	margin: var(--oa-spacing-md) 0;
-}
-
-.message-content code {
-	font-family: var(--font-monospace, "Fira Code", "Consolas", monospace);
-	background-color: var(--tag-background, rgba(135, 131, 120, 0.15));
-	color: var(--tag-color, var(--text-normal));
-	padding: 0.125rem 0.375rem;
-	border-radius: 3px;
-	font-size: 0.9em;
-}
-
-.message-content pre code {
-	background-color: transparent;
-	padding: 0;
-}
-
-/* Token Counter */
-.token-counter-container {
-	margin-top: var(--oa-spacing-sm);
-	background-color: var(--oa-background-alt);
-	border-radius: var(--oa-radius);
-	padding: var(--oa-spacing-md);
-	border: 1px solid var(--oa-border-color);
-	display: flex;
-	flex-direction: column;
-	gap: var(--oa-spacing-sm);
-}
-
-.token-bar-container {
-	height: 8px;
-	background-color: var(--oa-border-color);
-	border-radius: var(--oa-radius);
-	overflow: hidden;
-}
+/* Obsidian AI Agent Plugin Styles */
 
-.token-bar-fill {
-	height: 100%;
-	width: 0%;
-	background-color: var(--oa-primary-color);
-	transition: width 0.2s ease, background-color 0.2s ease;
-	border-radius: var(--oa-radius);
+/* Chat View */
+.ai-messages-container {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 10px;
+    background: var(--background-primary-alt);
+    border-radius: 8px;
+    margin: 10px 0;
 }
 
-.token-text {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	color: var(--oa-text-muted);
-	font-size: var(--font-smaller, 0.85em);
+.ai-message {
+    margin-bottom: 12px;
+    padding: 10px;
+    border-radius: 8px;
+    background: var(--background-primary);
 }
 
-.token-text-right {
-	cursor: pointer;
-	color: var(--oa-primary-color);
+.ai-message-user {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    margin-left: 20px;
 }
 
-/* Templates */
-.templates-row {
-	display: flex;
-	justify-content: flex-start;
+.ai-message-assistant {
+    background: var(--background-secondary);
+    margin-right: 20px;
+    border-left: 3px solid var(--interactive-accent);
 }
 
-.filter-row {
-	display: flex;
-	gap: var(--oa-spacing-md);
-	margin-bottom: var(--oa-spacing-md);
+.ai-message-system {
+    background: var(--background-modifier-form-field);
+    font-style: italic;
+    font-size: 0.9em;
 }
 
-.filter-search-input,
-.filter-category-select {
-	padding: 0.5rem;
-	border-radius: var(--oa-radius);
-	border: 1px solid var(--oa-border-color);
-	background-color: var(--oa-surface);
-	color: var(--text-normal);
+.ai-message-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8em;
+    margin-bottom: 5px;
+    opacity: 0.7;
 }
 
-.filter-search-input {
-	flex: 1;
+.ai-message-content {
+    line-height: 1.5;
 }
 
-.templates-container {
-	max-height: 400px;
-	overflow-y: auto;
-	display: flex;
-	flex-direction: column;
-	gap: var(--oa-spacing-sm);
+.ai-message-content code {
+    background: var(--background-modifier-form-field);
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-family: var(--font-monospace);
 }
 
-.template-category-header {
-	margin: var(--oa-spacing-md) 0 var(--oa-spacing-sm);
-	color: var(--oa-text-muted);
+.ai-message-meta {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--background-modifier-border);
+    font-size: 0.75em;
+    display: flex;
+    gap: 10px;
 }
 
-.template-item {
-	padding: var(--oa-spacing-md);
-	border-radius: var(--oa-radius);
-	border: 1px solid var(--oa-border-color);
-	cursor: pointer;
-	background-color: var(--oa-background-alt);
-	transition: border-color var(--oa-transition), transform var(--oa-transition), background-color var(--oa-transition);
+.ai-confidence-green {
+    color: #4caf50;
 }
 
-.template-item:hover,
-.template-item:focus {
-	border-color: var(--oa-primary-color);
-	background-color: var(--background-modifier-hover);
-	transform: translateY(-1px);
+.ai-confidence-yellow {
+    color: #ff9800;
 }
 
-.template-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	gap: var(--oa-spacing-sm);
+.ai-confidence-red {
+    color: #f44336;
 }
 
-.template-badge {
-	font-size: var(--font-smallest, 0.7em);
-	padding: 0.1rem 0.35rem;
-	border-radius: var(--oa-radius);
-	background-color: var(--oa-primary-color);
-	color: var(--oa-primary-text);
+.ai-input-container {
+    margin-top: 10px;
 }
 
-.template-desc {
-	font-size: var(--font-smaller, 0.85em);
-	color: var(--oa-text-muted);
-	margin-top: 0.25rem;
+.ai-input {
+    width: 100%;
+    resize: vertical;
+    min-height: 60px;
+    padding: 10px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    font-family: inherit;
 }
 
-.empty-state {
-	text-align: center;
-	padding: 2rem;
-	color: var(--oa-text-muted);
+.ai-input:focus {
+    outline: none;
+    border-color: var(--interactive-accent);
 }
 
-/* Settings Page Styles */
-.obsidian-agent-settings .setting-item {
-	padding: var(--oa-spacing-md) 0;
+.ai-button-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
 }
 
-.obsidian-agent-settings .setting-item-info {
-	margin-bottom: var(--oa-spacing-md);
+.ai-send-btn {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
 }
 
-.obsidian-agent-settings .stat-card {
-	padding: var(--oa-spacing-md);
-	background-color: var(--oa-surface);
-	border: 1px solid var(--oa-border-color);
-	border-radius: var(--oa-radius);
-	transition: all var(--oa-transition);
+.ai-send-btn:hover {
+    opacity: 0.9;
 }
 
-.obsidian-agent-settings .stat-card:hover {
-	border-color: var(--oa-primary-color);
+.ai-clear-btn {
+    background: var(--background-modifier-form-field);
+    border: 1px solid var(--background-modifier-border);
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
 }
 
-.obsidian-agent-settings .stat-label {
-	font-size: var(--font-smaller, 0.85em);
-	color: var(--oa-text-muted);
-	margin-bottom: var(--oa-spacing-sm);
+.ai-clear-btn:hover {
+    background: var(--background-modifier-border);
 }
 
-.obsidian-agent-settings .stat-value {
-	font-size: var(--font-ui-large, 1.2em);
-	font-weight: bold;
-	color: var(--text-normal);
+.ai-typing {
+    padding: 10px;
+    color: var(--text-muted);
+    font-style: italic;
 }
 
-/* Profile List Styles */
-.profile-item {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--oa-spacing-md);
-	background-color: var(--oa-background-alt);
-	border: 1px solid var(--oa-border-color);
-	border-radius: var(--oa-radius);
-	margin-bottom: var(--oa-spacing-sm);
-	transition: all var(--oa-transition);
+.ai-sources {
+    background: var(--background-secondary-alt);
+    padding: 8px;
+    border-radius: 4px;
+    margin-top: 8px;
+    font-size: 0.85em;
 }
 
-.profile-item:hover,
-.profile-item:focus {
-	border-color: var(--oa-primary-color);
-	background-color: var(--background-modifier-hover);
+.ai-sources-title {
+    font-weight: bold;
+    margin-bottom: 4px;
 }
 
-/* Cache Browser Modal */
-.cache-entry-item {
-	padding: var(--oa-spacing-md);
-	background-color: var(--oa-background-alt);
-	border: 1px solid var(--oa-border-color);
-	border-radius: var(--oa-radius);
-	margin-bottom: var(--oa-spacing-sm);
-	transition: all var(--oa-transition);
+.ai-status-bar {
+    padding: 5px 10px;
+    background: var(--background-secondary);
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-size: 0.85em;
 }
 
-.cache-entry-item:hover {
-	background-color: var(--background-modifier-hover);
+.ai-status-connected {
+    color: #4caf50;
 }
 
-.cache-entry-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	font-size: var(--font-smaller, 0.85em);
-	color: var(--oa-text-muted);
-	margin-bottom: var(--oa-spacing-sm);
+/* Settings */
+.ai-agent-security-notice {
+    background: var(--background-modifier-error);
+    color: var(--text-on-accent);
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 20px;
 }
 
-.cache-entry-prompt {
-	font-weight: bold;
-	font-size: var(--font-ui-small, 0.9em);
-	margin-bottom: var(--oa-spacing-sm);
-	color: var(--text-normal);
+.ai-agent-security-notice h3 {
+    margin-top: 0;
 }
 
-.cache-entry-response {
-	font-size: var(--font-ui-small, 0.9em);
-	color: var(--oa-text-muted);
-	line-height: 1.4;
+/* Ribbon Icon */
+.ai-ribbon-icon {
+    color: var(--interactive-accent);
 }
 
-/* Loading Skeleton */
-.skeleton {
-	background: linear-gradient(
-		90deg,
-		var(--oa-background-alt) 25%,
-		var(--oa-border-color) 50%,
-		var(--oa-background-alt) 75%
-	);
-	background-size: 200% 100%;
-	animation: skeleton-loading 1.5s infinite;
-	border-radius: var(--oa-radius);
+/* Modal for AI Response */
+.ai-response-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
 }
 
-@keyframes skeleton-loading {
-	0% {
-		background-position: 200% 0;
-	}
-	100% {
-		background-position: -200% 0;
-	}
+.ai-response-content {
+    background: var(--background-primary);
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
 }
 
-/* Focus styles for accessibility */
-.obsidian-agent-modal *:focus-visible {
-	outline: 2px solid var(--oa-primary-color);
-	outline-offset: 2px;
+.ai-response-text {
+    margin: 15px 0;
+    line-height: 1.6;
 }
 
-@media print {
-	.chat-history-container {
-		max-height: none;
-		overflow: visible;
-	}
-
-	.button-container,
-	.token-counter-container {
-		display: none;
-	}
+.ai-response-close {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
 }

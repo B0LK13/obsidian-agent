@@ -20,6 +20,7 @@ main.js
 main.js.map
 
 # Allow Obsidian plugin main.js files
+!/main.js
 !obsidian-ai-agent/obsidian-plugin/main.js
 !apps/obsidian-plugin/main.js
 *.js.map

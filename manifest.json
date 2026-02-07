@@ -1,10 +1,11 @@
 {
-  "id": "obsidian-agent",
-  "name": "Obsidian Agent",
-  "version": "1.0.0",
+  "id": "obsidian-ai-agent",
+  "name": "Obsidian AI Agent",
+  "version": "1.4.0",
   "minAppVersion": "0.15.0",
-  "description": "AI-enhanced agent for intelligent note-taking, knowledge management, and content generation within Obsidian",
+  "description": "Local-only AI agent with RAG, Canvas integration, and knowledge graph support",
   "author": "B0LK13",
-  "authorUrl": "https://github.com/B0LK13/obsidian-agent",
-  "isDesktopOnly": false
+  "authorUrl": "",
+  "fundingUrl": "",
+  "isDesktopOnly": true
 }
