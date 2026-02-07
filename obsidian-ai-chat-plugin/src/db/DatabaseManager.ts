@@ -38,9 +38,10 @@ export class DatabaseManager {
 		
 		try {
 			// Use LocalForage for cross-platform storage
-			const localforage = await import('localforage');
+			const localforageModule = await import('localforage');
+			const localforage = (localforageModule as any).default || localforageModule;
 			
-			this.db = localforage.default.createInstance({
+			this.db = localforage.createInstance({
 				name: 'AIChatNotes',
 				version: 1.0,
 				storeName: 'data',

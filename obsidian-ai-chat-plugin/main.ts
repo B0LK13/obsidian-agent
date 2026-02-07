@@ -265,9 +265,13 @@ export default class AIChatNotesPlugin extends Plugin {
 	async activateChatView() {
 		const { workspace } = this.app;
 		
-		let leaf = workspace.getLeavesOfType(VIEW_TYPE_AI_CHAT)[0];
+		let leaf: WorkspaceLeaf | null = workspace.getLeavesOfType(VIEW_TYPE_AI_CHAT)[0];
 		if (!leaf) {
 			leaf = workspace.getRightLeaf(false);
+			if (!leaf) {
+				new Notice('Failed to create AI Chat view');
+				return;
+			}
 			await leaf.setViewState({ type: VIEW_TYPE_AI_CHAT, active: true });
 		}
 		workspace.revealLeaf(leaf);
@@ -276,9 +280,13 @@ export default class AIChatNotesPlugin extends Plugin {
 	async activateNoteBrowserView() {
 		const { workspace } = this.app;
 		
-		let leaf = workspace.getLeavesOfType(VIEW_TYPE_NOTE_BROWSER)[0];
+		let leaf: WorkspaceLeaf | null = workspace.getLeavesOfType(VIEW_TYPE_NOTE_BROWSER)[0];
 		if (!leaf) {
 			leaf = workspace.getLeftLeaf(false);
+			if (!leaf) {
+				new Notice('Failed to create Note Browser view');
+				return;
+			}
 			await leaf.setViewState({ type: VIEW_TYPE_NOTE_BROWSER, active: true });
 		}
 		workspace.revealLeaf(leaf);
@@ -313,9 +321,13 @@ export default class AIChatNotesPlugin extends Plugin {
 	async activateHandwritingView() {
 		const { workspace } = this.app;
 		
-		let leaf = workspace.getLeavesOfType(VIEW_TYPE_HANDWRITING)[0];
+		let leaf: WorkspaceLeaf | null = workspace.getLeavesOfType(VIEW_TYPE_HANDWRITING)[0];
 		if (!leaf) {
 			leaf = workspace.getRightLeaf(false);
+			if (!leaf) {
+				new Notice('Failed to create Handwriting view');
+				return;
+			}
 			await leaf.setViewState({ type: VIEW_TYPE_HANDWRITING, active: true });
 		}
 		workspace.revealLeaf(leaf);
@@ -324,9 +336,13 @@ export default class AIChatNotesPlugin extends Plugin {
 	async activateKnowledgeGraphView() {
 		const { workspace } = this.app;
 		
-		let leaf = workspace.getLeavesOfType(VIEW_TYPE_KNOWLEDGE_GRAPH)[0];
+		let leaf: WorkspaceLeaf | null = workspace.getLeavesOfType(VIEW_TYPE_KNOWLEDGE_GRAPH)[0];
 		if (!leaf) {
 			leaf = workspace.getRightLeaf(false);
+			if (!leaf) {
+				new Notice('Failed to create Knowledge Graph view');
+				return;
+			}
 			await leaf.setViewState({ type: VIEW_TYPE_KNOWLEDGE_GRAPH, active: true });
 		}
 		workspace.revealLeaf(leaf);
@@ -913,7 +929,7 @@ const LIQUID_GLASS_STYLES = `
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.8; transform: scale(1.05); }
 }
-`
+
 /* AI Chat & Notes - Liquid Glass Design System */
 
 /* CSS Variables */

@@ -167,6 +167,7 @@ export class NoteBrowserView extends ItemView {
 			}
 		} else {
 			// File
+			const file = item.file as TFile;
 			const fileEl = itemEl.createDiv({ cls: 'note-file' });
 			const fileIcon = fileEl.createSpan({
 				cls: 'file-icon',
@@ -174,22 +175,22 @@ export class NoteBrowserView extends ItemView {
 			});
 			const fileName = fileEl.createSpan({
 				cls: 'file-name',
-				text: item.file.basename
+				text: file.basename
 			});
 			
 			fileEl.addEventListener('click', () => {
-				this.app.workspace.openLinkText(item.file.path, '', true);
+				this.app.workspace.openLinkText(file.path, '', true);
 			});
 			
 			fileEl.addEventListener('contextmenu', (e) => {
 				e.preventDefault();
-				this.showFileContextMenu(e, item.file as TFile);
+				this.showFileContextMenu(e, file);
 			});
 			
 			// Drag and drop
 			fileEl.setAttribute('draggable', 'true');
 			fileEl.addEventListener('dragstart', (e) => {
-				e.dataTransfer?.setData('text/plain', item.file.path);
+				e.dataTransfer?.setData('text/plain', file.path);
 			});
 		}
 	}
