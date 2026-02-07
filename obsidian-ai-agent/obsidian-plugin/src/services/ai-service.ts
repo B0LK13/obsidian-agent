@@ -10,6 +10,7 @@ export interface AIServiceConfig {
     llmEndpoint: string;
     embedEndpoint: string;
     vectorEndpoint: string;
+    defaultModel: string;
     useMemoryRAG: boolean;
     useHallucinationGuard: boolean;
     enableEvaluation: boolean;

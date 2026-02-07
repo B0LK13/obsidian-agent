@@ -59,6 +59,15 @@ export class LocalAIClient {
     }
 
     /**
+     * Create an abort controller with timeout
+     */
+    private createTimeoutSignal(ms: number): AbortSignal {
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), ms);
+        return controller.signal;
+    }
+
+    /**
      * Check health of all AI services
      */
     async checkHealth(): Promise<AIHealthStatus> {
@@ -71,7 +80,7 @@ export class LocalAIClient {
         try {
             const llmResponse = await fetch(`${this.settings.llmEndpoint}/health`, {
                 method: 'GET',
-                signal: AbortSignal.timeout(5000)
+                signal: this.createTimeoutSignal(5000)
             });
             status.llm = llmResponse.ok;
         } catch {
@@ -81,7 +90,7 @@ export class LocalAIClient {
         try {
             const embedResponse = await fetch(`${this.settings.embedEndpoint}/health`, {
                 method: 'GET',
-                signal: AbortSignal.timeout(5000)
+                signal: this.createTimeoutSignal(5000)
             });
             status.embeddings = embedResponse.ok;
         } catch {
@@ -91,7 +100,7 @@ export class LocalAIClient {
         try {
             const vectorResponse = await fetch(`${this.settings.vectorEndpoint}/health`, {
                 method: 'GET',
-                signal: AbortSignal.timeout(5000)
+                signal: this.createTimeoutSignal(5000)
             });
             status.vector = vectorResponse.ok;
         } catch {
@@ -132,7 +141,7 @@ export class LocalAIClient {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(request),
-                signal: AbortSignal.timeout(60000) // 60 second timeout
+                signal: this.createTimeoutSignal(60000) // 60 second timeout
             });
 
             if (!response.ok) {
@@ -157,7 +166,7 @@ export class LocalAIClient {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ input: text }),
-                signal: AbortSignal.timeout(10000)
+                signal: this.createTimeoutSignal(10000)
             });
 
             if (!response.ok) {
@@ -184,7 +193,7 @@ export class LocalAIClient {
                     embedding,
                     n_results: nResults
                 }),
-                signal: AbortSignal.timeout(10000)
+                signal: this.createTimeoutSignal(10000)
             });
 
             if (!response.ok) {
@@ -208,7 +217,7 @@ export class LocalAIClient {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ documents }),
-                signal: AbortSignal.timeout(30000)
+                signal: this.createTimeoutSignal(30000)
             });
 
             if (!response.ok) {
