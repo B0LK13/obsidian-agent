@@ -3,6 +3,40 @@
  * No mocks - calls actual AgentService with ReAct loop
  */
 
+// Mock the 'obsidian' module for Node.js environment
+const Module = require('module');
+const originalRequire = Module.prototype.require;
+
+Module.prototype.require = function(id: string) {
+  if (id === 'obsidian') {
+    return {
+      requestUrl: async (opts: any) => {
+        const response = await fetch(opts.url, {
+          method: opts.method || 'GET',
+          headers: opts.headers || {},
+          body: opts.body
+        });
+        
+        const text = await response.text();
+        
+        return {
+          status: response.status,
+          headers: Object.fromEntries(response.headers.entries()),
+          text,
+          json: text ? JSON.parse(text) : null,
+          arrayBuffer: async () => new ArrayBuffer(0)
+        };
+      },
+      Vault: class {},
+      TFile: class {},
+      MetadataCache: class {},
+      App: class {},
+      Notice: class {}
+    };
+  }
+  return originalRequire.apply(this, arguments as any);
+};
+
 import { App, TFile, Vault, MetadataCache } from 'obsidian';
 import { loadDatasetV2, GoldenQueryV2, QueryType } from '../src/evaluation/datasetV2';
 import { AgentService } from '../src/services/agent/agentService';
@@ -123,7 +157,8 @@ async function executeQuery(
   query: GoldenQueryV2,
   aiService: any,
   tools: Tool[],
-  settings: ObsidianAgentSettings
+  settings: ObsidianAgentSettings,
+  memoryService: any
 ): Promise<QueryTrace> {
   const startTime = Date.now();
   
@@ -145,8 +180,8 @@ async function executeQuery(
   };
   
   try {
-    // Create agent for this query
-    const agent = new AgentService(aiService, tools, settings);
+    // Create agent for this query (with memoryService)
+    const agent = new AgentService(aiService, tools, settings, memoryService);
     
     // Execute through real agent
     const response = await agent.run(query.query);
@@ -299,23 +334,38 @@ Always maintain forward momentum. Never end without an actionable next step.`;
 
   const settings: ObsidianAgentSettings = {
     ...DEFAULT_SETTINGS,
-    aiProvider: 'ollama',
-    ollamaUrl: 'http://localhost:11434',
-    ollamaModel: 'llama2',
+    apiProvider: 'ollama' as const,  // Override DEFAULT_SETTINGS apiProvider
+    apiKey: '',  // Ollama doesn't need API key
+    customApiUrl: 'http://localhost:11434',  // CORRECT: customApiUrl not ollamaUrl
+    model: 'llama3.2:latest',  // Model that exists in Ollama
     agentCorePrompt: DEFAULT_SETTINGS.agentCorePrompt || defaultAgentPrompt
   };
   
-  // Initialize AIService
+  // Initialize AIService (only needs settings, not app)
   const { AIService } = require('../aiService');
-  const aiService = new AIService(app, settings);
+  const aiService = new AIService(settings);
+  
+  // Initialize EmbeddingService and MemoryService (required for AgentService)
+  const { EmbeddingService } = require('../src/services/embeddingService');
+  const { MemoryService } = require('../src/services/memoryService');
+  
+  // Create a minimal mock EmbeddingService (we don't need real embeddings for this benchmark)
+  const mockEmbeddingService = {
+    async generateEmbedding(text: string): Promise<number[]> {
+      return Array(1536).fill(0); // Return zero vector
+    }
+  };
+  
+  const memoryService = new MemoryService(app.vault, mockEmbeddingService as any);
+  await memoryService.load();
   
   // Initialize tools (SearchVaultTool requires app)
   const tools: Tool[] = [
     new SearchVaultTool(app.vault, app.metadataCache)
   ];
   
-  // Initialize agent with all dependencies
-  const agent = new AgentService(aiService, tools, settings);
+  // Initialize agent with all dependencies (including memoryService)
+  const agent = new AgentService(aiService, tools, settings, memoryService);
   
   console.log(`🤖 Agent initialized with strategy: hybrid_learned (mock)\n`);
   
@@ -329,7 +379,7 @@ Always maintain forward momentum. Never end without an actionable next step.`;
     console.log(`[${i + 1}/${dataset.length}] ${query.id} (${query.type}, ${query.difficulty})`);
     
     try {
-      const trace = await executeQuery(query, aiService, tools, settings);
+      const trace = await executeQuery(query, aiService, tools, settings, memoryService);
       traces.push(trace);
       
       if (trace.error) {

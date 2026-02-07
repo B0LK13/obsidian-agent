@@ -27,6 +27,12 @@ from pkm_agent.react_agent import (
     SearchNotesTool,
     SynthesizeTool,
 )
+from pkm_agent.security import (
+    WritablePathGuard,
+    redact_dict,
+    safe_path_join,
+    sanitize_prompt_input,
+)
 from pkm_agent.websocket_sync import SyncServer
 
 logger = logging.getLogger(__name__)
@@ -38,6 +44,12 @@ class EnhancedPKMAgent:
     def __init__(self, config: Config | None = None):
         self.config = config or load_config()
         self.config.ensure_dirs()
+
+        # Initialize security controls
+        self.path_guard = WritablePathGuard([
+            self.config.data_dir,
+            self.config.pkm_root,
+        ])
 
         # Initialize audit logger
         audit_db_path = self.config.data_dir / "audit.db"
@@ -237,6 +249,9 @@ class EnhancedPKMAgent:
         filters: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """Search for relevant notes with caching."""
+        # Security: Sanitize user input
+        query = sanitize_prompt_input(query)
+        
         # Check cache first
         cache_key = f"{query}:{limit}:{filters}"
         cached_result = self.cache.get_query_result(cache_key)
@@ -251,15 +266,15 @@ class EnhancedPKMAgent:
         # Cache results
         self.cache.set_query_result(cache_key, result_dicts)
         
-        # Log action
+        # Log action (with redacted metadata)
         entry = AuditEntry(
             action="search",
-            metadata={
+            metadata=redact_dict({
                 "query": query,
                 "limit": limit,
                 "filters": filters or {},
                 "results_count": len(result_dicts),
-            },
+            }),
         )
         await self.audit_logger.log(entry)
         
@@ -362,6 +377,9 @@ class EnhancedPKMAgent:
         if not self.react_agent:
             raise RuntimeError("ReAct agent not initialized. Call initialize() first.")
         
+        # Security: Sanitize user input
+        topic = sanitize_prompt_input(topic)
+        
         logger.info(f"Starting autonomous research on: {topic}")
         
         # Build goal
@@ -375,15 +393,15 @@ class EnhancedPKMAgent:
             context=f"PKM root: {self.config.pkm_root}"
         )
         
-        # Log research workflow
+        # Log research workflow (with redacted metadata)
         entry = AuditEntry(
             action="research",
             target=topic,
-            metadata={
+            metadata=redact_dict({
                 "status": result.status.value,
                 "iterations": len(result.reasoning_chain),
                 "create_summary": create_summary,
-            },
+            }),
             snapshot_after=result.answer,
         )
         await self.audit_logger.log(entry)

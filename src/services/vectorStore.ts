@@ -1,4 +1,4 @@
-import { Vault } from 'obsidian';
+﻿import { Vault } from 'obsidian';
 
 export interface VectorDocument {
     id: string; // usually file path
@@ -39,7 +39,7 @@ export class VectorStore {
         const vector = this.vectors.get(id);
         const meta = this.metadata.get(id);
         if (!vector || !meta) return null;
-        
+
         return {
             id,
             vector,
@@ -48,11 +48,25 @@ export class VectorStore {
         };
     }
 
-    async search(queryVector: number[], limit: number = 10, minScore: number = 0.0): Promise<SearchResult[]> {
+    async search(queryVector: number[], limit: number = 10, minScore: number = 0.0, useFreshness: boolean = true): Promise<SearchResult[]> {
         const results: SearchResult[] = [];
+        const now = Date.now();
+        const oneMonthMs = 30 * 24 * 60 * 60 * 1000;
 
         for (const [id, vector] of this.vectors) {
-            const score = this.cosineSimilarity(queryVector, vector);
+            let score = this.cosineSimilarity(queryVector, vector);
+            
+            // Apply freshness policy
+            if (useFreshness && score > 0.3) {
+                const meta = this.metadata.get(id);
+                if (meta && meta.mtime) {
+                    const ageMs = now - meta.mtime;
+                    // Decay bonus: 10% bonus if new, 0% if older than 6 months
+                    const freshnessBonus = Math.max(0, 0.1 * (1 - ageMs / (6 * oneMonthMs)));
+                    score = score * (1 + freshnessBonus);
+                }
+            }
+
             if (score >= minScore) {
                 results.push({
                     id,
@@ -73,7 +87,7 @@ export class VectorStore {
             vectors: Object.fromEntries(this.vectors),
             metadata: Object.fromEntries(this.metadata)
         };
-        
+
         await this.vault.adapter.write(this.STORAGE_FILE, JSON.stringify(data));
     }
 
@@ -84,14 +98,26 @@ export class VectorStore {
 
         try {
             const content = await this.vault.adapter.read(this.STORAGE_FILE);
+            if (!content || content.trim() === '') {
+                return; // Empty file, keep empty maps
+            }
+
             const data = JSON.parse(content);
             
-            this.vectors = new Map(Object.entries(data.vectors));
-            this.metadata = new Map(Object.entries(data.metadata));
-            
+            // Handle different data formats safely
+            if (data && typeof data === 'object') {
+                if (data.vectors && typeof data.vectors === 'object') {
+                    this.vectors = new Map(Object.entries(data.vectors));
+                }
+                if (data.metadata && typeof data.metadata === 'object') {
+                    this.metadata = new Map(Object.entries(data.metadata));
+                }
+            }
+
             console.log(`VectorStore loaded: ${this.vectors.size} documents.`);
         } catch (e) {
             console.error('Failed to load VectorStore:', e);
+            // Keep empty maps on error
         }
     }
 

@@ -197,8 +197,8 @@ export function getNoAnswerQueries(queries: GoldenQueryV2[]): GoldenQueryV2[] {
  * Deduplicate queries using semantic similarity (placeholder)
  * In production, use actual embedding similarity
  */
-export function deduplicateQueries(queries: GoldenQueryV2[], threshold: number = 0.9): GoldenQueryV2[] {
-  // Placeholder: Simple string similarity
+export function deduplicateQueries(queries: GoldenQueryV2[], _threshold: number = 0.9): GoldenQueryV2[] {
+  // Placeholder: Simple string similarity (threshold reserved for future use)
   const seen = new Set<string>();
   const unique: GoldenQueryV2[] = [];
   
@@ -264,5 +264,5 @@ export function checkDatasetBalance(queries: GoldenQueryV2[]): { balanced: boole
 }
 
 // For backwards compatibility with old code
-export { GoldenQueryV2 as GoldenQuery };
+export type { GoldenQueryV2 as GoldenQuery };
 export const GOLDEN_DATASET = loadDatasetV2();

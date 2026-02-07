@@ -1,9 +1,9 @@
 {
   "version": "production-v1",
-  "timestamp": "2026-02-07T16:11:27.357Z",
+  "timestamp": "2026-02-07T16:40:34.253Z",
   "dataset_size": 3,
-  "completed": 0,
-  "failed": 3,
+  "completed": 3,
+  "failed": 0,
   "traces": [
     {
       "query_id": "t001",
@@ -13,14 +13,13 @@
       "tools_used": [],
       "retrieved_notes": [],
       "tool_calls": 0,
-      "reasoning_steps": 0,
-      "answer": "Error: ConfigurationError: API key not configured. Please set it in settings.",
+      "reasoning_steps": 1,
+      "answer": "Collect Auth0 client ID and client secret for your React app.\n\n**Why this works:**\nWe need to verify the correct configuration settings for Auth0 integration.\n\n---\n**🎯 NEXT STEP:**\n- **Action**: Collect Auth0 client ID and client secret\n- **Owner**: user\n- **Effort**: 30m\n- **Success looks like**: Verify successful integration of Auth0 with your React app\n- **Type**: unblock\n\n\n---\n**📊 Confidence: Medium**\n",
       "evidence": [],
-      "confidence": 0,
+      "confidence": 0.3,
       "has_next_step": false,
-      "execution_time_ms": 1,
-      "fallback_triggered": false,
-      "error": "ConfigurationError: API key not configured. Please set it in settings."
+      "execution_time_ms": 102659,
+      "fallback_triggered": false
     },
     {
       "query_id": "t002",
@@ -30,14 +29,13 @@
       "tools_used": [],
       "retrieved_notes": [],
       "tool_calls": 0,
-      "reasoning_steps": 0,
-      "answer": "Error: ConfigurationError: API key not configured. Please set it in settings.",
+      "reasoning_steps": 1,
+      "answer": "Search the vault for relevant notes on API best practices.\n\n**Why this works:**\nImplementing meaningful error responses and rate limiting can significantly improve the reliability and security of APIs.\n\n---\n**🎯 NEXT STEP:**\n- **Action**: search_vault query=\"API error handling best practices\"\n- **Owner**: user\n- **Effort**: 30m\n- **Success looks like**: Understanding API best practices for error handling\n- **Type**: choose_path",
       "evidence": [],
-      "confidence": 0,
+      "confidence": 0.3,
       "has_next_step": false,
-      "execution_time_ms": 0,
-      "fallback_triggered": false,
-      "error": "ConfigurationError: API key not configured. Please set it in settings."
+      "execution_time_ms": 30525,
+      "fallback_triggered": false
     },
     {
       "query_id": "t003",
@@ -47,14 +45,13 @@
       "tools_used": [],
       "retrieved_notes": [],
       "tool_calls": 0,
-      "reasoning_steps": 0,
-      "answer": "Error: ConfigurationError: API key not configured. Please set it in settings.",
+      "reasoning_steps": 1,
+      "answer": "Search for related notes to understand the cause of the TypeError.\n\n**Why this works:**\nTo find the root cause of the error, we need to analyze relevant notes on errors and debugging in TypeScript. This will help us understand where to focus our efforts.\n\n---\n**🎯 NEXT STEP:**\n- **Action**: Run a search query using `search_vault` to find relevant notes\n- **Owner**: user\n- **Effort**: half-day\n- **Success looks like**: Identification of potential causes of the error\n- **Type**: choose_path\n\n\n---\n**📊 Confidence: Medium**\n- I couldn't find this information in your vault, so I'm relying on general knowledge\n",
       "evidence": [],
-      "confidence": 0,
+      "confidence": 0.3,
       "has_next_step": false,
-      "execution_time_ms": 0,
-      "fallback_triggered": false,
-      "error": "ConfigurationError: API key not configured. Please set it in settings."
+      "execution_time_ms": 27903,
+      "fallback_triggered": false
     }
   ],
   "metrics": {
@@ -66,18 +63,16 @@
     "citation_correctness": 0,
     "completeness": 0,
     "context_carryover": 0,
-    "confidence_calibration": 1,
-    "ece": 0
+    "confidence_calibration": 0.94,
+    "ece": 0.06
   },
   "quality_gates_passed": false,
   "fallback_rate": 0,
   "avg_tools_per_query": 0,
-  "avg_execution_time_ms": 0.3333333333333333,
-  "failure_modes": {
-    "ConfigurationError": 3
-  },
+  "avg_execution_time_ms": 53695.666666666664,
+  "failure_modes": {},
   "metadata": {
-    "git_commit": "eb1575ebb360f8a50b9e9b65d757e1d45e6ddd59",
+    "git_commit": "77297674529e8b733b42e69aa0fe665c41667c92",
     "strategy": "hybrid_learned",
     "vault_path": "mock_vault"
   }

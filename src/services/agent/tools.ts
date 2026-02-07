@@ -1,7 +1,7 @@
-import { App, TFile } from 'obsidian';
+﻿import { App, TFile } from 'obsidian';
 import { VectorStore } from '../vectorStore';
 import { EmbeddingService } from '../embeddingService';
-import { MemoryService } from '../memoryService';
+import { MemoryService, MemoryLayer } from '../memoryService';
 
 export interface Tool {
     name: string;
@@ -22,7 +22,7 @@ export class SearchVaultTool implements Tool {
         try {
             const embedding = await this.embeddingService.generateEmbedding(input);
             const results = await this.vectorStore.search(embedding.vector, 10, 0.4);
-            
+
             if (results.length === 0) return "No relevant notes found.";
 
             return results.map(r => `- ${r.id} (Score: ${(r.score * 100).toFixed(0)}%)`).join('\n');
@@ -43,7 +43,7 @@ export class ReadNoteTool implements Tool {
         if (!file || !(file instanceof TFile)) {
             return `Error: Note not found at path "${input}".`;
         }
-        
+
         try {
             const content = await this.app.vault.read(file);
             return `Content of "${file.path}":
@@ -64,15 +64,12 @@ export class ListFilesTool implements Tool {
     async execute(input: string): Promise<string> {
         const folderPath = input.trim() || '/';
         const folder = this.app.vault.getAbstractFileByPath(folderPath);
-        
-        // Handle root special case or standard folders
-        // Obsidian root is empty string path usually
+
         if (folderPath === '/' || folderPath === '') {
              const files = this.app.vault.getRoot().children;
              return files.map(f => f.path).join('\n');
         }
 
-        // TODO: Type check for TFolder properly if needed, but for now we iterate children if it has them
         if (folder && 'children' in folder) {
              const children = (folder as any).children;
              return children.map((f: any) => f.path).join('\n');
@@ -83,19 +80,29 @@ export class ListFilesTool implements Tool {
 }
 
 export class RememberFactTool implements Tool {
-    name = 'remember_fact';
-    description = 'Save a fact about the user or their preferences to long-term memory. Input: A clear, concise statement of the fact to remember.';
+    name = 'remember';
+    description = 'Save information to memory. Input format: "<layer>|<text>". Valid layers: "user" (preferences/identity), "session" (current task state), "long_term" (facts/decisions). Example: "user|Prefers concise code summaries"';
 
     constructor(private memoryService: MemoryService) {}
 
     async execute(input: string): Promise<string> {
         try {
-            await this.memoryService.addMemory(input);
-            return `Fact remembered: "${input}"`;
+            let layer = MemoryLayer.LONG_TERM;
+            let text = input;
+
+            if (input.includes('|')) {
+                const parts = input.split('|');
+                const layerInput = parts[0].trim().toLowerCase();
+                text = parts.slice(1).join('|').trim();
+
+                if (layerInput === 'user') layer = MemoryLayer.USER;
+                else if (layerInput === 'session') layer = MemoryLayer.SESSION;
+            }
+
+            await this.memoryService.addMemory(text, layer);
+            return `Information saved to ${layer} memory: "${text}"`;
         } catch (e: any) {
-            return `Error remembering fact: ${e.message}`;
+            return `Error saving to memory: ${e.message}`;
         }
     }
 }
-
-// Export tool interface for external use

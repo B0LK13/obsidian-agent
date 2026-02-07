@@ -35,8 +35,8 @@ export interface CompletionOptions {
 
 export class AIService {
 	private settings: ObsidianAgentSettings;
-	private timeoutMs: number = 30000;
-	private maxRetries: number = 3;
+	private timeoutMs: number = 120000; // 120 seconds for local models
+	private maxRetries: number = 1; // Reduce retries for faster feedback
 	private initialRetryDelayMs: number = 1000;
 	private retryDelayMultiplier: number = 2;
 	private currentAbortController: AbortController | null = null;
@@ -156,8 +156,13 @@ export class AIService {
 			throw new ValidationError('Prompt cannot be empty');
 		}
 
-		// Validate settings
-		if (this.settings.apiProvider !== 'ollama' && !this.settings.apiKey) {
+		// Validate API key (skip for Ollama and localhost providers)		
+		const isLocalOllama = 
+			this.settings.apiProvider === 'ollama' || 
+			this.settings.customApiUrl?.includes('localhost') ||
+			this.settings.customApiUrl?.includes('127.0.0.1');
+			
+		if (!isLocalOllama && !this.settings.apiKey) {
 			throw new ConfigurationError('API key not configured. Please set it in settings.', 'apiKey');
 		}
 

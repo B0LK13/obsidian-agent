@@ -46,7 +46,7 @@ export const GOLDEN_DATASET: GoldenQuery[] = [
 // Maintenance queries (20 sample)
 { id: 'm001', query: 'Find notes with broken links', type: QueryType.MAINTENANCE, expected_notes: [], expected_confidence: 'high', expected_next_step: 'Scan for broken [[links]]' },
 { id: 'm002', query: 'Organize my untagged notes', type: QueryType.MAINTENANCE, expected_notes: [], expected_confidence: 'high', expected_next_step: 'Find untagged and suggest categories' },
-{ id: 'm003', query: 'Which notes haven't been updated in 6 months?', type: QueryType.MAINTENANCE, expected_notes: [], expected_confidence: 'high', expected_next_step: 'Search by date and list stale notes' },
+{ id: 'm003', query: 'Which notes have not been updated in 6 months?', type: QueryType.MAINTENANCE, expected_notes: [], expected_confidence: 'high', expected_next_step: 'Search by date and list stale notes' },
 { id: 'm004', query: 'Find duplicate notes', type: QueryType.MAINTENANCE, expected_notes: [], expected_confidence: 'medium', expected_next_step: 'Use semantic similarity for duplicates' },
 { id: 'm005', query: 'Create MOC for programming notes', type: QueryType.MAINTENANCE, expected_notes: ['Programming'], expected_confidence: 'high', expected_next_step: 'Create MOC linking all content' },
 ];

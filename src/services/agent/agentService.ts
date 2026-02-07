@@ -1,219 +1,208 @@
-import { AIService } from '../../../aiService';
+﻿import { AIService } from '../../../aiService';
 import { Tool } from './tools';
 import { ObsidianAgentSettings } from '../../../settings';
 import { 
     parseAgentResponse, 
     validateResponse, 
     calculateMomentumScore,
-    isDeadEnd
+    isDeadEnd,
+    formatAgentResponse,
+    AgentResponse
 } from '../../types/agentResponse';
 import { ConversationMemory } from '../../intelligence/memory/conversationMemory';
-import { ConfidenceEstimator } from '../../intelligence/reasoning/confidenceEstimator';
+import { ConfidenceEstimator, ConfidenceScore } from '../../intelligence/reasoning/confidenceEstimator';
+import { MemoryService } from '../memoryService';
 
 export class AgentService {
     private aiService: AIService;
     private tools: Tool[];
     private maxSteps: number = 10;
     private settings: ObsidianAgentSettings;
-    private momentumThreshold: number = 8; // Minimum score to avoid rewrite
+    private momentumThreshold: number = 8;
     private conversationMemory: ConversationMemory;
+    private memoryService: MemoryService;
     private confidenceEstimator: ConfidenceEstimator;
 
-    constructor(aiService: AIService, tools: Tool[], settings: ObsidianAgentSettings) {
+    constructor(aiService: AIService, tools: Tool[], settings: ObsidianAgentSettings, memoryService: MemoryService) {
         this.aiService = aiService;
         this.tools = tools;
         this.settings = settings;
+        this.memoryService = memoryService;
         this.conversationMemory = new ConversationMemory();
         this.confidenceEstimator = new ConfidenceEstimator();
     }
 
-    async run(query: string): Promise<StructuredAgentResponse> {
-        // Add user query to conversation memory
+    async run(query: string): Promise<string> {
         this.conversationMemory.addMessage('user', query);
+        const memoryLayers = await this.memoryService.getContextualMemory(query);
 
-        // Use the configurable agent core prompt with momentum policy
-        let history = this.settings.agentCorePrompt + '\n\n';
+        let instructions = this.settings.agentCorePrompt + '\n\n';
+        instructions += this.getEnforcementInstructions();
+
+        let history = instructions + '\n';
+        history += this.formatMemoryContext(memoryLayers);
         
-        // Add conversation context if available
         const sessionContext = this.conversationMemory.getContext();
-        if (sessionContext) {
-            history += sessionContext;
-        }
-        
+        if (sessionContext) history += "Recent Conversation:\n" + sessionContext + "\n";
+
         history += 'Available tools:\n';
-        
-        this.tools.forEach(t => {
-            history += `- ${t.name}: ${t.description}\n`;
-        });
-
-        history += `
-
-**IMPORTANT:** Your response MUST follow the required format with a mandatory NEXT STEP section.
-
-Example response structure:
-"""
-Based on your query, here's what I found...
-
-**Why this works:**
-This approach is effective because...
-
----
-**🎯 NEXT STEP:**
-- **Action**: Create a new note titled "Project Ideas" in the Projects folder
-- **Owner**: agent
-- **Effort**: 5m
-- **Success looks like**: New note exists with proper frontmatter and initial structure
-
-**Alternative paths:**
-1. Use an existing note - Use when you have a similar note already
-2. Create a template first - Use when you'll make many similar notes
-
-**⚠️ Watch out for:**
-- Duplicate note names
-- Missing folder structure
-
-**Mitigation:**
-- Check if note exists first
-- Create folders if needed
-"""
-
-User's question: ${query}
-
-`;
+        this.tools.forEach(t => history += `- ${t.name}: ${t.description}\n`);
+        history += `\nUser's question: ${query}\n`;
 
         let steps = 0;
         let retryCount = 0;
         const maxRetries = 2;
-        const context: any = {
-            toolsUsed: [],
-            vaultSearchResults: 0
-        };
-        
+        const executionContext: any = { toolsUsed: [], vaultSearchResults: 0 };
+
         while (steps < this.maxSteps) {
             steps++;
-            
-            // Call AI
             const result = await this.aiService.generateCompletion({ prompt: history });
             const response = result.text;
-            
-            history += response + '\n';
 
-            // Check if this looks like a final conversational answer (not using tools)
-            const hasAction = response.includes('Action:') && response.includes('Action Input:');
-            
-            if (!hasAction) {
-                // This is a direct answer - validate it has forward motion
-                const parsedResponse = parseAgentResponse(response);
-                const validation = validateResponse(parsedResponse);
-                const momentumScore = calculateMomentumScore(parsedResponse);
-                const deadEnd = isDeadEnd(response);
-
-                // If response is invalid or lacks momentum, try to get a better one
-                if (!validation.valid || momentumScore < this.momentumThreshold || deadEnd) {
-                    if (retryCount < maxRetries) {
-                        retryCount++;
-                        let feedback = '\n\n';
-                        
-                        if (!validation.valid) {
-                            feedback += `❌ Your response is missing required elements: ${validation.missing_fields?.join(', ')}\n`;
-                            feedback += `Suggestions: ${validation.suggestions?.join('; ')}\n\n`;
-                        } else if (deadEnd) {
-                            feedback += `❌ Your response appears to be a dead-end (no clear path forward).\n`;
-                            feedback += `Please provide a concrete next step or recommendation.\n\n`;
-                        } else if (momentumScore < this.momentumThreshold) {
-                            feedback += `❌ Your response lacks sufficient forward motion (score: ${momentumScore}/10).\n`;
-                            feedback += `Please include a more detailed next step with clear action, effort, and expected outcome.\n\n`;
-                        }
-                        
-                        feedback += `Remember the MOMENTUM POLICY: Every response MUST include:\n`;
-                        feedback += `- A direct answer\n`;
-                        feedback += `- A mandatory 🎯 NEXT STEP section with action, owner, effort, and expected outcome\n`;
-                        feedback += `- Optional: alternatives, risks, and mitigation\n\n`;
-                        feedback += `Please revise your response to include all required elements:\n`;
-                        
-                        history += feedback;
-                        continue; // Loop again to get better response
-                    }
-                }
-
-                // Calculate confidence score
-                const toolsUsed = context.toolsUsed || [];
-                const vaultSearchResults = context.vaultSearchResults || 0;
-                const confidenceScore = this.confidenceEstimator.estimate(response, {
-                    vaultSearchResults,
-                    toolsUsed,
-                    reasoningSteps: steps
-                });
-
-                // Add response to conversation memory
-                this.conversationMemory.addMessage('agent', response, {
-                    tools_used: toolsUsed,
-                    confidence: confidenceScore.overall,
-                    intent: 'answer'
-                });
-
-                // Build final response with confidence info
-                let finalResponse = response.trim();
-
-                // Add confidence warning if low
-                if (confidenceScore.level === 'medium' || confidenceScore.level === 'low') {
-                    finalResponse += '\n' + this.confidenceEstimator.formatConfidence(confidenceScore);
-                }
-
-                // Valid response with good momentum - return it
-                return finalResponse;
-            }
-
-            // Parse tool use
             const actionMatch = response.match(/Action:\s*(.+?)$/m);
             const inputMatch = response.match(/Action Input:\s*(.+?)$/m);
 
             if (actionMatch && inputMatch) {
+                history += response + '\n';
                 const action = actionMatch[1].trim();
-                const input = inputMatch[1].trim();
-                
                 const tool = this.tools.find(t => t.name === action);
-                
+
                 if (tool) {
-                    // Track tool usage
-                    context.toolsUsed.push(action);
-                    
-                    const observation = await tool.execute(input);
-                    history += `Observation: ${observation}\n\n`;
-                    
-                    // Track if this was a search
-                    if (action.toLowerCase().includes('search')) {
-                        // Rough heuristic: count lines or result markers
-                        const resultCount = (observation.match(/\n/g) || []).length;
-                        context.vaultSearchResults = Math.max(context.vaultSearchResults, resultCount);
-                    }
-                    
-                    // If observation is empty or indicates no results, guide the AI to be helpful
-                    if (!observation || observation.includes('No results') || observation.includes('not found')) {
-                        history += `(Remember: When search returns no results, offer to help create new content or suggest related topics instead of just reporting the empty result.)\n\n`;
+                    executionContext.toolsUsed.push(action);
+                    try {
+                        const observation = await tool.execute(inputMatch[1].trim());
+                        history += `Observation: ${observation}\n\n`;
+                        if (action.toLowerCase().includes('search')) {
+                            executionContext.vaultSearchResults = Math.max(executionContext.vaultSearchResults, (observation.match(/\n/g) || []).length);
+                        }
+                    } catch (error: any) {
+                        history += `Observation: Error executing tool - ${error.message}\n\n`;
                     }
                 } else {
-                    history += `Observation: Error - tool "${action}" not found. Available tools: ${this.tools.map(t => t.name).join(', ')}\n\n`;
+                    history += `Observation: Error - tool "${action}" not found.\n\n`;
                 }
-            } else {
-                // Malformed response - return what we got
-                return response.trim();
+                continue;
             }
+
+            // Final answer logic with self-evaluation
+            const parsed = parseAgentResponse(response);
+            const evaluation = this.evaluateResponse(parsed, response, executionContext, steps);
+
+            if (!evaluation.valid || evaluation.momentumScore < this.momentumThreshold) {
+                if (retryCount < maxRetries) {
+                    retryCount++;
+                    history += response + `\n\n**SELF-EVALUATION FEEDBACK (Retry ${retryCount}/${maxRetries}):**\n` + evaluation.feedback;
+                    continue;
+                } else {
+                    // Fallback Ladder trigger
+                    return this.applyFallbackLadder(parsed, evaluation.confidence);
+                }
+            }
+
+            // Success - add to memory and return
+            this.conversationMemory.addMessage('agent', response, {
+                tools_used: executionContext.toolsUsed,
+                confidence: evaluation.confidence.overall
+            });
+
+            let finalOutput = formatAgentResponse(parsed);
+            if (evaluation.confidence.level !== 'high') {
+                finalOutput += '\n\n' + this.confidenceEstimator.formatConfidence(evaluation.confidence);
+            }
+            return finalOutput;
         }
 
-        return "I apologize, but I wasn't able to complete that request within the expected time. Could you try rephrasing your question?";
+        return "I apologize, but I couldn't reach a high-momentum conclusion. Recommended next move: break your request into smaller parts.";
     }
 
-    /**
-     * Clear conversation memory (new session)
-     */
+    private getEnforcementInstructions(): string {
+        return `**MOMENTUM POLICY - STRICT ENFORCEMENT:**
+1. Every response MUST include a concrete NEXT STEP.
+2. Response is INVALID if no actionable continuation exists.
+3. You must use exactly ONE of these 3 continuation types:
+   - **do_now**: A single concrete action to perform immediately.
+   - **choose_path**: 2-3 clear options with trade-offs.
+   - **unblock**: Specific info needed if you are stuck.
+
+**RESPONSE CONTRACT:**
+Your output must include a YAML block at the end:
+\`\`\`yaml
+answer: <direct response>
+reasoning_summary: <rationale>
+next_step:
+  action: <single best action>
+  owner: <user|agent>
+  effort: <5m|30m|half-day|1-day|2-days+>
+  expected_outcome: <success criteria>
+  type: <do_now|choose_path|unblock>
+alternatives:
+  - option: <path A>
+    when_to_use: <condition>
+risks:
+  - <main risk>
+mitigation:
+  - <how to reduce risk>
+\`\`\`
+Maintain 70/30 ratio: 70% answer, 30% action.`;
+    }
+
+    private formatMemoryContext(layers: any): string {
+        let ctx = "";
+        if (layers.user.length > 0) ctx += `[User Preferences]\n${layers.user.join('\n')}\n\n`;
+        if (layers.session.length > 0) ctx += `[Task Context]\n${layers.session.join('\n')}\n\n`;
+        if (layers.longTerm.length > 0) ctx += `[Relevant SOPs/Knowledge]\n${layers.longTerm.join('\n')}\n\n`;
+        return ctx;
+    }
+
+    private evaluateResponse(parsed: Partial<AgentResponse>, raw: string, context: any, steps: number): {
+        valid: boolean;
+        momentumScore: number;
+        confidence: ConfidenceScore;
+        feedback: string;
+    } {
+        const validation = validateResponse(parsed);
+        const momentum = calculateMomentumScore(parsed);
+        const deadEnd = isDeadEnd(raw);
+        const confidence = this.confidenceEstimator.estimate(raw, {
+            vaultSearchResults: context.vaultSearchResults,
+            toolsUsed: context.toolsUsed,
+            reasoningSteps: steps
+        });
+
+        let feedback = "";
+        if (!validation.valid) feedback += `- Missing fields: ${validation.missing_fields?.join(', ')}\n`;
+        if (deadEnd) feedback += `- Avoid dead-end phrasing. Propose a concrete action.\n`;
+        if (momentum < this.momentumThreshold) feedback += `- Low momentum (${momentum}/10). Make the next step more specific and ambitious.\n`;
+
+        return {
+            valid: validation.valid && !deadEnd,
+            momentumScore: momentum,
+            confidence,
+            feedback
+        };
+    }
+
+    private applyFallbackLadder(parsed: Partial<AgentResponse>, confidence: ConfidenceScore): string {
+        let output = parsed.answer || "I'm having trouble finding a clear path forward.";
+        output += "\n\n---\n**🎯 FALLBACK PLAN:**\n";
+        
+        if (confidence.level === 'low') {
+            output += "- **Minimal Viable Action**: I will run a diagnostic check on the current file path.\n";
+            output += "- **Clarification**: I'm assuming you want to organize based on content similarity. Is that correct?\n";
+            output += "- **Next Step (unblock)**: Please confirm the target folder name or provide more context on the desired structure.\n";
+        } else {
+            output += "- **Option A**: Proceed with current assumptions but use a temporary backup folder.\n";
+            output += "- **Option B**: List all relevant tags first to manually select the best one.\n";
+            output += "- **Next Step (choose_path)**: Select Option A to move fast, or Option B for more control.\n";
+        }
+        
+        return output;
+    }
+
     clearMemory(): void {
         this.conversationMemory.clear();
     }
 
-    /**
-     * Get conversation summary
-     */
     getConversationSummary(): string {
         return this.conversationMemory.getSummary();
     }

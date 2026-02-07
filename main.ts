@@ -149,7 +149,7 @@ export default class ObsidianAgentPlugin extends Plugin {
                 new CreateNoteTool(this.app),
                 new UpdateNoteTool(this.app),
                 new RememberFactTool(this.memoryService)
-            ], this.settings);
+            ], this.settings, this.memoryService);
 
 			this.contextEngine = new IntelligentContextEngine(
 				this.app.vault,
