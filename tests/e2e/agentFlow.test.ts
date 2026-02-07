@@ -74,7 +74,7 @@ describe('End-to-End Agent Tests', () => {
   it('should handle normal query flow', async () => {
     const services = runtime.getServices();
 
-    mockVault.addFile('note.md', '# Note\n\nSample content for E2E testing.');
+    mockVault.addFile('note.md', '# Note\n\nSample content for E2E testing with enough words to meet minimum requirements.');
 
     const file = {
       path: 'note.md',
@@ -82,8 +82,15 @@ describe('End-to-End Agent Tests', () => {
       stat: { mtime: Date.now() },
     } as TFile;
 
-    await services.pipelineService.indexNote(file);
+    const indexResult = await services.pipelineService.indexNote(file);
+    if (!indexResult.success) {
+      console.error('E2E normal query: Index failed:', indexResult.error);
+    }
+    
     const result = await services.pipelineService.queryAgent('test');
+    if (!result.success) {
+      console.error('E2E normal query: Query failed:', result.error);
+    }
 
     expect(result.success).toBe(true);
   });
@@ -91,7 +98,7 @@ describe('End-to-End Agent Tests', () => {
   it('should handle rollback integrity', async () => {
     const services = runtime.getServices();
 
-    mockVault.addFile('rollback.md', '# Rollback\n\nTesting rollback integrity.');
+    mockVault.addFile('rollback.md', '# Rollback\n\nTesting rollback integrity with sufficient content for proper processing.');
 
     const file = {
       path: 'rollback.md',
@@ -100,9 +107,16 @@ describe('End-to-End Agent Tests', () => {
     } as TFile;
 
     const indexResult = await services.pipelineService.indexNote(file);
+    if (!indexResult.success) {
+      console.error('E2E rollback: Index failed:', indexResult.error);
+    }
+    
     const rollbackResult = await services.pipelineService.rollbackOperation(
       indexResult.operationId
     );
+    if (!rollbackResult.success) {
+      console.error('E2E rollback: Rollback failed:', rollbackResult.error);
+    }
 
     expect(rollbackResult.success).toBe(true);
   });

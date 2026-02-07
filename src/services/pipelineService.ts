@@ -386,16 +386,15 @@ Answer:`;
       }
 
       // Execute rollback based on operation type
-      if (lastEntry.operation === 'index' && rollbackMeta.previousState) {
-        const prevState = rollbackMeta.previousState;
-        if (prevState === null) {
+      if (lastEntry.operation === 'index') {
+        if (rollbackMeta.previousState === null || rollbackMeta.previousState === undefined) {
           // Was a new entry, remove it
           for (const id of rollbackMeta.affectedIndices || []) {
             await this.vectorStore.remove(id);
           }
         } else {
           // Restore previous state
-          await this.vectorStore.add(prevState);
+          await this.vectorStore.add(rollbackMeta.previousState);
         }
         await this.vectorStore.save();
       }

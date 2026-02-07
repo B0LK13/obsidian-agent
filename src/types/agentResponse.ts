@@ -76,7 +76,7 @@ export function parseAgentResponse(rawOutput: string): Partial<AgentResponse> {
             const block = nextStepBlock[1];
             const action = block.match(/\s+action:\s*(.+)/)?.[1];
             const owner = block.match(/\s+owner:\s*(user|agent)/)?.[1];
-            const effort = block.match(/\s+effort:\s*(\d+m|half-day|1-day|2-days\+)/)?.[1];
+            const effortValue = block.match(/\s+effort:\s*(\d+m|half-day|1-day|2-days\+)/)?.[1];
             const outcome = block.match(/\s+expected_outcome:\s*(.+)/)?.[1];
             const type = block.match(/\s+type:\s*(do_now|choose_path|unblock)/)?.[1];
 
@@ -84,7 +84,7 @@ export function parseAgentResponse(rawOutput: string): Partial<AgentResponse> {
                 response.next_step = {
                     action: action.trim(),
                     owner: (owner as 'user' | 'agent') || 'user',
-                    effort: (effort as any) || '30m',
+                    effort: (effortValue as any) || '30m',
                     expected_outcome: outcome?.trim() || 'Task completed successfully',
                     type: type as any
                 };
@@ -278,16 +278,23 @@ export const DEAD_END_PATTERNS = [
  * Check if response is a dead-end (lacks forward motion)
  */
 export function isDeadEnd(output: string): boolean {
+    // If it has a clear next step section, it is NOT a dead end
+    if (/(?:NEXT STEP|Next Step|🎯|```yaml)/i.test(output)) {
+        return false;
+    }
+
+    // Check for suggestions first
+    const hasSuggestion = /(?:i recommend|i suggest|next step|you should|start by)/i.test(output);
+
     // Check against dead-end patterns
     for (const pattern of DEAD_END_PATTERNS) {
-        if (pattern.test(output)) {
+        if (pattern.test(output) && !hasSuggestion) {
             return true;
         }
     }
 
     // Check if ends with question without suggestion
     const endsWithQuestion = /\?\s*$/.test(output.trim());
-    const hasSuggestion = /(?:i recommend|i suggest|next step|you should|start by)/i.test(output);
 
     if (endsWithQuestion && !hasSuggestion) {
         return true;
