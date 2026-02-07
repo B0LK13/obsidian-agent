@@ -1,11 +1,11 @@
 {
-  "id": "obsidian-ai-agent",
-  "name": "Obsidian AI Agent",
-  "version": "1.4.0",
+  "id": "ai-chat-notes",
+  "name": "AI Chat & Notes",
+  "version": "1.1.0",
   "minAppVersion": "0.15.0",
-  "description": "Local-only AI agent with RAG, Canvas integration, and knowledge graph support",
-  "author": "B0LK13",
+  "description": "AI-enhanced chat and note-taking platform with Liquid Glass design, semantic search, and intelligent note management",
+  "author": "AI Assistant",
   "authorUrl": "",
   "fundingUrl": "",
-  "isDesktopOnly": true
+  "isDesktopOnly": false
 }
