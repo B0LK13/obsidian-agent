@@ -1,0 +1,39 @@
+{
+  "entities": {
+    "Docker": {
+      "first_seen": "2026-01-30T13:44:12.165042",
+      "mentions": 2,
+      "last_seen": "2026-01-30T13:44:12.167641"
+    },
+    "containerization": {
+      "first_seen": "2026-01-30T13:44:12.165087",
+      "mentions": 1,
+      "last_seen": "2026-01-30T13:44:12.165101"
+    },
+    "Docker Inc": {
+      "first_seen": "2026-01-30T13:44:12.167663",
+      "mentions": 1,
+      "last_seen": "2026-01-30T13:44:12.167673"
+    }
+  },
+  "relationships": [
+    {
+      "source": "Docker",
+      "target": "containerization",
+      "relation_type": "is_a",
+      "strength": 1.0,
+      "metadata": {
+        "content_id": "72fb47cabcc5"
+      }
+    },
+    {
+      "source": "Docker",
+      "target": "Docker Inc",
+      "relation_type": "created_by",
+      "strength": 1.0,
+      "metadata": {
+        "content_id": "72fb47cabcc5"
+      }
+    }
+  ]
+}

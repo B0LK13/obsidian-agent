@@ -24,6 +24,15 @@ export interface StreamChunk {
 export type StreamCallback = (chunk: StreamChunk) => void;
 export type StreamProgressCallback = (progress: string) => void;
 
+export interface CompletionOptions {
+	prompt: string;
+	context?: string;
+	imageData?: string;
+	stream?: boolean;
+	onChunk?: StreamCallback;
+	onProgress?: StreamProgressCallback;
+}
+
 export class AIService {
 	private settings: ObsidianAgentSettings;
 	private timeoutMs: number = 30000;
@@ -101,7 +110,7 @@ export class AIService {
 			const result = await this.callAPIWithRetry([{
 				role: 'user',
 				content: 'Test connection. Please respond with "OK" only.'
-			}], 1);
+			}], undefined, 1);
 			
 			const responseTime = Date.now() - startTime;
 			
@@ -135,7 +144,11 @@ export class AIService {
 		}
 	}
 
-	async generateCompletion(prompt: string, context?: string, stream?: boolean, onChunk?: StreamCallback, onProgress?: StreamProgressCallback): Promise<CompletionResult> {
+	async generateCompletion(options: string | CompletionOptions): Promise<CompletionResult> {
+        // Handle both simple string prompt and options object
+        const opt: CompletionOptions = typeof options === 'string' ? { prompt: options } : options;
+        const { prompt, context, imageData, stream, onChunk, onProgress } = opt;
+
 		// Input validation
 		try {
 			Validators.notEmpty(prompt, 'prompt');
@@ -205,12 +218,10 @@ export class AIService {
 		try {
 			let result: CompletionResult;
 			
-			if (stream && onChunk && onProgress) {
-				result = await this.streamAPI(messages, onChunk, onProgress);
-			} else if (stream && onChunk && !onProgress) {
-				result = await this.streamAPI(messages, onChunk, undefined);
+			if (stream && onChunk) {
+				result = await this.streamAPI(messages, imageData, onChunk, onProgress);
 			} else {
-				result = await this.callAPIWithRetry(messages);
+				result = await this.callAPIWithRetry(messages, imageData);
 			}
 
 			// Validate result
@@ -284,7 +295,7 @@ export class AIService {
 		return `Failed to generate completion: ${error.message}`;
 	}
 
-	private async callAPIWithRetry(messages: Array<{role: string, content: string}>, maxRetriesOverride?: number): Promise<CompletionResult> {
+	private async callAPIWithRetry(messages: Array<{role: string, content: any}>, imageData?: string, maxRetriesOverride?: number): Promise<CompletionResult> {
 		const maxRetries = maxRetriesOverride ?? this.maxRetries;
 		let lastError: any;
 
@@ -295,7 +306,7 @@ export class AIService {
 					await this.sleep(delay);
 				}
 
-				return await this.callAPIWithTimeout(messages);
+				return await this.callAPIWithTimeout(messages, imageData);
 			} catch (error: any) {
 				lastError = error;
 
@@ -339,7 +350,7 @@ export class AIService {
 		return this.initialRetryDelayMs * Math.pow(this.retryDelayMultiplier, attempt - 1);
 	}
 
-	private async streamAPI(messages: Array<{role: string, content: string}>, onChunk: StreamCallback, onProgress?: StreamProgressCallback): Promise<CompletionResult> {
+	private async streamAPI(messages: Array<{role: string, content: any}>, imageData?: string, onChunk?: StreamCallback, onProgress?: StreamProgressCallback): Promise<CompletionResult> {
 		let url: string;
 		let headers: Record<string, string>;
 		let body: any;
@@ -351,9 +362,28 @@ export class AIService {
 					'Content-Type': 'application/json',
 					'Authorization': `Bearer ${this.settings.apiKey}`
 				};
+
+                // Handle vision if imageData provided
+                const finalMessages = [...messages];
+                if (imageData) {
+                    const lastUserMsgIndex = finalMessages.map(m => m.role).lastIndexOf('user');
+                    if (lastUserMsgIndex !== -1) {
+                        const originalContent = finalMessages[lastUserMsgIndex].content;
+                        finalMessages[lastUserMsgIndex].content = [
+                            { type: "text", text: originalContent },
+                            {
+                                type: "image_url",
+                                image_url: {
+                                    url: imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}`
+                                }
+                            }
+                        ];
+                    }
+                }
+
 				body = {
-					model: this.settings.model,
-					messages: messages,
+					model: imageData ? (this.settings.model.includes('vision') ? this.settings.model : 'gpt-4o') : this.settings.model,
+					messages: finalMessages,
 					temperature: this.settings.temperature,
 					max_tokens: this.settings.maxTokens,
 					stream: true
@@ -459,13 +489,15 @@ export class AIService {
 					}
 					if (json.done) {
 						tokensUsed = (json.eval_count || 0) + (json.prompt_eval_count || 0);
-						onChunk({
-							content: fullText,
-							done: true,
-							tokensUsed,
-							inputTokens,
-							outputTokens
-						});
+						if (onChunk) {
+							onChunk({
+								content: fullText,
+								done: true,
+								tokensUsed,
+								inputTokens,
+								outputTokens
+							});
+						}
 					}
 				} catch (err) {
 					console.error('Failed to parse Ollama chunk:', chunk);
@@ -477,13 +509,15 @@ export class AIService {
 				if (line.startsWith('data: ')) {
 					const data = line.slice(6);
 					if (data.trim() === '[DONE]') {
-						onChunk({
-							content: fullText,
-							done: true,
-							tokensUsed: tokensUsed,
-							inputTokens,
-							outputTokens
-						});
+						if (onChunk) {
+							onChunk({
+								content: fullText,
+								done: true,
+								tokensUsed: tokensUsed,
+								inputTokens,
+								outputTokens
+							});
+						}
 						break;
 					}
 
@@ -530,9 +564,9 @@ export class AIService {
 		return new Promise(resolve => setTimeout(resolve, ms));
 	}
 
-	private async callAPIWithTimeout(messages: Array<{role: string, content: string}>): Promise<CompletionResult> {
+	private async callAPIWithTimeout(messages: Array<{role: string, content: any}>, imageData?: string): Promise<CompletionResult> {
 		return Promise.race([
-			this.callAPI(messages),
+			this.callAPI(messages, imageData),
 			this.timeoutPromise(this.timeoutMs)
 		]);
 	}
@@ -547,7 +581,7 @@ export class AIService {
 		});
 	}
 
-	private async callAPI(messages: Array<{role: string, content: string}>): Promise<CompletionResult> {
+	private async callAPI(messages: Array<{role: string, content: any}>, imageData?: string): Promise<CompletionResult> {
 		let url: string;
 		let headers: Record<string, string>;
 		let body: any;
@@ -559,9 +593,28 @@ export class AIService {
 					'Content-Type': 'application/json',
 					'Authorization': `Bearer ${this.settings.apiKey}`
 				};
+
+                // Handle vision if imageData provided
+                const finalMessages = [...messages];
+                if (imageData) {
+                    const lastUserMsgIndex = finalMessages.map(m => m.role).lastIndexOf('user');
+                    if (lastUserMsgIndex !== -1) {
+                        const originalContent = finalMessages[lastUserMsgIndex].content;
+                        finalMessages[lastUserMsgIndex].content = [
+                            { type: "text", text: originalContent },
+                            {
+                                type: "image_url",
+                                image_url: {
+                                    url: imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}`
+                                }
+                            }
+                        ];
+                    }
+                }
+
 				body = {
-					model: this.settings.model,
-					messages: messages,
+					model: imageData ? (this.settings.model.includes('vision') ? this.settings.model : 'gpt-4o') : this.settings.model,
+					messages: finalMessages,
 					temperature: this.settings.temperature,
 					max_tokens: this.settings.maxTokens
 				};

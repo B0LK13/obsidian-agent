@@ -1,0 +1,29 @@
+# Local AI Stack Requirements
+# Install with: pip install -r requirements.txt
+
+# LLM Server
+llama-cpp-python>=0.2.0
+
+# Embeddings Server
+sentence-transformers>=2.2.0
+
+# Vector Database
+chromadb>=0.4.0
+# Alternative: lancedb>=0.5.0
+
+# Web Server
+flask>=2.3.0
+gunicorn>=21.0.0; sys_platform != 'win32'
+waitress>=2.1.0; sys_platform == 'win32'
+
+# Utilities
+numpy>=1.24.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# Optional GPU Support (Linux/Mac)
+# torch>=2.0.0; sys_platform != 'win32'
+
+# Development
+pytest>=7.4.0
+black>=23.0.0

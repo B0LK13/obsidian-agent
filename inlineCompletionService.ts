@@ -190,10 +190,10 @@ export class InlineCompletionService {
 		const prompt = this.buildCompletionPrompt(completionType, context);
 
 		try {
-			const result = await this.aiService.generateCompletion(
+			const result = await this.aiService.generateCompletion({
 				prompt,
-				surroundingLines
-			);
+				context: surroundingLines
+			});
 
 			// Parse AI response into completion suggestions
 			return this.parseAIResponse(result.text, completionType);

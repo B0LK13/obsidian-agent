@@ -221,6 +221,13 @@ export interface ObsidianAgentSettings {
 	completionConfig: CompletionConfig;
 	// Intelligent suggestion settings
 	suggestionConfig: SuggestionConfig;
+	// Embedding settings
+	embeddingConfig: {
+		provider: 'openai' | 'local' | 'ollama';
+		model: string;
+		enabled: boolean;
+		autoRefresh: boolean;
+	};
 }
 
 export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
@@ -278,7 +285,13 @@ export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
 		enableReducedMotion: false
 	},
 	completionConfig: DEFAULT_COMPLETION_CONFIG,
-	suggestionConfig: DEFAULT_SUGGESTION_CONFIG
+	suggestionConfig: DEFAULT_SUGGESTION_CONFIG,
+	embeddingConfig: {
+		provider: 'openai',
+		model: 'text-embedding-3-small',
+		enabled: false,
+		autoRefresh: true
+	}
 }
 
 export function generateProfileId(): string {

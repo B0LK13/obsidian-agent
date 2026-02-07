@@ -1,0 +1,20 @@
+http:
+  routers:
+    kasm-wizard:
+      rule: "Host(`desktop.theblackagency.cloud`)"
+      entryPoints:
+        - websecure
+      service: kasm-wizard
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    kasm-wizard:
+      loadBalancer:
+        servers:
+          - url: "https://kasm:3000"
+        serversTransport: kasm-transport
+
+  serversTransports:
+    kasm-transport:
+      insecureSkipVerify: true

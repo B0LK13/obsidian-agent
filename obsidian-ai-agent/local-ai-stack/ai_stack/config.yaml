@@ -1,0 +1,77 @@
+# Optimized LLM Server Configuration
+# Copy to config.yaml and customize for your hardware
+
+models:
+  default:
+    path: "./models/llama-2-7b-chat.Q4_K_M.gguf"
+    description: "Default 7B model (good balance of speed/quality)"
+    
+  fast:
+    path: "./models/phi-2.Q4_K_M.gguf"
+    description: "Fast 2.7B model (CPU-friendly)"
+    
+  quality:
+    path: "./models/llama-2-13b-chat.Q4_K_M.gguf"
+    description: "Higher quality 13B model (requires more VRAM/RAM)"
+
+# Performance tuning
+performance:
+  # Context window size
+  context_size: 4096
+  
+  # Batch size for processing
+  batch_size: 512
+  
+  # Number of CPU threads (null = auto-detect)
+  threads: null
+  
+  # GPU layers (0 = CPU only, -1 = auto-detect, 35 = typical for 8GB VRAM)
+  gpu_layers: -1
+  
+  # Memory mapping (faster loading, uses disk as swap)
+  use_mmap: true
+  
+  # Memory locking (prevents swapping to disk)
+  use_mlock: false
+  
+  # Flash attention (experimental, may improve speed)
+  flash_attn: false
+
+# Caching
+cache:
+  # Number of models to keep in memory
+  model_cache_size: 2
+  
+  # Number of prompts to cache
+  prompt_cache_size: 100
+  
+  # Enable KV cache quantization (saves VRAM)
+  quantize_kv_cache: false
+
+# Generation parameters
+generation:
+  default_temperature: 0.7
+  default_max_tokens: 2048
+  top_p: 0.95
+  top_k: 40
+  repeat_penalty: 1.1
+  
+  # Streaming
+  stream_chunk_size: 4
+  
+  # Rate limiting (tokens per second, null = unlimited)
+  max_tokens_per_second: null
+
+# Server settings
+server:
+  host: "127.0.0.1"
+  port: 8000
+  workers: 1
+  
+  # Use waitress on Windows (better than Flask dev server)
+  use_waitress: true
+
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

@@ -1,0 +1,411 @@
+title,body,labels,milestone
+"FEAT: Implement Incremental Indexing Mechanism","**Problem Statement:**
+The current indexing approach performs full re-indexing of the entire knowledge base on each update, resulting in poor performance, especially with large knowledge bases containing thousands of notes.
+
+**Proposed Solution:**
+Implement an incremental indexing mechanism that tracks changes to notes (additions, modifications, deletions) and updates the index incrementally based on these changes, rather than performing full re-indexing on each update.
+
+**Acceptance Criteria:**
+1. The incremental indexing mechanism should process updates to 1000 notes within 10 seconds
+2. Maintain index consistency with a correctness rate of at least 99.9% based on manual validation
+3. Reduce average indexing time for subsequent updates by at least 80% compared to full re-indexing
+4. Memory footprint should remain under 100MB during indexing operations","feature,priority:high,performance",Foundation
+"FEAT: Implement Vector Database Layer for Semantic Search","**Problem Statement:**
+The current search mechanism relies on traditional keyword-based search, which may not effectively capture the semantic relationships and contextual meaning of the content in the knowledge base.
+
+**Proposed Solution:**
+Implement a vector database layer that converts the content of notes into vector embeddings using a pre-trained language model, and enables semantic search capabilities that can retrieve relevant notes based on the semantic similarity of their content.
+
+**Acceptance Criteria:**
+1. Generate vector embeddings for 1000 notes within 60 seconds
+2. Provide semantic search results with a relevance score of at least 0.8 for at least 80% of search queries
+3. Memory footprint should remain under 500MB
+4. Integrate seamlessly with existing search interface and functionality","feature,priority:high,enhancement",Foundation
+"FEAT: Implement Automated Link Suggestions","**Problem Statement:**
+The current system lacks the ability to automatically suggest relevant links between notes based on semantic similarity or shared concepts.
+
+**Proposed Solution:**
+Implement a machine learning-based link suggestion engine that analyzes the content of notes and suggests relevant connections based on semantic relationships, shared keywords, or conceptual overlap.
+
+**Acceptance Criteria:**
+1. Suggest at least 5 relevant links for any given note
+2. Achieve accuracy rate of at least 80% based on manual validation
+3. Integrate seamlessly with existing note editing interface
+4. Provide real-time link suggestions as user types or edits a note","feature,priority:high,ml","Week 4"
+"FEAT: Implement Dead Link Detection and Repair","**Problem Statement:**
+The current system lacks the ability to automatically detect and report broken internal links within the knowledge base.
+
+**Proposed Solution:**
+Implement a link validation and repair mechanism that scans all internal links in the knowledge base, identifies broken or invalid links, and provides suggestions for repairing or updating these links.
+
+**Acceptance Criteria:**
+1. Detect at least 90% of broken internal links in a test knowledge base containing 1000 notes with 5000 internal links
+2. Provide accurate repair suggestions for at least 80% of detected broken links
+3. Integrate seamlessly with existing note editing and management interface
+4. Run validation in background without blocking user interface","feature,priority:high,reliability","Week 3"
+"FEAT: Implement Caching and Optimization Layer","**Problem Statement:**
+The current system lacks efficient caching mechanisms for frequently accessed notes, search results, and knowledge graphs, resulting in unnecessary disk I/O operations and increased latency.
+
+**Proposed Solution:**
+Implement a caching and optimization layer that provides in-memory caching for frequently accessed notes, search results, and knowledge graphs, employing optimization techniques like lazy loading, prefetching, and batch processing.
+
+**Acceptance Criteria:**
+1. Cache at least 1000 frequently accessed notes within 10 seconds
+2. Achieve cache hit rate of at least 80% for subsequent accesses
+3. Reduce average latency for common user interactions by at least 50%
+4. Implement intelligent cache eviction policy","feature,priority:high,performance","Week 5"
+"FEAT: Implement Knowledge Graph Visualization","**Problem Statement:**
+The current system lacks the ability to visualize the relationships and connections between notes in the knowledge base as an interactive knowledge graph.
+
+**Proposed Solution:**
+Implement a knowledge graph visualization component that represents notes as nodes and their relationships as edges, allowing users to explore the structure and connections of their knowledge base.
+
+**Acceptance Criteria:**
+1. Render a knowledge base containing 1000 notes and 5000 relationships within 5 seconds
+2. Provide smooth interactive performance with panning, zooming, and node selection
+3. Integrate seamlessly with existing note editing interface
+4. Support different visualization layouts (force-directed, hierarchical, radial)","feature,priority:high,visualization","Week 6"
+"REFACTOR: Separate Concerns in Indexing Module","**Problem Statement:**
+The current indexing module mixes file system operations, data parsing, and index construction logic within the same module, resulting in a monolithic structure.
+
+**Proposed Solution:**
+Refactor the indexing module to separate concerns into distinct modules/classes for file system operations, data parsing, and index construction.
+
+**Acceptance Criteria:**
+1. Refactored module consists of at least 3 distinct modules/classes
+2. Clear interfaces and dependencies between modules
+3. Process indexing of 1000 notes within same time frame as current system
+4. Improved code maintainability and testability","refactor,priority:high,architecture","Week 2"
+"REFACTOR: Implement Asynchronous Processing for Long-Running Operations","**Problem Statement:**
+The current system performs long-running operations synchronously, blocking the user interface.
+
+**Proposed Solution:**
+Implement asynchronous processing using modern async techniques (async/await, Promises, observables) to perform operations in background without blocking UI.
+
+**Acceptance Criteria:**
+1. Perform long-running operations asynchronously without blocking UI
+2. Provide progress feedback and completion notifications
+3. Maintain same level of functionality and performance
+4. Support cancellation of in-progress operations","refactor,priority:high,async","Week 2"
+"REFACTOR: Implement Defensive Coding and Error Handling Improvements","**Problem Statement:**
+The current system lacks robust defensive coding practices and comprehensive error handling mechanisms.
+
+**Proposed Solution:**
+Implement defensive coding practices including input validation, boundary checking, null pointer checks, and proper error propagation throughout the codebase.
+
+**Acceptance Criteria:**
+1. Implement comprehensive input validation throughout codebase
+2. Add boundary checking and null pointer checks
+3. Gracefully handle edge cases without crashing or corrupting data
+4. Maintain same level of functionality and performance
+5. All error paths tested with unit tests","refactor,priority:high,reliability","Week 7"
+"ENHANCEMENT: Improve Search Algorithm Efficiency","**Problem Statement:**
+The current search algorithm may not be optimized for efficiency, potentially resulting in slow search response times.
+
+**Proposed Solution:**
+Enhance search algorithm with advanced data structures (inverted indexes, tries), optimize query parsing, implement caching, and explore advanced techniques (fuzzy search, synonyms).
+
+**Acceptance Criteria:**
+1. Reduce average search response times by at least 30% for large knowledge bases (1000+ notes)
+2. Maintain or improve search accuracy and relevance
+3. Integrate seamlessly with existing search interface","enhancement,priority:medium,performance","Week 5"
+"ENHANCEMENT: Improve Note Ingestion and Indexing Reliability","**Problem Statement:**
+The current note ingestion and indexing mechanism may not be fully reliable, potentially resulting in missed notes or incomplete indexing.
+
+**Proposed Solution:**
+Enhance ingestion by implementing robust file system monitoring, improving error handling, implementing validation checks, and exploring advanced indexing techniques.
+
+**Acceptance Criteria:**
+1. Reduce rate of missed notes and incomplete indexing by at least 50%
+2. Handle diverse file formats and structures reliably
+3. Integrate seamlessly with existing ingestion pipeline","enhancement,priority:medium,reliability","Week 3"
+"W1/UI: Task List Page (tasks + status)","Build Task List page: display tasks, status, created_at; link to task detail.
+
+**Acceptance Criteria:**
+- Renders list from API
+- Handles empty/loading/error states
+
+**Dependencies:** Orchestrator GET /tasks","week:1,service:UI,priority:P0","Week 1"
+"W1/UI: Create Task Modal (prompt + optional project placeholder)","Create Task modal with prompt input and submit.
+
+**Acceptance Criteria:**
+- Calls POST /tasks
+- Navigates to task detail
+- Validates empty prompt
+
+**Dependencies:** Orchestrator POST /tasks","week:1,service:UI,priority:P0","Week 1"
+"W1/UI: Task Detail Skeleton (Timeline/Outputs/Files tabs)","Task detail page shell with three tabs and empty states.
+
+**Acceptance Criteria:**
+- Route /tasks/:id loads basic task header
+- Tabs switch without breaking
+
+**Dependencies:** GET /tasks/:id","week:1,service:UI,priority:P0","Week 1"
+"W1/Orchestrator: DB Schema for Task + TaskEvent + Artifact + SandboxRef","Add migrations/models for Task, TaskEvent (timeline), Artifact, SandboxRef.
+
+**Acceptance Criteria:**
+- Migrations run successfully
+- CRUD works in dev
+- Indexes on task_id & created_at","week:1,service:Orchestrator,priority:P0","Week 1"
+"W1/Orchestrator: Task Lifecycle State Machine (CREATED→...→COMPLETED)","Implement task states and transitions: CREATED, PLANNING, EXECUTING, DELIVERING, COMPLETED + FAILED, CANCELLED.
+
+**Acceptance Criteria:**
+- Transitions validated
+- State change creates TaskEvent entry","week:1,service:Orchestrator,priority:P0","Week 1"
+"W1/Orchestrator: Task API (POST /tasks, GET /tasks, GET /tasks/:id)","Implement endpoints for UI.
+
+**Acceptance Criteria:**
+- POST creates task
+- GET list paginated
+- GET single returns state, timestamps, sandbox ref, artifacts summary","week:1,service:Orchestrator,priority:P0","Week 1"
+"W1/Orchestrator: Runner Worker Stub (advance states)","Add background worker that picks tasks and advances state with stubbed behavior.
+
+**Acceptance Criteria:**
+- Task moves CREATED→PLANNING→EXECUTING→DELIVERING→COMPLETED in dev
+- Emits events","week:1,service:Orchestrator,priority:P0","Week 1"
+"W1/Sandbox: Define Sandbox Service Interface Contract","Create code-level interface: createSandbox/destroySandbox + execTool + listFiles.
+
+**Acceptance Criteria:**
+- Orchestrator compiles against interface
+- Default adapter returns structured NotImplemented errors","week:1,service:Sandbox,priority:P0","Week 1"
+"W1/Artifacts: Artifact Metadata Schema + Registration Helper","Implement artifact model and helper function registerArtifact(task_id,...).
+
+**Acceptance Criteria:**
+- Artifacts can be recorded for a task
+- Visible in GET /tasks/:id","week:1,service:Artifacts,priority:P0","Week 1"
+"W2/UI: Timeline View Rendering from TaskEvents","Render chronological timeline from TaskEvents.
+
+**Acceptance Criteria:**
+- Polling or SSE
+- Step cards show tool_name/status/duration
+- Detail drawer shows JSON
+
+**Dependencies:** GET /tasks/:id/events or embed events","week:2,service:UI,priority:P0","Week 2"
+"W2/UI: Cancel Task Button (wired)","Add cancel CTA.
+
+**Acceptance Criteria:**
+- Calls POST /tasks/:id/cancel
+- UI reflects CANCELLED
+- Disables further actions
+
+**Dependencies:** Cancel endpoint","week:2,service:UI,priority:P0","Week 2"
+"W2/Orchestrator: Tool Router + TaskEvent Emission","Implement tool router: tool call in/out logged as TaskEvent with step_id.
+
+**Acceptance Criteria:**
+- Every tool call produces start+end events
+- Errors captured","week:2,service:Orchestrator,priority:P0","Week 2"
+"W2/Orchestrator: Cancel Endpoint + Worker Interrupt","POST /tasks/:id/cancel transitions state and interrupts execution.
+
+**Acceptance Criteria:**
+- Sandbox teardown called if active
+- No further tool calls happen
+
+**Dependencies:** Worker signal mechanism","week:2,service:Orchestrator,priority:P0","Week 2"
+"W2/Orchestrator: Task Timeout Policy (global + per task)","Add config timeout; enforce in worker.
+
+**Acceptance Criteria:**
+- Tasks exceeding time stop
+- Set FAILED or CANCELLED(reason=timeout)
+- Partial artifacts preserved","week:2,service:Orchestrator,priority:P0","Week 2"
+"W2/Sandbox: Simulated Workspace Adapter (local temp dir per task)","Implement simulated sandbox adapter with filesystem.write/list/zip using local temp dirs.
+
+**Acceptance Criteria:**
+- Enables E2E run without real sandbox","week:2,service:Sandbox,priority:P0","Week 2"
+"W2/Artifacts: ZIP Artifact Creation from Simulated Workspace","Create ZIP from simulated workspace; store as artifact.
+
+**Acceptance Criteria:**
+- Outputs panel can download ZIP
+- Integrity check passes","week:2,service:Artifacts,priority:P0","Week 2"
+"W3/UI: Files Tab (list files + metadata)","Implement Files tab showing name/size/mtime; refresh.
+
+**Acceptance Criteria:**
+- Shows workspace files
+- Handles empty state
+
+**Dependencies:** filesystem.list","week:3,service:UI,priority:P0","Week 3"
+"W3/UI: Download All Files (ZIP) CTA","Button triggers ZIP generation/download.
+
+**Acceptance Criteria:**
+- Returns ZIP artifact
+- Button disabled while generating
+
+**Dependencies:** filesystem.zip + artifact store","week:3,service:UI,priority:P0","Week 3"
+"W3/Orchestrator: Integrate Real Sandbox Service (replace simulated)","Switch adapter to real Sandbox service calls for filesystem tools.
+
+**Acceptance Criteria:**
+- Tasks run using sandbox
+- Events reflect sandbox tool calls","week:3,service:Orchestrator,priority:P0","Week 3"
+"W3/Orchestrator: Persist SandboxRef on Task","Store sandbox_id/status in DB and expose in GET /tasks/:id.
+
+**Acceptance Criteria:**
+- Sandbox ref visible
+- Status updates on create/destroy","week:3,service:Orchestrator,priority:P0","Week 3"
+"W3/Sandbox: Container Image + Runtime (filesystem tooling)","Build sandbox container image with zip + runtimes. Implement create/destroy and filesystem endpoints.
+
+**Acceptance Criteria:**
+- Provision <60s
+- Isolated per task
+- Resource limits set","week:3,service:Sandbox,priority:P0","Week 3"
+"W3/Artifacts: ZIP Creation from Sandbox Workspace","Generate ZIP by pulling from sandbox volume or via endpoint.
+
+**Acceptance Criteria:**
+- Stable download link
+- Artifact metadata recorded","week:3,service:Artifacts,priority:P0","Week 3"
+"W4/UI: Timeline Shows Visited URLs + Extracted Preview","Enhance timeline cards for browser tools.
+
+**Acceptance Criteria:**
+- URL displayed
+- Extracted text preview truncated
+- Errors visible","week:4,service:UI,priority:P0","Week 4"
+"W4/UI: Sources/Evidence Section on Task Detail","Add evidence list derived from browser events.
+
+**Acceptance Criteria:**
+- Shows unique URLs used
+- Link out opens in new tab","week:4,service:UI,priority:P1","Week 4"
+"W4/Orchestrator: Add browser.* Tools to Router","Implement browser.navigate/extract_text/download tools.
+
+**Acceptance Criteria:**
+- Tool calls logged
+- Retry policy for transient failures","week:4,service:Orchestrator,priority:P0","Week 4"
+"W4/Orchestrator: Redaction Hooks for Logs (secrets)","Implement redaction policy for tool inputs/outputs.
+
+**Acceptance Criteria:**
+- Secrets not stored in TaskEvents
+- Configurable fields","week:4,service:Orchestrator,priority:P0","Week 4"
+"W4/Sandbox: Playwright Integration in Sandbox Image","Install/config Playwright. Implement endpoints for navigate/extract_text/download.
+
+**Acceptance Criteria:**
+- Can visit a URL
+- Extract body text
+- Download to workspace path","week:4,service:Sandbox,priority:P0","Week 4"
+"W4/Artifacts: Register report.md / report.html as Artifacts","Define artifact types for report outputs and register them when generated.
+
+**Acceptance Criteria:**
+- Outputs panel shows reports
+- Downloads work","week:4,service:Artifacts,priority:P1","Week 4"
+"W5/UI: Outputs Panel with Artifact Cards","Implement Outputs tab: list artifacts with type/size/download.
+
+**Acceptance Criteria:**
+- Live updates when artifacts appear","week:5,service:UI,priority:P0","Week 5"
+"W5/UI: Safe HTML Report Preview Renderer","Render report.html in UI with sanitization.
+
+**Acceptance Criteria:**
+- No script execution
+- Supports basic formatting","week:5,service:UI,priority:P1","Week 5"
+"W5/Orchestrator: Define Done Contract + Completion Gating","Task completes only when artifact exists or explicit no-artifact.
+
+**Acceptance Criteria:**
+- Prevents premature completion
+- Produces final summary with links","week:5,service:Orchestrator,priority:P0","Week 5"
+"W5/Orchestrator: Stop Conditions + Loop Safeguards","Implement max steps/tool calls; prevent infinite loops.
+
+**Acceptance Criteria:**
+- Terminates with FAILED(reason=max_steps) and logs","week:5,service:Orchestrator,priority:P0","Week 5"
+"W5/Sandbox: Export Helper (md→html) or Consistent Paths","Implement markdown-to-html conversion in sandbox OR guarantee stable paths.
+
+**Acceptance Criteria:**
+- Report generated deterministically at /workspace/report.md","week:5,service:Sandbox,priority:P1","Week 5"
+"W5/Artifacts: Artifact Storage (object store) + Durable Links","Integrate object storage and signed/proxied downloads.
+
+**Acceptance Criteria:**
+- Downloads stable
+- Metadata persisted
+- Access control enforced","week:5,service:Artifacts,priority:P0","Week 5"
+"W5/Artifacts: Preview Pipeline (report.md→report.html)","Auto-generate report.html when report.md exists and register both.
+
+**Acceptance Criteria:**
+- Preview available <30s after md creation","week:5,service:Artifacts,priority:P1","Week 5"
+"W6/UI: Projects List + Create/Edit (name + master instruction)","Add Projects UI with CRUD.
+
+**Acceptance Criteria:**
+- Create/edit works
+- List shows projects
+- Link to project detail","week:6,service:UI,priority:P1","Week 6"
+"W6/UI: Project KB Upload + List","Upload KB files and display them.
+
+**Acceptance Criteria:**
+- Upload progress
+- Delete option
+- Size/type constraints visible","week:6,service:UI,priority:P1","Week 6"
+"W6/UI: Create Task Inside Project Flow","From project view, create a new task with project_id.
+
+**Acceptance Criteria:**
+- Task inherits project
+- UI shows project badge","week:6,service:UI,priority:P1","Week 6"
+"W6/Orchestrator: Project Model + CRUD API","Implement Project schema + endpoints.
+
+**Acceptance Criteria:**
+- Can create/update/read/list projects
+- Stored master_instruction","week:6,service:Orchestrator,priority:P1","Week 6"
+"W6/Orchestrator: Task Context Resolution (project master instruction snapshot)","On task creation/start, resolve and snapshot system context.
+
+**Acceptance Criteria:**
+- Changes to project apply to new tasks only","week:6,service:Orchestrator,priority:P1","Week 6"
+"W6/Orchestrator: Project KB File Attachment into Sandbox Bootstrap","Mount/copy KB files to /workspace/kb.
+
+**Acceptance Criteria:**
+- KB available for tool reads
+- Read-only recommended","week:6,service:Orchestrator,priority:P1","Week 6"
+"W6/Sandbox: Workspace Bootstrap Step for KB Files","Implement bootstrap routine in sandbox to place KB files.
+
+**Acceptance Criteria:**
+- KB files present for tasks in project","week:6,service:Sandbox,priority:P1","Week 6"
+"W6/Artifacts: Reuse Storage Primitives for KB Uploads","Use artifact storage/upload to store KB files and reference from project.
+
+**Acceptance Criteria:**
+- KB downloads possible
+- Retention defined","week:6,service:Artifacts,priority:P1","Week 6"
+"W7/UI: Download Trace JSON Button","Add button to export trace JSON (events + plan + artifacts).
+
+**Acceptance Criteria:**
+- Downloads successfully
+- Secrets redacted","week:7,service:UI,priority:P0","Week 7"
+"W7/UI: Improved Error States + Retry Hints","Polish UI errors for sandbox/browser failures.
+
+**Acceptance Criteria:**
+- Actionable messaging
+- Show last failing step","week:7,service:UI,priority:P1","Week 7"
+"W7/Orchestrator: Trace Export Endpoint","Implement /tasks/:id/trace export.
+
+**Acceptance Criteria:**
+- Includes lifecycle, tool calls, sandbox id, artifacts
+- Redacted secrets","week:7,service:Orchestrator,priority:P0","Week 7"
+"W7/Orchestrator: Idempotency Key for Task Creation","Support idempotency header.
+
+**Acceptance Criteria:**
+- Duplicate creates return same task_id within TTL","week:7,service:Orchestrator,priority:P1","Week 7"
+"W7/Orchestrator: Developer API Key Auth + /v1/tasks Endpoints","Implement API key auth and /v1/tasks create + get status/artifacts.
+
+**Acceptance Criteria:**
+- Basic rate limit
+- Clear error codes","week:7,service:Orchestrator,priority:P1","Week 7"
+"W7/Sandbox: Cleanup Reliability on Cancel/Fail","Ensure sandbox destroyed on task cancel/fail.
+
+**Acceptance Criteria:**
+- No leaked resources
+- Audit logs show teardown","week:7,service:Sandbox,priority:P0","Week 7"
+"W7/Artifacts: Signed URLs / Proxied Downloads with Expiry","Implement secure downloads.
+
+**Acceptance Criteria:**
+- Unauthorized blocked
+- URLs expire","week:7,service:Artifacts,priority:P0","Week 7"
+"W8/Orchestrator: Webhooks (task.completed, task.failed) [optional]","Implement webhook registration and delivery with signatures and retries.
+
+**Acceptance Criteria:**
+- Verify signature
+- DLQ after N failures","week:8,service:Orchestrator,priority:P2","Week 8"
+"W8/Sandbox: Idle Detection + Stop [optional]","Implement idle timer and stop sandbox after N minutes.
+
+**Acceptance Criteria:**
+- Resources reclaimed
+- Artifacts remain","week:8,service:Sandbox,priority:P2","Week 8"
+"W8/UI: Stability Polish + Bug Bash Checklist","Week 8 reserved for bug bash; track top issues; polish progress indicators.
+
+**Acceptance Criteria:**
+- Critical bugs closed
+- Demo script passes","week:8,service:UI,priority:P1","Week 8"
+"W8/Artifacts: Webhook Delivery Logs [optional]","Store webhook delivery attempts.
+
+**Acceptance Criteria:**
+- Visible to operators
+- Supports debugging","week:8,service:Artifacts,priority:P2","Week 8"

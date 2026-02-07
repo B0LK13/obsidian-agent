@@ -1,0 +1,10 @@
+{
+	"id": "obsidian-pkm-agent",
+	"name": "Obsidian PKM Agent",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "An AI-powered agent to manage your vault using natural language.",
+	"author": "PKM Agent Team",
+	"authorUrl": "https://github.com/yourusername/obsidian-pkm-agent",
+	"isDesktopOnly": false
+}

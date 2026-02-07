@@ -1,0 +1,43 @@
+{
+  "entries": [
+    {
+      "id": "72fb47cabcc5",
+      "content": "Docker is a containerization platform created by Docker Inc.",
+      "metadata": {
+        "significant": true,
+        "topic": "docker"
+      },
+      "timestamp": "2026-01-30T13:44:12.162583",
+      "memory_type": "long_term",
+      "relevance_score": 1.0,
+      "access_count": 0,
+      "last_accessed": "2026-01-30T13:44:12.162587"
+    }
+  ],
+  "index": {
+    "created": [
+      "72fb47cabcc5"
+    ],
+    "platform": [
+      "72fb47cabcc5"
+    ],
+    "by": [
+      "72fb47cabcc5"
+    ],
+    "inc.": [
+      "72fb47cabcc5"
+    ],
+    "containerization": [
+      "72fb47cabcc5"
+    ],
+    "docker": [
+      "72fb47cabcc5"
+    ],
+    "a": [
+      "72fb47cabcc5"
+    ],
+    "is": [
+      "72fb47cabcc5"
+    ]
+  }
+}

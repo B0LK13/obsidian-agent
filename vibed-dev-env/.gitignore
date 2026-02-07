@@ -1,0 +1,59 @@
+# D Language
+.dub/
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+*.dylib
+*.exe
+app
+app-test-library
+
+# Build artifacts
+build/
+bin/
+lib/
+
+# Editor
+.vscode/.history/
+*.swp
+*.swo
+*~
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Docker
+.docker/
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Dependencies (if vendored)
+vendor/
+
+# Coverage
+coverage/
+*.lst
+
+# Profiling
+*.prof
+*.trace
+
+# Temporary
+tmp/
+temp/
+*.tmp

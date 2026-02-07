@@ -1,0 +1,11 @@
+{
+  "id": "obsidian-ai-agent",
+  "name": "Obsidian AI Agent",
+  "version": "1.4.0",
+  "minAppVersion": "0.15.0",
+  "description": "Local-only AI agent with RAG, Canvas integration, and knowledge graph support",
+  "author": "B0LK13",
+  "authorUrl": "",
+  "fundingUrl": "",
+  "isDesktopOnly": true
+}

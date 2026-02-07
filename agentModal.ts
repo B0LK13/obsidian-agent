@@ -448,24 +448,24 @@ export class AgentModal extends Modal {
 		this.renderChatHistory();
 
 		try {
-			const result = await this.aiService.generateCompletion(
-				this.prompt,
-				this.context,
-				true,
-				(chunk) => {
+			const result = await this.aiService.generateCompletion({
+				prompt: this.prompt,
+				context: this.context,
+				stream: true,
+				onChunk: (chunk) => {
 					this.onStreamChunk(chunk);
 					if (chunk.done) {
 						this.isStreaming = false;
 						if (this.stopButton) this.stopButton.style.display = 'none';
 					}
 				},
-				(progress) => {
+				onProgress: (progress) => {
 					if (this.isStreaming) {
 						if (this.stopButton) this.stopButton.style.display = 'block';
 						this.onStreamProgress(progress);
 					}
 				}
-			);
+			});
 
 			if (this.currentResponse) {
 				this.addMessageToHistory('assistant', this.currentResponse, result.fromCache, result.tokensUsed);

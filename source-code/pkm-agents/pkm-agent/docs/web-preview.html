@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PKM Agent – Web UI Preview</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --border: #334155;
+      --success: #22c55e;
+    }
+    body {
+      margin: 0;
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header h1 { margin: 0; font-size: 18px; letter-spacing: 0.4px; }
+    .status { display: flex; gap: 12px; align-items: center; font-size: 13px; color: var(--muted); }
+    .pill { padding: 4px 8px; border-radius: 12px; background: #0ea5e9; color: #0b1220; font-weight: 600; }
+    .grid { display: grid; grid-template-columns: 1fr 1.6fr 1fr; gap: 12px; padding: 12px; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
+    h3, h4 { margin: 0 0 8px 0; font-weight: 700; letter-spacing: 0.2px; }
+    .input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: #0b1220; color: var(--text); }
+    .filters { display: flex; gap: 8px; margin: 8px 0; }
+    .filters select { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: #0b1220; color: var(--text); }
+    .results, .convs, .audit { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+    .result, .conv, .audit-item { padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: #0b1220; }
+    .result small, .conv small, .audit-item small { color: var(--muted); }
+    .chat { display: flex; flex-direction: column; height: 100%; gap: 10px; }
+    .messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px; }
+    .bubble { padding: 12px; border-radius: 10px; border: 1px solid var(--border); }
+    .user { align-self: flex-end; background: #1d4ed8; color: #e0ecff; }
+    .assistant { align-self: flex-start; background: #0b1220; }
+    .sources { margin-top: 8px; font-size: 12px; color: var(--muted); }
+    .composer { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; }
+    .composer button { padding: 10px 14px; border: none; border-radius: 8px; background: var(--accent); color: #0b1220; font-weight: 700; cursor: pointer; }
+    .toggle { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+    .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .stat { padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: #0b1220; text-align: center; }
+    code { background: #0b1220; padding: 2px 6px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PKM Agent – Web UI Preview</h1>
+    <div class="status">
+      <span class="pill">LLM ✓</span>
+      <span class="pill" style="background:#22c55e">VectorStore ✓</span>
+      <span class="pill" style="background:#f97316">Audit ✓</span>
+    </div>
+    <button class="pill" style="background:#e2e8f0; color:#0b1220">Settings</button>
+  </header>
+
+  <div class="grid">
+    <aside class="panel">
+      <h3>Search</h3>
+      <input class="input" placeholder="Search your vault..." value="vector store" />
+      <div class="filters">
+        <select><option>All tags</option><option>ai</option><option>pkm</option></select>
+        <select><option>All areas</option><option>work</option><option>personal</option></select>
+      </div>
+      <ul class="results">
+        <li class="result">
+          <strong>Vector Store Notes</strong><br/>
+          <small>pkm/rag/vectorstore.md • score 0.84</small><br/>
+          <small>Discusses Chroma, embeddings, and hybrid search...</small>
+        </li>
+        <li class="result">
+          <strong>Embeddings Overview</strong><br/>
+          <small>pkm/rag/embeddings.md • score 0.77</small><br/>
+          <small>How we generate and cache embeddings...</small>
+        </li>
+      </ul>
+
+      <h4 style="margin-top:16px;">Conversations</h4>
+      <ul class="convs">
+        <li class="conv"><strong>conv-123</strong><br/><small>5 messages • today</small></li>
+        <li class="conv"><strong>conv-122</strong><br/><small>3 messages • yesterday</small></li>
+      </ul>
+    </aside>
+
+    <main class="panel chat">
+      <h3>Chat</h3>
+      <div class="messages">
+        <div class="bubble user">What did I write about vector stores and chunking?</div>
+        <div class="bubble assistant">
+          You mentioned using Chroma with cosine space and chunk overlap 64 in <em>vectorstore.md</em> and <em>chunker.md</em>.
+          <div class="sources">Sources: vectorstore.md, chunker.md, embeddings.md</div>
+        </div>
+      </div>
+      <div class="composer">
+        <input class="input" placeholder="Type a message..." />
+        <label class="toggle"><input type="checkbox" checked /> Use KB context</label>
+        <button>Send</button>
+      </div>
+    </main>
+
+    <aside class="panel">
+      <h3>Stats</h3>
+      <div class="stats">
+        <div class="stat"><strong>Notes</strong><br/>1,234</div>
+        <div class="stat"><strong>Tags</strong><br/>87</div>
+        <div class="stat"><strong>Chunks</strong><br/>9,876</div>
+        <div class="stat"><strong>LLM</strong><br/>gpt-4o-mini</div>
+      </div>
+      <h3 style="margin-top:16px;">Audit</h3>
+      <ul class="audit">
+        <li class="audit-item">[command.index_complete] indexed=42 chunks=310</li>
+        <li class="audit-item">[vectorstore.search] q="vector store"</li>
+        <li class="audit-item">[conversation.message] conv-123</li>
+      </ul>
+      <h3 style="margin-top:16px;">Config</h3>
+      <div class="stat" style="text-align:left;">
+        Provider: openai<br/>
+        Model: gpt-4o-mini<br/>
+        Embedding: all-MiniLM-L6-v2<br/>
+        PKM root: ./pkm
+      </div>
+    </aside>
+  </div>
+</body>
+</html>

@@ -1,0 +1,64 @@
+{
+  "mcpServers": {
+    "obsidian-mcp-server": {
+      "command": "npx",
+      "args": [
+        "obsidian-mcp-server"
+      ],
+      "env": {
+        "OBSIDIAN_API_KEY": "4f99f4adac4ced58022f93437efbd796f43ea4a42ac9d2c974342ed9361f10ca",
+        "OBSIDIAN_BASE_URL": "http://127.0.0.1:27123",
+        "OBSIDIAN_VERIFY_SSL": "false",
+        "OBSIDIAN_ENABLE_CACHE": "true",
+        "OBSIDIAN_CACHE_REFRESH_INTERVAL_MIN": "5",
+        "MCP_LOG_LEVEL": "info"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "obsidian_read_note",
+        "obsidian_list_notes",
+        "obsidian_global_search",
+        "obsidian_manage_frontmatter",
+        "obsidian_manage_tags",
+        "obsidian_update_note",
+        "obsidian_search_replace",
+        "obsidian_delete_note"
+      ]
+    },
+    "pkm-rag-server": {
+      "command": "C:\\Users\\Admin\\Documents\\B0LK13v2\\B0LK13v2\\pkm-agent\\.venv\\Scripts\\python.exe",
+      "args": [
+        "-m",
+        "pkm_agent.mcp_server"
+      ],
+      "env": {
+        "PKMA_LLM__PROVIDER": "ollama",
+        "PKMA_LLM__MODEL": "llama3.1",
+        "PKMA_LLM_MODEL": "llama3.1",
+        "PKMA_LLM__BASE_URL": "http://localhost:11434",
+        "PKMA_PKM_ROOT": "C:\\Users\\Admin\\Documents\\B0LK13v2\\B0LK13v2\\pkm",
+        "PKMA_DATA_DIR": "C:\\Users\\Admin\\Documents\\B0LK13v2\\B0LK13v2\\pkm-agent\\.pkm-agent",
+        "MCP_LOG_LEVEL": "info",
+        "DOCKER_CPUS_LIMIT": "1",
+        "DOCKER_MEMORY_LIMIT": "512m",
+        "MCP_MAX_REQUESTS_PER_MINUTE": "100"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "pkm_search",
+        "pkm_ask",
+        "pkm_get_stats"
+      ]
+    }
+  },
+  "dockerResourceLimits": {
+    "memory": "512m",
+    "cpu": "1",
+    "maxRequestsPerMinute": 100
+  },
+  "dockerOptimizations": {
+    "buildkit": true,
+    "network": "bridge",
+    "cache": true
+  }
+}

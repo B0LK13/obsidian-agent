@@ -1,0 +1,229 @@
+import { Notice, requestUrl } from 'obsidian';
+import { AIChatNotesSettings } from '../../main';
+
+export interface AIRequest {
+	prompt: string;
+	model?: string;
+	context?: string[];
+	temperature?: number;
+	maxTokens?: number;
+}
+
+export interface AIResponse {
+	content: string;
+	tokensUsed?: number;
+	model: string;
+}
+
+/** Default embedding dimension for fallback zero-vectors. */
+const DEFAULT_EMBEDDING_DIMENSION = 384;
+
+/** Default model names per provider (used when no model is configured in settings). */
+const DEFAULT_MODELS = {
+	openai: 'gpt-4',
+	anthropic: 'claude-3-sonnet-20240229',
+	ollama: 'llama3.2',
+	openaiEmbedding: 'text-embedding-3-small',
+	ollamaEmbedding: 'nomic-embed-text',
+} as const;
+
+export class AIService {
+	settings: AIChatNotesSettings;
+
+	constructor(settings: AIChatNotesSettings) {
+		this.settings = settings;
+	}
+	
+	updateSettings(settings: AIChatNotesSettings) {
+		this.settings = settings;
+	}
+	
+	async generateResponse(prompt: string, model?: string): Promise<string> {
+		switch (this.settings.aiProvider) {
+			case 'openai':
+				return this.callOpenAI(prompt, model);
+			case 'anthropic':
+				return this.callAnthropic(prompt, model);
+			case 'ollama':
+				return this.callOllama(prompt, model);
+			case 'local':
+				return this.callLocalModel(prompt, model);
+			default:
+				throw new Error('Unknown AI provider');
+		}
+	}
+	
+	async callOpenAI(prompt: string, model?: string): Promise<string> {
+		if (!this.settings.openaiApiKey) {
+			throw new Error('OpenAI API key not configured');
+		}
+		
+		const response = await requestUrl({
+			url: 'https://api.openai.com/v1/chat/completions',
+			method: 'POST',
+			headers: {
+				'Authorization': `Bearer ${this.settings.openaiApiKey}`,
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				model: model || this.settings.defaultModel || DEFAULT_MODELS.openai,
+				messages: [{ role: 'user', content: prompt }],
+				temperature: this.settings.temperature,
+				max_tokens: this.settings.maxTokens
+			})
+		});
+		
+		const data = response.json;
+		if (data.error) {
+			throw new Error(data.error.message);
+		}
+		
+		return data.choices[0].message.content;
+	}
+	
+	async callAnthropic(prompt: string, model?: string): Promise<string> {
+		if (!this.settings.anthropicApiKey) {
+			throw new Error('Anthropic API key not configured');
+		}
+		
+		const response = await requestUrl({
+			url: 'https://api.anthropic.com/v1/messages',
+			method: 'POST',
+			headers: {
+				'x-api-key': this.settings.anthropicApiKey,
+				'Content-Type': 'application/json',
+				'anthropic-version': '2023-06-01'
+			},
+			body: JSON.stringify({
+				model: model || this.settings.defaultModel || DEFAULT_MODELS.anthropic,
+				max_tokens: this.settings.maxTokens,
+				temperature: this.settings.temperature,
+				messages: [{ role: 'user', content: prompt }]
+			})
+		});
+		
+		const data = response.json;
+		if (data.error) {
+			throw new Error(data.error.message);
+		}
+		
+		return data.content[0].text;
+	}
+	
+	async callOllama(prompt: string, model?: string): Promise<string> {
+		const ollamaUrl = this.settings.ollamaUrl || 'http://localhost:11434';
+		
+		try {
+			const response = await requestUrl({
+				url: `${ollamaUrl}/api/generate`,
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					model: model || this.settings.defaultModel || DEFAULT_MODELS.ollama,
+					prompt: prompt,
+					stream: false,
+					options: {
+						temperature: this.settings.temperature,
+						num_predict: this.settings.maxTokens
+					}
+				})
+			});
+			
+			const data = response.json;
+			if (data.error) {
+				throw new Error(data.error);
+			}
+			
+			return data.response;
+		} catch (error) {
+			if (error.status === 0) {
+				throw new Error('Cannot connect to Ollama. Make sure Ollama is running on ' + ollamaUrl);
+			}
+			throw error;
+		}
+	}
+	
+	async callLocalModel(prompt: string, model?: string): Promise<string> {
+		// Placeholder for local model implementation
+		// This could use a local WebAssembly model or similar
+		throw new Error('Local model not yet implemented. Please use Ollama for local AI.');
+	}
+	
+	async generateEmbedding(text: string): Promise<number[]> {
+		// Generate embeddings using Ollama or OpenAI
+		if (this.settings.aiProvider === 'ollama') {
+			return this.generateOllamaEmbedding(text);
+		} else if (this.settings.aiProvider === 'openai') {
+			return this.generateOpenAIEmbedding(text);
+		}
+		
+		// Fallback: return empty embedding
+		return new Array(DEFAULT_EMBEDDING_DIMENSION).fill(0);
+	}
+	
+	async generateOllamaEmbedding(text: string): Promise<number[]> {
+		const ollamaUrl = this.settings.ollamaUrl || 'http://localhost:11434';
+		const model = this.settings.embeddingModel || DEFAULT_MODELS.ollamaEmbedding;
+		
+		const response = await requestUrl({
+			url: `${ollamaUrl}/api/embeddings`,
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				model: model,
+				prompt: text
+			})
+		});
+		
+		const data = response.json;
+		return data.embedding;
+	}
+	
+	async generateOpenAIEmbedding(text: string): Promise<number[]> {
+		if (!this.settings.openaiApiKey) {
+			throw new Error('OpenAI API key not configured');
+		}
+		
+		const response = await requestUrl({
+			url: 'https://api.openai.com/v1/embeddings',
+			method: 'POST',
+			headers: {
+				'Authorization': `Bearer ${this.settings.openaiApiKey}`,
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				model: this.settings.embeddingModel || DEFAULT_MODELS.openaiEmbedding,
+				input: text
+			})
+		});
+		
+		const data = response.json;
+		return data.data[0].embedding;
+	}
+	
+	async summarizeText(text: string, maxLength: number = 200): Promise<string> {
+		const prompt = `Please summarize the following text in ${maxLength} characters or less:\n\n${text}`;
+		return this.generateResponse(prompt);
+	}
+	
+	async extractKeyPoints(text: string): Promise<string[]> {
+		const prompt = `Extract the key points from the following text as a bulleted list:\n\n${text}`;
+		const response = await this.generateResponse(prompt);
+		return response.split('\n').filter(line => line.trim().startsWith('-') || line.trim().startsWith('•'));
+	}
+	
+	async suggestTags(content: string, existingTags: string[]): Promise<string[]> {
+		const prompt = `Given the following note content, suggest 3-5 relevant tags from this list: ${existingTags.join(', ')}\n\nContent:\n${content.substring(0, 1000)}`;
+		const response = await this.generateResponse(prompt);
+		return response.split(',').map(tag => tag.trim()).filter(tag => tag);
+	}
+	
+	async answerQuestion(question: string, context: string): Promise<string> {
+		const prompt = `Based on the following context, please answer the question. If the answer is not in the context, say "I don't have enough information."\n\nContext:\n${context}\n\nQuestion: ${question}`;
+		return this.generateResponse(prompt);
+	}
+}

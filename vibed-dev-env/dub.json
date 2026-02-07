@@ -1,0 +1,50 @@
+{
+    "name": "vibed-app",
+    "description": "Vibe.d Web Application",
+    "authors": ["Your Name"],
+    "license": "MIT",
+    "version": "0.1.0",
+
+    "dependencies": {
+        "vibe-d": "~>0.10.0",
+        "vibe-d:tls": "~>0.10.0"
+    },
+
+    "subConfigurations": {
+        "vibe-d:tls": "openssl-1.1"
+    },
+
+    "configurations": [
+        {
+            "name": "application",
+            "targetType": "executable",
+            "targetName": "app",
+            "mainSourceFile": "source/app.d"
+        },
+        {
+            "name": "library",
+            "targetType": "library"
+        }
+    ],
+
+    "buildTypes": {
+        "debug": {
+            "buildOptions": ["debugMode", "debugInfo"],
+            "dflags": ["-g", "-debug"]
+        },
+        "release": {
+            "buildOptions": ["releaseMode", "optimize", "inline"],
+            "dflags": ["-O", "-release", "-inline", "-boundscheck=off"]
+        },
+        "unittest": {
+            "buildOptions": ["unittests", "debugMode", "debugInfo"]
+        }
+    },
+
+    "lflags-linux": ["-L/usr/lib", "-lssl", "-lcrypto"],
+
+    "sourcePaths": ["source"],
+    "importPaths": ["source"],
+
+    "stringImportPaths": ["views", "public"]
+}

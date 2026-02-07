@@ -393,22 +393,22 @@ export class EnhancedAgentModal extends Modal {
 		this.stopButton.style.display = 'flex';
 		
 		try {
-			const result = await this.aiService.generateCompletion(
-				this.prompt,
-				this.context,
-				true,
-				(chunk) => {
+			const result = await this.aiService.generateCompletion({
+				prompt: this.prompt,
+				context: this.context,
+				stream: true,
+				onChunk: (chunk) => {
 					this.onStreamChunk(chunk);
 					if (chunk.done) {
 						this.finishStreaming(result);
 					}
 				},
-				(progress) => {
+				onProgress: (progress) => {
 					if (this.isStreaming) {
 						this.onStreamProgress(progress);
 					}
 				}
-			);
+			});
 		} catch (error: any) {
 			if (error.name !== 'AbortError') {
 				new Notice(`Error: ${error.message}`);

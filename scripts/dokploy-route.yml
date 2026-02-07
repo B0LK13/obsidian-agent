@@ -1,0 +1,15 @@
+http:
+  routers:
+    dokploy-panel:
+      rule: "Host(`dokploy.theblackagency.cloud`)"
+      entryPoints:
+        - websecure
+      service: dokploy-panel
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    dokploy-panel:
+      loadBalancer:
+        servers:
+          - url: "http://10.0.1.6:3000"

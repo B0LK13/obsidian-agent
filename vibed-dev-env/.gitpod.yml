@@ -1,0 +1,111 @@
+# GitPod Configuration for Vibe.d Development
+# Provides ephemeral, containerized workspaces for PR reviews and collaboration
+
+image:
+  file: .gitpod.Dockerfile
+
+# Workspace initialization tasks
+tasks:
+  - name: Setup Environment
+    init: |
+      echo "🚀 Initializing Vibe.d development environment..."
+      dub fetch
+      echo "✅ Dependencies fetched"
+    command: |
+      echo "🔧 Environment ready!"
+      dmd --version
+      ldc2 --version
+      dub --version
+
+  - name: Build Project
+    init: |
+      echo "🔨 Building project with DMD..."
+      dub build --compiler=dmd
+    command: |
+      echo "✅ Build complete!"
+
+  - name: Run Tests
+    command: |
+      echo "🧪 Running tests..."
+      dub test --compiler=dmd
+      echo "✅ Tests complete!"
+
+  - name: Start Development Server
+    command: |
+      echo "🌐 Starting Vibe.d development server..."
+      dub run --compiler=dmd
+    openMode: split-right
+
+  - name: Database Services
+    command: |
+      echo "🗄️ Starting database services..."
+      docker-compose up -d db redis
+      echo "✅ Database services running"
+
+# Port configuration
+ports:
+  - port: 8080
+    onOpen: open-browser
+    visibility: public
+    name: Vibe.d App
+    description: Main application server
+
+  - port: 9090
+    onOpen: ignore
+    visibility: private
+    name: Debug/Metrics
+    description: Debug and metrics endpoint
+
+  - port: 5432
+    onOpen: ignore
+    visibility: private
+    name: PostgreSQL
+    description: PostgreSQL database
+
+  - port: 6379
+    onOpen: ignore
+    visibility: private
+    name: Redis
+    description: Redis cache
+
+  - port: 8082
+    onOpen: ignore
+    visibility: private
+    name: Adminer
+    description: Database management UI
+
+# VS Code extensions for GitPod
+vscode:
+  extensions:
+    - webfreak.code-d
+    - vadimcn.vscode-lldb
+    - streetsidesoftware.code-spell-checker
+    - ms-vscode-remote.remote-containers
+    - eamodio.gitlens
+    - esbenp.prettier-vscode
+    - ms-azuretools.vscode-docker
+    - redhat.vscode-yaml
+    - GitHub.copilot
+
+# GitHub integration
+github:
+  prebuilds:
+    master: true
+    branches: true
+    pullRequests: true
+    pullRequestsFromForks: true
+    addCheck: true
+    addComment: true
+    addBadge: true
+
+# Workspace configuration
+workspaceLocation: "/workspace/vibed-project"
+
+# Gitpod checks
+checkoutLocation: "vibed-project"
+
+# JetBrains Gateway support (optional)
+jetbrains:
+  intellij:
+    plugins:
+      - io.github.nicholashagen.dlang

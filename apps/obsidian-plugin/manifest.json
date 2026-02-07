@@ -1,0 +1,10 @@
+{
+	"id": "obsidian-pkm-agent",
+	"name": "Obsidian PKM Agent",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "AI-powered agent for intelligent note-taking and knowledge management with PKM Agent backend integration.",
+	"author": "PKM Agent Team",
+	"authorUrl": "https://github.com/B0LK13/custom-private-agent",
+	"isDesktopOnly": false
+}

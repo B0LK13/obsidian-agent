@@ -1,0 +1,99 @@
+{
+  "name": "Vibe.d Development Environment",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/app",
+  
+  "shutdownAction": "stopCompose",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "editor.formatOnSave": true,
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true,
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+        
+        "d.dubPath": "/opt/dmd/linux/bin64/dub",
+        "d.dmdPath": "/opt/dmd/linux/bin64/dmd",
+        "d.ldcPath": "/opt/ldc/bin/ldc2",
+        
+        "d.enableAutoComplete": true,
+        "d.enableFormatting": true,
+        "d.enableLinting": true,
+        
+        "lldb.executable": "/usr/bin/lldb",
+        "lldb.launch.terminal": "integrated",
+        
+        "[d]": {
+          "editor.defaultFormatter": "webfreak.code-d",
+          "editor.formatOnSave": true
+        }
+      },
+      
+      "extensions": [
+        "webfreak.code-d",
+        "vadimcn.vscode-lldb",
+        "ms-azuretools.vscode-docker",
+        "eamodio.gitlens",
+        "streetsidesoftware.code-spell-checker",
+        "redhat.vscode-yaml",
+        "ms-vscode.hexeditor",
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "usernamehw.errorlens",
+        "gruntfuggly.todo-tree",
+        "EditorConfig.EditorConfig"
+      ]
+    }
+  },
+  
+  "forwardPorts": [8080, 9090, 5432, 6379],
+  
+  "portsAttributes": {
+    "8080": {
+      "label": "Vibe.d App",
+      "onAutoForward": "openBrowser"
+    },
+    "9090": {
+      "label": "Debug/Metrics",
+      "onAutoForward": "silent"
+    },
+    "5432": {
+      "label": "PostgreSQL",
+      "onAutoForward": "silent"
+    },
+    "6379": {
+      "label": "Redis",
+      "onAutoForward": "silent"
+    }
+  },
+  
+  "postCreateCommand": "dub fetch && echo '✅ Dependencies fetched'",
+  "postStartCommand": "echo '🚀 Vibe.d development environment ready!'",
+  
+  "remoteUser": "ddev",
+  
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
+    "source=vibed-dub-cache,target=/home/ddev/.dub,type=volume"
+  ],
+  
+  "containerEnv": {
+    "DUB_COMPILER": "dmd",
+    "ENVIRONMENT": "development",
+    "LOG_LEVEL": "debug"
+  },
+  
+  "remoteEnv": {
+    "PATH": "/opt/dmd/linux/bin64:/opt/ldc/bin:${containerEnv:PATH}"
+  }
+}

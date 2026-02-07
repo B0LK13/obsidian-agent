@@ -3,6 +3,17 @@ node_modules/
 .pnp
 .pnp.js
 
+# Python and Large Assets
+.venv/
+.pkm-agent/
+**/Lib/site-packages/
+**/*.dll
+**/*.bin
+**/*.pyd
+**/*.sqlite3
+__pycache__/
+*.pyc
+
 # Build output
 dist/
 main.js

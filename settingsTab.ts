@@ -274,6 +274,7 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 			.addDropdown(dropdown => dropdown
 				.addOption('openai', 'OpenAI')
 				.addOption('anthropic', 'Anthropic')
+				.addOption('ollama', 'Ollama (Local)')
 				.addOption('custom', 'Custom API')
 				.setValue(this.plugin.settings.apiProvider)
 				.onChange(async (value) => {
@@ -284,7 +285,7 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 
 		this.addApiKeySetting(containerEl);
 
-		if (this.plugin.settings.apiProvider === 'custom') {
+		if (this.plugin.settings.apiProvider === 'custom' || this.plugin.settings.apiProvider === 'ollama') {
 			this.addCustomApiUrlSetting(containerEl);
 		}
 
@@ -292,6 +293,7 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 		this.addTemperatureSetting(containerEl);
 		this.addMaxTokensSetting(containerEl);
 		this.addSystemPromptSetting(containerEl);
+		this.addEmbeddingSettings(containerEl);
 		this.addContextAwarenessSetting(containerEl);
 		this.addVaultContextSettings(containerEl);
 		this.addConversationPersistenceSetting(containerEl);
@@ -865,6 +867,58 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 		});
 	}
 
+	private addEmbeddingSettings(containerEl: HTMLElement): void {
+		containerEl.createEl('h3', { text: 'Embedding & Semantic Brain' });
+		
+		const config = this.plugin.settings.embeddingConfig || {
+			provider: 'openai',
+			model: 'text-embedding-3-small',
+			enabled: false,
+			autoRefresh: true
+		};
+
+		new Setting(containerEl)
+			.setName('Enable Semantic Features')
+			.setDesc('Enable vector embeddings for Semantic Search and Memory')
+			.addToggle(toggle => toggle
+				.setValue(config.enabled)
+				.onChange(async (value) => {
+					this.plugin.settings.embeddingConfig.enabled = value;
+					await this.plugin.saveSettings();
+					this.display();
+				}));
+
+		if (config.enabled) {
+			new Setting(containerEl)
+				.setName('Embedding Provider')
+				.setDesc('Select provider for generating vector embeddings')
+				.addDropdown(dropdown => dropdown
+					.addOption('openai', 'OpenAI (Requires Key)')
+					.addOption('ollama', 'Ollama (Local)')
+					.addOption('local', 'Local Transformers (Soon)')
+					.setValue(config.provider)
+					.onChange(async (value) => {
+						this.plugin.settings.embeddingConfig.provider = value as 'openai' | 'ollama' | 'local';
+						if (value === 'ollama' && !this.plugin.settings.embeddingConfig.model) {
+							this.plugin.settings.embeddingConfig.model = 'nomic-embed-text';
+						}
+						await this.plugin.saveSettings();
+						this.display();
+					}));
+
+			new Setting(containerEl)
+				.setName('Embedding Model')
+				.setDesc('Model used for vectorization')
+				.addText(text => text
+					.setPlaceholder(config.provider === 'openai' ? 'text-embedding-3-small' : 'nomic-embed-text')
+					.setValue(config.model)
+					.onChange(async (value) => {
+						this.plugin.settings.embeddingConfig.model = value;
+						await this.plugin.saveSettings();
+					}));
+		}
+	}
+
 	private addConversationPersistenceSetting(containerEl: HTMLElement): void {
 		containerEl.createEl('h3', { text: 'Conversation History' });
 
@@ -1056,17 +1110,22 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 	}
 
 	private addApiKeySetting(containerEl: HTMLElement): void {
+		const isOllama = this.plugin.settings.apiProvider === 'ollama';
+		
 		new Setting(containerEl)
 			.setName('API Key')
-			.setDesc('Enter your API key for the selected provider')
-			.addText(text => text
-				.setPlaceholder('Enter your API key')
+			.setDesc(isOllama ? 'Not required for Ollama' : 'Enter your API key for the selected provider')
+			.addText(text => {
+				text.setPlaceholder(isOllama ? 'N/A' : 'Enter your API key')
 				.setValue(this.plugin.settings.apiKey)
 				.onChange(async (value) => {
 					this.plugin.settings.apiKey = value;
 					await this.plugin.saveSettings();
 					this.validateApiKeySetting(value, containerEl);
-				}));
+				});
+				text.inputEl.disabled = isOllama;
+				if (isOllama) text.inputEl.style.opacity = '0.5';
+			});
 		this.validateApiKeySetting(this.plugin.settings.apiKey, containerEl);
 	}
 

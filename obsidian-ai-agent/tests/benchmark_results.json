@@ -1,0 +1,68 @@
+{
+  "timestamp": "2026-01-30 23:29:50",
+  "results": {
+    "indexing_100": {
+      "note_count": 100,
+      "full_index_ms": 457.04007148742676,
+      "incremental_no_change_ms": 14.856338500976562,
+      "single_change_ms": 35.755157470703125,
+      "notes_per_second": 218.79919560346693
+    },
+    "indexing_500": {
+      "note_count": 500,
+      "full_index_ms": 2059.0288639068604,
+      "incremental_no_change_ms": 107.67722129821777,
+      "single_change_ms": 127.90775299072266,
+      "notes_per_second": 242.83292418314412
+    },
+    "indexing_1000": {
+      "note_count": 1000,
+      "full_index_ms": 3424.4253635406494,
+      "incremental_no_change_ms": 206.5749168395996,
+      "single_change_ms": 226.6695499420166,
+      "notes_per_second": 292.0197971451947
+    },
+    "cache_performance": {
+      "avg_hit_time_ms": 0.011546611785888672,
+      "avg_miss_time_ms": 0.060272216796875,
+      "hit_rate": 0.5,
+      "total_entries": 200
+    },
+    "link_scan_100": {
+      "note_count": 100,
+      "total_links": 198,
+      "scan_time_ms": 2358.438014984131,
+      "notes_per_second": 42.400944762872165
+    },
+    "link_scan_500": {
+      "note_count": 500,
+      "total_links": 998,
+      "scan_time_ms": 11662.651538848877,
+      "notes_per_second": 42.871897384096144
+    },
+    "link_scan_1000": {
+      "note_count": 1000,
+      "total_links": 1998,
+      "scan_time_ms": 21971.324920654297,
+      "notes_per_second": 45.513868809064995
+    },
+    "suggestions_50": {
+      "note_count": 50,
+      "suggestions_generated": 2450,
+      "analysis_time_ms": 268.63598823547363,
+      "notes_per_second": 186.12547160350073
+    },
+    "suggestions_100": {
+      "note_count": 100,
+      "suggestions_generated": 9900,
+      "analysis_time_ms": 464.8139476776123,
+      "notes_per_second": 215.13984358610176
+    },
+    "suggestions_200": {
+      "note_count": 200,
+      "suggestions_generated": 39800,
+      "analysis_time_ms": 1249.4418621063232,
+      "notes_per_second": 160.07147356407424
+    }
+  }
+}

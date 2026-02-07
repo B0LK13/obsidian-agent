@@ -1,0 +1,352 @@
+import { ItemView, WorkspaceLeaf, TFile, Notice } from 'obsidian';
+import AIChatNotesPlugin from '../../main';
+
+export const VIEW_TYPE_AI_CHAT = 'ai-chat-view';
+
+interface ChatMessage {
+	id: string;
+	role: 'user' | 'assistant' | 'system';
+	content: string;
+	timestamp: number;
+	contextFile?: string;
+}
+
+export class AIChatView extends ItemView {
+	plugin: AIChatNotesPlugin;
+	messages: ChatMessage[] = [];
+	chatContainer: HTMLElement;
+	inputContainer: HTMLElement;
+	contextNote: { name: string; content: string } | null = null;
+	isProcessing: boolean = false;
+
+	constructor(leaf: WorkspaceLeaf, plugin: AIChatNotesPlugin) {
+		super(leaf);
+		this.plugin = plugin;
+	}
+
+	getViewType() {
+		return VIEW_TYPE_AI_CHAT;
+	}
+
+	getDisplayText() {
+		return 'AI Chat';
+	}
+
+	getIcon() {
+		return 'message-circle';
+	}
+
+	async onOpen() {
+		const { containerEl } = this;
+		containerEl.empty();
+		containerEl.addClass('ai-chat-notes-root');
+		
+		// Create main layout
+		const mainContainer = containerEl.createDiv({ cls: 'ai-chat-container' });
+		
+		// Header
+		const header = mainContainer.createDiv({ cls: 'ai-chat-header' });
+		header.createEl('h3', { text: 'AI Assistant', cls: 'ai-chat-title' });
+		
+		// Clear chat button
+		const clearBtn = header.createEl('button', { 
+			text: 'Clear',
+			cls: 'ai-clear-button' 
+		});
+		clearBtn.addEventListener('click', () => this.clearChat());
+		
+		// Chat messages area
+		this.chatContainer = mainContainer.createDiv({ cls: 'ai-chat-messages' });
+		
+		// Welcome message
+		this.addWelcomeMessage();
+		
+		// Input area
+		this.inputContainer = mainContainer.createDiv({ cls: 'ai-chat-input-container' });
+		this.createInputArea();
+		
+		// Load chat history
+		await this.loadChatHistory();
+	}
+
+	async onClose() {
+		// Save chat history
+		await this.saveChatHistory();
+	}
+
+	addWelcomeMessage() {
+		const welcomeDiv = this.chatContainer.createDiv({ cls: 'ai-welcome-message' });
+		welcomeDiv.innerHTML = `
+			<div class="ai-welcome-icon">🤖</div>
+			<h4>Welcome to AI Chat</h4>
+			<p>I can help you with:</p>
+			<ul>
+				<li>Answering questions about your notes</li>
+				<li>Summarizing content</li>
+				<li>Generating ideas and writing assistance</li>
+				<li>Finding connections between notes</li>
+			</ul>
+		`;
+	}
+
+	createInputArea() {
+		const textarea = this.inputContainer.createEl('textarea', {
+			cls: 'ai-chat-input',
+			placeholder: 'Ask me anything... (Shift+Enter for new line)'
+		});
+		
+		// Auto-resize textarea
+		textarea.addEventListener('input', () => {
+			textarea.style.height = 'auto';
+			textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+		});
+		
+		// Send on Enter (not Shift+Enter)
+		textarea.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter' && !e.shiftKey) {
+				e.preventDefault();
+				this.sendMessage(textarea.value);
+				textarea.value = '';
+				textarea.style.height = 'auto';
+			}
+		});
+		
+		// Send button
+		const sendBtn = this.inputContainer.createEl('button', {
+			cls: 'ai-send-button',
+			text: '➤'
+		});
+		sendBtn.addEventListener('click', () => {
+			this.sendMessage(textarea.value);
+			textarea.value = '';
+			textarea.style.height = 'auto';
+		});
+		
+		// Context indicator
+		if (this.contextNote) {
+			this.showContextIndicator();
+		}
+	}
+
+	showContextIndicator() {
+		const existingIndicator = this.inputContainer.querySelector('.ai-context-panel');
+		if (existingIndicator) existingIndicator.remove();
+		
+		if (this.contextNote) {
+			const indicator = this.inputContainer.createDiv({ cls: 'ai-context-panel' });
+			indicator.innerHTML = `
+				<div class="context-title">📄 Context: ${this.contextNote.name}</div>
+				<div class="context-actions">
+					<button class="context-clear">Clear</button>
+				</div>
+			`;
+			
+			indicator.querySelector('.context-clear')?.addEventListener('click', () => {
+				this.contextNote = null;
+				indicator.remove();
+			});
+		}
+	}
+
+	setContextNote(name: string, content: string) {
+		this.contextNote = { name, content };
+		this.showContextIndicator();
+		new Notice(`Context set to: ${name}`);
+	}
+
+	async sendMessage(content: string) {
+		if (!content.trim() || this.isProcessing) return;
+		
+		// Add user message
+		const userMessage: ChatMessage = {
+			id: crypto.randomUUID(),
+			role: 'user',
+			content: content.trim(),
+			timestamp: Date.now()
+		};
+		this.messages.push(userMessage);
+		this.renderMessage(userMessage);
+		
+		// Show typing indicator
+		this.showTypingIndicator();
+		this.isProcessing = true;
+		
+		try {
+			// Prepare context
+			let contextPrompt = '';
+			if (this.contextNote) {
+				contextPrompt = `Context from note "${this.contextNote.name}":\n${this.contextNote.content.substring(0, 4000)}\n\n`;
+			}
+			
+			// Get relevant notes for context
+			const relevantNotes = await this.plugin.searchService.findRelevantNotes(content);
+			if (relevantNotes.length > 0) {
+				contextPrompt += `\nRelevant notes:\n`;
+				for (const note of relevantNotes.slice(0, this.plugin.settings.maxContextNotes)) {
+					const noteContent = await this.app.vault.read(note);
+					contextPrompt += `\n--- ${note.basename} ---\n${noteContent.substring(0, 1000)}\n`;
+				}
+			}
+			
+			// Call AI service
+			const response = await this.plugin.aiService.generateResponse(
+				contextPrompt + content,
+				this.plugin.settings.defaultModel
+			);
+			
+			// Add AI response
+			const aiMessage: ChatMessage = {
+				id: crypto.randomUUID(),
+				role: 'assistant',
+				content: response,
+				timestamp: Date.now(),
+				contextFile: this.contextNote?.name
+			};
+			this.messages.push(aiMessage);
+			this.renderMessage(aiMessage);
+			
+		} catch (error) {
+			console.error('AI Error:', error);
+			const errorMessage: ChatMessage = {
+				id: crypto.randomUUID(),
+				role: 'assistant',
+				content: `❌ Error: ${error.message || 'Failed to get AI response'}`,
+				timestamp: Date.now()
+			};
+			this.messages.push(errorMessage);
+			this.renderMessage(errorMessage);
+		} finally {
+			this.hideTypingIndicator();
+			this.isProcessing = false;
+		}
+	}
+
+	renderMessage(message: ChatMessage) {
+		// Remove welcome message if it exists
+		const welcomeMsg = this.chatContainer.querySelector('.ai-welcome-message');
+		if (welcomeMsg) welcomeMsg.remove();
+		
+		const bubble = this.chatContainer.createDiv({
+			cls: `ai-message-bubble ${message.role}`
+		});
+		
+		// Content
+		const content = bubble.createDiv({ cls: 'message-content' });
+		content.innerHTML = this.formatMessageContent(message.content);
+		
+		// Timestamp
+		const timestamp = bubble.createDiv({ cls: 'message-timestamp' });
+		timestamp.textContent = new Date(message.timestamp).toLocaleTimeString([], {
+			hour: '2-digit',
+			minute: '2-digit'
+		});
+		
+		// Actions for AI messages
+		if (message.role === 'assistant') {
+			const actions = bubble.createDiv({ cls: 'message-actions' });
+			
+			const copyBtn = actions.createEl('button', {
+				cls: 'message-action-btn',
+				text: '📋 Copy'
+			});
+			copyBtn.addEventListener('click', () => {
+				navigator.clipboard.writeText(message.content);
+				new Notice('Copied to clipboard');
+			});
+			
+			const saveBtn = actions.createEl('button', {
+				cls: 'message-action-btn',
+				text: '💾 Save to Note'
+			});
+			saveBtn.addEventListener('click', () => this.saveToNote(message.content));
+		}
+		
+		// Scroll to bottom
+		this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
+	}
+
+	formatMessageContent(content: string): string {
+		// Escape HTML
+		let formatted = content
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;');
+		
+		// Format code blocks
+		formatted = formatted.replace(
+			/```(\w+)?\n([\s\S]*?)```/g,
+			'<pre class="code-block"><code>$2</code></pre>'
+		);
+		
+		// Format inline code
+		formatted = formatted.replace(
+			/`([^`]+)`/g,
+			'<code class="inline-code">$1</code>'
+		);
+		
+		// Format bold
+		formatted = formatted.replace(
+			/\*\*([^*]+)\*\*/g,
+			'<strong>$1</strong>'
+		);
+		
+		// Format italic
+		formatted = formatted.replace(
+			/\*([^*]+)\*/g,
+			'<em>$1</em>'
+		);
+		
+		// Convert newlines to <br>
+		formatted = formatted.replace(/\n/g, '<br>');
+		
+		return formatted;
+	}
+
+	showTypingIndicator() {
+		const indicator = this.chatContainer.createDiv({ cls: 'ai-typing-indicator' });
+		indicator.innerHTML = '<span></span><span></span><span></span>';
+		this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
+	}
+
+	hideTypingIndicator() {
+		const indicator = this.chatContainer.querySelector('.ai-typing-indicator');
+		if (indicator) indicator.remove();
+	}
+
+	async saveToNote(content: string) {
+		const fileName = `AI-Response-${Date.now()}.md`;
+		const filePath = `AI-Chat/${fileName}`;
+		
+		// Ensure AI-Chat folder exists
+		const folder = this.app.vault.getAbstractFileByPath('AI-Chat');
+		if (!folder) {
+			await this.app.vault.createFolder('AI-Chat');
+		}
+		
+		await this.app.vault.create(filePath, `# AI Response\n\n${content}`);
+		new Notice(`Saved to ${filePath}`);
+	}
+
+	clearChat() {
+		this.messages = [];
+		this.chatContainer.empty();
+		this.addWelcomeMessage();
+		this.saveChatHistory();
+	}
+
+	async loadChatHistory() {
+		if (!this.plugin.settings.storeChatHistory) return;
+		
+		const data = await this.plugin.dbManager.getChatHistory();
+		if (data && data.length > 0) {
+			this.messages = data;
+			this.chatContainer.empty();
+			this.messages.forEach(msg => this.renderMessage(msg));
+		}
+	}
+
+	async saveChatHistory() {
+		if (!this.plugin.settings.storeChatHistory) return;
+		await this.plugin.dbManager.saveChatHistory(this.messages);
+	}
+}

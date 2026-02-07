@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "obsidian": {
+      "command": "python",
+      "args": ["-m", "obsidian_mcp.server"],
+      "env": {
+        "OBSIDIAN_API_TOKEN": "4f99f4adac4ced58022f93437efbd796f43ea4a42ac9d2c974342ed9361f10ca",
+        "OBSIDIAN_API_URL": "http://127.0.0.1:27123"
+      }
+    }
+  }
+}

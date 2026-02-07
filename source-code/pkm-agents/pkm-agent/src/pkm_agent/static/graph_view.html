@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PKM Graph Visualization</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; overflow: hidden; background-color: #1a1b26; color: #a9b1d6; }
+        #cy { width: 100vw; height: 100vh; display: block; }
+        #info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 300px;
+            border: 1px solid #414868;
+            display: none;
+        }
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #414868;
+        }
+        button {
+            background: #7aa2f7;
+            color: #15161e;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover { background: #5d87e0; }
+        h3 { margin-top: 0; color: #7aa2f7; }
+        .stat { margin-bottom: 5px; }
+        .label { color: #565f89; font-size: 0.9em; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+</head>
+<body>
+    <div id="controls">
+        <h3>PKM Graph</h3>
+        <button onclick="refreshGraph()">Refresh Data</button>
+        <button onclick="runLayout()">Re-layout</button>
+        <div style="margin-top: 10px; font-size: 0.8em; color: #565f89;">
+            Double-click background to fit view
+        </div>
+    </div>
+    
+    <div id="info">
+        <h3 id="node-title">Note Title</h3>
+        <div class="stat"><span class="label">Path:</span> <span id="node-path"></span></div>
+        <div class="stat"><span class="label">Connections:</span> <span id="node-weight"></span></div>
+    </div>
+
+    <div id="cy"></div>
+
+    <script>
+        let cy;
+
+        async function fetchGraphData() {
+            try {
+                // In standalone mode, we assume the API is at localhost:8000
+                // In production this might be served relative
+                const response = await fetch('http://127.0.0.1:8000/api/v1/graph');
+                if (!response.ok) throw new Error('Failed to fetch graph data');
+                return await response.json();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Could not load graph data. Is the PKM Agent API running?');
+                return null;
+            }
+        }
+
+        async function initGraph() {
+            const data = await fetchGraphData();
+            if (!data) return;
+
+            cy = cytoscape({
+                container: document.getElementById('cy'),
+                elements: data.elements,
+                style: [
+                    {
+                        selector: 'node',
+                        style: {
+                            'background-color': '#7aa2f7',
+                            'label': 'data(label)',
+                            'color': '#c0caf5',
+                            'font-size': '10px',
+                            'width': 'mapData(weight, 1, 10, 20, 60)',
+                            'height': 'mapData(weight, 1, 10, 20, 60)',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'text-outline-color': '#1a1b26',
+                            'text-outline-width': 2,
+                            'border-width': 1,
+                            'border-color': '#414868'
+                        }
+                    },
+                    {
+                        selector: 'edge',
+                        style: {
+                            'width': 1,
+                            'line-color': '#414868',
+                            'target-arrow-color': '#414868',
+                            'target-arrow-shape': 'triangle',
+                            'curve-style': 'bezier',
+                            'opacity': 0.5
+                        }
+                    },
+                    {
+                        selector: ':selected',
+                        style: {
+                            'background-color': '#bb9af7',
+                            'line-color': '#bb9af7',
+                            'target-arrow-color': '#bb9af7',
+                            'source-arrow-color': '#bb9af7',
+                            'opacity': 1
+                        }
+                    }
+                ],
+                layout: {
+                    name: 'cose',
+                    idealEdgeLength: 100,
+                    nodeOverlap: 20,
+                    refresh: 20,
+                    fit: true,
+                    padding: 30,
+                    randomize: false,
+                    componentSpacing: 100,
+                    nodeRepulsion: 400000,
+                    edgeElasticity: 100,
+                    nestingFactor: 5,
+                    gravity: 80,
+                    numIter: 1000,
+                    initialTemp: 200,
+                    coolingFactor: 0.95,
+                    minTemp: 1.0
+                }
+            });
+
+            // Event handlers
+            cy.on('tap', 'node', function(evt){
+                const node = evt.target;
+                const info = document.getElementById('info');
+                
+                document.getElementById('node-title').textContent = node.data('label');
+                document.getElementById('node-path').textContent = node.data('path');
+                document.getElementById('node-weight').textContent = node.data('weight') - 1; // subtract self
+                
+                info.style.display = 'block';
+            });
+
+            cy.on('tap', function(evt){
+                if( evt.target === cy ){
+                    document.getElementById('info').style.display = 'none';
+                }
+            });
+            
+            cy.on('dblclick', function() {
+                cy.fit();
+            });
+        }
+
+        async function refreshGraph() {
+            if (!cy) return;
+            const data = await fetchGraphData();
+            if (data) {
+                cy.json(data);
+                runLayout();
+            }
+        }
+
+        function runLayout() {
+            if (!cy) return;
+            cy.layout({
+                name: 'cose',
+                animate: true
+            }).run();
+        }
+
+        // Start
+        initGraph();
+    </script>
+</body>
+</html>

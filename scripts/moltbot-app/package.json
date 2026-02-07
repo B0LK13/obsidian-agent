@@ -1,0 +1,11 @@
+{
+  "name": "moltbot",
+  "version": "1.0.0",
+  "description": "The Black Agency Bot Platform",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "The Black Agency",
+  "license": "MIT"
+}

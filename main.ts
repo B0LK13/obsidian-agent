@@ -12,6 +12,13 @@ import { MultiLevelSummarizer } from './src/multiLevelSummarizer';
 import { DuplicateDetector } from './src/duplicateDetector';
 import { IntelligentContextEngine } from './src/contextEngine';
 import { MultiNoteSynthesizer } from './src/multiNoteSynthesizer';
+import { EmbeddingService } from './src/services/embeddingService';
+import { VectorStore } from './src/services/vectorStore';
+import { IndexingService } from './src/services/indexingService';
+import { AgentService } from './src/services/agent/agentService';
+import { SearchVaultTool, ReadNoteTool, ListFilesTool, RememberFactTool } from './src/services/agent/tools';
+import { MemoryService } from './src/services/memoryService';
+import { AudioService } from './src/services/audioService';
 
 // Import enhanced UI styles
 const ENHANCED_STYLES = `
@@ -97,6 +104,12 @@ export default class ObsidianAgentPlugin extends Plugin {
 	contextProvider!: ContextProvider;
 	contextEngine!: IntelligentContextEngine;
 	multiNoteSynthesizer!: MultiNoteSynthesizer;
+	embeddingService!: EmbeddingService;
+	vectorStore!: VectorStore;
+	indexingService!: IndexingService;
+    agentService!: AgentService;
+    memoryService!: MemoryService;
+    audioService!: AudioService;
 
 	async onload() {
 		try {
@@ -112,9 +125,33 @@ export default class ObsidianAgentPlugin extends Plugin {
 
 			this.aiService = new AIService(this.settings);
 			this.contextProvider = new ContextProvider(this.app);
+            
+            // Initialize Vector Services
+            this.embeddingService = new EmbeddingService(this.settings);
+            this.vectorStore = new VectorStore(this.app.vault);
+            await this.vectorStore.load();
+            this.indexingService = new IndexingService(this.app, this.embeddingService, this.vectorStore);
+            
+            // Initialize Memory
+            this.memoryService = new MemoryService(this.app.vault, this.embeddingService);
+            await this.memoryService.load();
+
+            // Initialize Audio
+            this.audioService = new AudioService(this.settings, this.app.vault);
+
+            // Initialize Agent
+            this.agentService = new AgentService(this.aiService, [
+                new SearchVaultTool(this.vectorStore, this.embeddingService),
+                new ReadNoteTool(this.app),
+                new ListFilesTool(this.app),
+                new RememberFactTool(this.memoryService)
+            ]);
+
 			this.contextEngine = new IntelligentContextEngine(
 				this.app.vault,
-				this.app.metadataCache
+				this.app.metadataCache,
+                this.vectorStore,
+                this.embeddingService
 			);
 			this.multiNoteSynthesizer = new MultiNoteSynthesizer(
 				this.app.vault,
@@ -214,9 +251,9 @@ export default class ObsidianAgentPlugin extends Plugin {
 				new Notice('Generating summary...');
 
 				try {
-					const summaryResult = await this.aiService.generateCompletion(
-						`Please provide a concise summary of the following text:\n\n${textToSummarize}`
-					);
+					const summaryResult = await this.aiService.generateCompletion({
+						prompt: `Please provide a concise summary of the following text:\n\n${textToSummarize}`
+					});
 					await this.trackTokenUsage(summaryResult);
 					editor.replaceSelection(`\n\n## Summary\n${summaryResult.text}\n`);
 					new Notice('Summary generated!');
@@ -328,9 +365,9 @@ ${content}`;
 				new Notice('Expanding ideas...');
 
 				try {
-					const expansionResult = await this.aiService.generateCompletion(
-						`Please expand on following ideas with more detail and context:\n\n${selection}`
-					);
+					const expansionResult = await this.aiService.generateCompletion({
+						prompt: `Please expand on following ideas with more detail and context:\n\n${selection}`
+					});
 					await this.trackTokenUsage(expansionResult);
 					editor.replaceSelection(expansionResult.text);
 					new Notice('Ideas expanded!');
@@ -356,9 +393,9 @@ ${content}`;
 				new Notice('Improving writing...');
 
 				try {
-					const improvedResult = await this.aiService.generateCompletion(
-						`Please improve following text for clarity, grammar, and style:\n\n${selection}`
-					);
+					const improvedResult = await this.aiService.generateCompletion({
+						prompt: `Please improve following text for clarity, grammar, and style:\n\n${selection}`
+					});
 					await this.trackTokenUsage(improvedResult);
 					editor.replaceSelection(improvedResult.text);
 					new Notice('Writing improved!');
@@ -384,9 +421,9 @@ ${content}`;
 				new Notice('Generating outline...');
 
 				try {
-					const outlineResult = await this.aiService.generateCompletion(
-						`Please create a detailed outline for the following topic:\n\n${topic}`
-					);
+					const outlineResult = await this.aiService.generateCompletion({
+						prompt: `Please create a detailed outline for the following topic:\n\n${topic}`
+					});
 					await this.trackTokenUsage(outlineResult);
 					editor.replaceSelection(`\n\n${outlineResult.text}\n`);
 					new Notice('Outline generated!');
@@ -997,6 +1034,140 @@ ${content}`;
 				}
 			}
 		});
+
+        // Command: Rebuild Semantic Index
+        this.addCommand({
+            id: 'rebuild-index',
+            name: 'Rebuild Semantic Index',
+            callback: async () => {
+                const confirm = await this.promptUser('Rebuild entire index? This may cost API credits. Type "yes" to confirm.');
+                if (confirm?.toLowerCase() === 'yes') {
+                    await this.indexingService.indexVault(true);
+                }
+            }
+        });
+
+        // Command: Semantic Search
+        this.addCommand({
+            id: 'semantic-search',
+            name: 'Semantic Search',
+            callback: async () => {
+                const query = await this.promptUser('Enter search query:');
+                if (!query) return;
+
+                new Notice('Searching...');
+                try {
+                    const embedding = await this.embeddingService.generateEmbedding(query);
+                    const results = await this.vectorStore.search(embedding.vector, 10, 0.5); // min score 0.5
+
+                    if (results.length === 0) {
+                        new Notice('No relevant results found.');
+                        return;
+                    }
+
+                    // Show results (simple way for now: create a note)
+                     const report = `# Semantic Search Results: "${query}"\n\n` + 
+                        results.map(r => `- [[${r.metadata.basename}]] (Score: ${(r.score * 100).toFixed(1)}%)`).join('\n');
+                    
+                    const fileName = `Search Results - ${Date.now()}.md`;
+                    await this.app.vault.create(fileName, report);
+                    const newFile = this.app.vault.getAbstractFileByPath(fileName);
+                    if (newFile instanceof TFile) await this.app.workspace.getLeaf().openFile(newFile);
+
+                } catch (e: any) {
+                    this.handleError(e, 'Semantic Search Failed');
+                }
+            }
+        });
+
+        // Command: Ask Agent (Auto)
+        this.addCommand({
+            id: 'ask-agent-auto',
+            name: 'Ask Agent (Auto)',
+            callback: async () => {
+                const query = await this.promptUser('What would you like me to do?');
+                if (!query) return;
+
+                new Notice('Agent is thinking...');
+                try {
+                    // Inject memory into query
+                    const memories = await this.memoryService.getRelevantMemories(query);
+                    const queryWithMemory = memories.length > 0 
+                        ? `Context about user: ${memories.join('; ')}\n\nQuestion: ${query}`
+                        : query;
+
+                    const answer = await this.agentService.run(queryWithMemory);
+                    
+                    // Display answer
+                    const modal = new Modal(this.app);
+                    modal.contentEl.createEl('h2', { text: 'Agent Response' });
+                    modal.contentEl.createEl('div', { text: answer });
+                    modal.open();
+
+                } catch (e: any) {
+                    this.handleError(e, 'Agent Error');
+                }
+            }
+        });
+
+        // Command: Transcribe Audio File
+        this.addCommand({
+            id: 'transcribe-audio',
+            name: 'Transcribe Selected Audio File',
+            callback: async () => {
+                const file = this.app.workspace.getActiveFile();
+                if (!file || !['mp3', 'wav', 'm4a', 'webm'].includes(file.extension)) {
+                    new Notice('Please open an audio file first.');
+                    return;
+                }
+
+                new Notice('Transcribing...');
+                try {
+                    const text = await this.audioService.transcribe(file);
+                    
+                    // Create new note with transcription
+                    const fileName = `Transcript - ${file.basename}.md`;
+                    await this.app.vault.create(fileName, `# Transcript: ${file.basename}\n\n${text}`);
+                    new Notice('Transcription complete!');
+                } catch (e: any) {
+                    this.handleError(e, 'Transcription Failed');
+                }
+            }
+        });
+
+        // Command: Analyze Current Image
+        this.addCommand({
+            id: 'analyze-image',
+            name: 'Analyze Current Image',
+            callback: async () => {
+                const file = this.app.workspace.getActiveFile();
+                if (!file || !['png', 'jpg', 'jpeg', 'webp'].includes(file.extension)) {
+                    new Notice('Please open an image file first.');
+                    return;
+                }
+
+                const prompt = await this.promptUser('What would you like to know about this image?');
+                if (!prompt) return;
+
+                new Notice('Analyzing image...');
+                try {
+                    const data = await this.app.vault.readBinary(file);
+                    const base64 = btoa(new Uint8Array(data).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+                    
+                    const result = await this.aiService.generateCompletion({
+						prompt: prompt,
+						imageData: base64
+					});
+                    
+                    const modal = new Modal(this.app);
+                    modal.contentEl.createEl('h2', { text: 'Image Analysis' });
+                    modal.contentEl.createEl('div', { text: result.text });
+                    modal.open();
+                } catch (e: any) {
+                    this.handleError(e, 'Image Analysis Failed');
+                }
+            }
+        });
 
 		// Add settings tab
 		this.addSettingTab(new ObsidianAgentSettingTab(this.app, this));

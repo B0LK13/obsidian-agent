@@ -8,6 +8,12 @@ AI-enhanced Obsidian Agent for intelligent note-taking, knowledge management, an
 
 ## ✨ Features
 
+### 🚀 Major Upgrades (New!)
+- 🧠 **Semantic Vector Core**: Search and link notes by conceptual meaning, not just keywords.
+- 🤖 **Agentic Brain (Auto Mode)**: A reasoning agent that can autonomously search, read, and summarize your vault.
+- 💾 **Long-Term Memory**: Remembers your facts, preferences, and project goals across sessions.
+- 👁️‍🗨️ **Multi-Modal Support**: Analyze images (GPT-4o) and transcribe voice notes (Whisper) directly in Obsidian.
+
 ### Core AI Capabilities
 - 🤖 **AI-Powered Assistance**: Integrate powerful AI models (OpenAI, Anthropic, Ollama, or custom) directly into your Obsidian workflow
 - 📝 **Smart Commands**: Multiple built-in commands for common writing tasks
@@ -61,6 +67,11 @@ Access via Command Palette (`Ctrl/Cmd + P`):
 | **Identify Knowledge Gaps in Research** | Discover what's missing in your research |
 | **Suggest Next Research Directions** | AI-suggested research paths based on current work |
 | **Find Semantically Related Notes** | Discover connected notes using AI clustering |
+| **Ask Agent (Auto)** | Autonomous reasoning loop with tool use |
+| **Rebuild Semantic Index** | Generate vector embeddings for the entire vault |
+| **Semantic Search** | Find notes by conceptual similarity |
+| **Analyze Current Image** | Vision-based analysis of the open image |
+| **Transcribe Selected Audio File** | Whisper-based transcription of audio notes |
 | **Discover Semantic Note Clusters** | Automatically group related notes by theme |
 
 ## 📦 Installation
@@ -262,7 +273,7 @@ The plugin includes comprehensive accessibility features:
 
 ### Getting Help
 
-- 📖 [Full Documentation](https://github.com/B0LK13/obsidian-agent/wiki)
+- 📖 [User Guide & Documentation](docs/user-guide/01-Semantic-Search.md)
 - 🐛 [Report Issues](https://github.com/B0LK13/obsidian-agent/issues)
 - 💬 [Discussions](https://github.com/B0LK13/obsidian-agent/discussions)
 
