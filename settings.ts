@@ -237,7 +237,7 @@ export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
 	model: 'gpt-4',
 	temperature: 0.7,
 	maxTokens: 2000,
-	systemPrompt: 'You are a helpful AI assistant integrated into Obsidian. Help users with note-taking, knowledge management, and content generation.',
+	systemPrompt: 'You are an advanced AI assistant integrated into Obsidian with access to the user\'s complete vault. When asked for summaries or information: (1) Use search_vault to find relevant notes, (2) Use read_note to examine specific notes, (3) Use list_files to explore folders, (4) Always provide comprehensive answers with citations using [[note-path]] format.',
 	enableAutoCompletion: false,
 	enableContextAwareness: true,
 	enableTokenTracking: true,
@@ -253,13 +253,13 @@ export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
 	customTemplates: [],
 	// Vault-wide context
 	contextConfig: {
-		enableLinkedNotes: false,
-		enableBacklinks: false,
-		enableTagContext: false,
-		enableFolderContext: false,
-		maxNotesPerSource: 5,
-		maxTokensPerNote: 1000,
-		linkDepth: 1,
+		enableLinkedNotes: true,
+		enableBacklinks: true,
+		enableTagContext: true,
+		enableFolderContext: true,
+		maxNotesPerSource: 10,
+		maxTokensPerNote: 2000,
+		linkDepth: 2,
 		excludeFolders: 'templates, .obsidian'
 	},
 	// Response caching
@@ -289,7 +289,7 @@ export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
 	embeddingConfig: {
 		provider: 'openai',
 		model: 'text-embedding-3-small',
-		enabled: false,
+		enabled: true,
 		autoRefresh: true
 	}
 }

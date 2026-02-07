@@ -101,6 +101,10 @@ export class VectorStore {
         await this.save();
     }
 
+    size(): number {
+        return this.vectors.size;
+    }
+
     private cosineSimilarity(a: number[], b: number[]): number {
         let dotProduct = 0;
         let normA = 0;
