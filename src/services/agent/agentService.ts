@@ -7,6 +7,8 @@ import {
     calculateMomentumScore,
     isDeadEnd
 } from '../../types/agentResponse';
+import { ConversationMemory } from '../../intelligence/memory/conversationMemory';
+import { ConfidenceEstimator } from '../../intelligence/reasoning/confidenceEstimator';
 
 export class AgentService {
     private aiService: AIService;
@@ -14,16 +16,29 @@ export class AgentService {
     private maxSteps: number = 10;
     private settings: ObsidianAgentSettings;
     private momentumThreshold: number = 8; // Minimum score to avoid rewrite
+    private conversationMemory: ConversationMemory;
+    private confidenceEstimator: ConfidenceEstimator;
 
     constructor(aiService: AIService, tools: Tool[], settings: ObsidianAgentSettings) {
         this.aiService = aiService;
         this.tools = tools;
         this.settings = settings;
+        this.conversationMemory = new ConversationMemory();
+        this.confidenceEstimator = new ConfidenceEstimator();
     }
 
-    async run(query: string): Promise<string> {
+    async run(query: string): Promise<StructuredAgentResponse> {
+        // Add user query to conversation memory
+        this.conversationMemory.addMessage('user', query);
+
         // Use the configurable agent core prompt with momentum policy
         let history = this.settings.agentCorePrompt + '\n\n';
+        
+        // Add conversation context if available
+        const sessionContext = this.conversationMemory.getContext();
+        if (sessionContext) {
+            history += sessionContext;
+        }
         
         history += 'Available tools:\n';
         
@@ -69,6 +84,10 @@ User's question: ${query}
         let steps = 0;
         let retryCount = 0;
         const maxRetries = 2;
+        const context: any = {
+            toolsUsed: [],
+            vaultSearchResults: 0
+        };
         
         while (steps < this.maxSteps) {
             steps++;
@@ -117,8 +136,32 @@ User's question: ${query}
                     }
                 }
 
+                // Calculate confidence score
+                const toolsUsed = context.toolsUsed || [];
+                const vaultSearchResults = context.vaultSearchResults || 0;
+                const confidenceScore = this.confidenceEstimator.estimate(response, {
+                    vaultSearchResults,
+                    toolsUsed,
+                    reasoningSteps: steps
+                });
+
+                // Add response to conversation memory
+                this.conversationMemory.addMessage('agent', response, {
+                    tools_used: toolsUsed,
+                    confidence: confidenceScore.overall,
+                    intent: 'answer'
+                });
+
+                // Build final response with confidence info
+                let finalResponse = response.trim();
+
+                // Add confidence warning if low
+                if (confidenceScore.level === 'medium' || confidenceScore.level === 'low') {
+                    finalResponse += '\n' + this.confidenceEstimator.formatConfidence(confidenceScore);
+                }
+
                 // Valid response with good momentum - return it
-                return response.trim();
+                return finalResponse;
             }
 
             // Parse tool use
@@ -132,8 +175,18 @@ User's question: ${query}
                 const tool = this.tools.find(t => t.name === action);
                 
                 if (tool) {
+                    // Track tool usage
+                    context.toolsUsed.push(action);
+                    
                     const observation = await tool.execute(input);
                     history += `Observation: ${observation}\n\n`;
+                    
+                    // Track if this was a search
+                    if (action.toLowerCase().includes('search')) {
+                        // Rough heuristic: count lines or result markers
+                        const resultCount = (observation.match(/\n/g) || []).length;
+                        context.vaultSearchResults = Math.max(context.vaultSearchResults, resultCount);
+                    }
                     
                     // If observation is empty or indicates no results, guide the AI to be helpful
                     if (!observation || observation.includes('No results') || observation.includes('not found')) {
@@ -149,5 +202,19 @@ User's question: ${query}
         }
 
         return "I apologize, but I wasn't able to complete that request within the expected time. Could you try rephrasing your question?";
+    }
+
+    /**
+     * Clear conversation memory (new session)
+     */
+    clearMemory(): void {
+        this.conversationMemory.clear();
+    }
+
+    /**
+     * Get conversation summary
+     */
+    getConversationSummary(): string {
+        return this.conversationMemory.getSummary();
     }
 }
