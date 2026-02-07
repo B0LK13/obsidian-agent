@@ -17,7 +17,8 @@
     "prerelease": "npm run lint && npm run typecheck && npm run test",
     "release": "npm run prerelease && npm run build && node scripts/release.mjs",
     "package": "npm run build && node scripts/package.mjs",
-    "clean": "rimraf main.js main.js.map build-meta.json .cache"
+    "clean": "rimraf main.js main.js.map build-meta.json .cache",
+    "validate:tool-parity": "ts-node scripts/validate-tool-parity.ts"
   },
   "keywords": [
     "obsidian",
