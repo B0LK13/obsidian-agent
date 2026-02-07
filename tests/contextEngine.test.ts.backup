@@ -26,7 +26,6 @@ describe('IntelligentContextEngine', () => {
 		
 		// Mock VectorStore
 		vectorStore = {
-get: vi.fn().mockReturnValue(null),
 			search: vi.fn().mockResolvedValue([]),
 			add: vi.fn().mockResolvedValue(undefined),
 			delete: vi.fn().mockResolvedValue(undefined),
@@ -120,10 +119,8 @@ get: vi.fn().mockReturnValue(null),
 				'neural networks deep learning'
 			);
 			
-			// Semantic scoring via TF-IDF has been replaced by vector search
-// scoreNoteRelevance returns 0 for semanticScore by design
-// Real semantic search happens via getAdaptiveContext using vectorStore
-expect(relevantScore.semanticScore).toBe(0);
+			// Should have high semantic relevance (adjusted for realistic TF-IDF scores)
+			expect(relevantScore.semanticScore).toBeGreaterThan(25);
 		});
 
 		it('should give higher recency scores for recent notes', async () => {
@@ -132,7 +129,7 @@ expect(relevantScore.semanticScore).toBe(0);
 			const oldFile = createMockFile('old.md', 'content', { mtime: now - 86400000 * 60 });
 			
 			vault.getMarkdownFiles.mockReturnValue([recentFile, oldFile]);
-			// TF-IDF replaced by vector store
+			await engine['buildTFIDFCache']([recentFile, oldFile]);
 			
 			const recentScore = await engine.scoreNoteRelevance(recentFile, 'test');
 			const oldScore = await engine.scoreNoteRelevance(oldFile, 'test');
@@ -183,7 +180,7 @@ expect(relevantScore.semanticScore).toBe(0);
 				5000
 			);
 			
-			expect(context.relatedNotes.length).toBeGreaterThanOrEqual(0); // May be 0 if vectorStore returns empty results
+			expect(context.relatedNotes.length).toBeGreaterThan(0);
 			
 			// Related notes should be different from primary
 			for (const note of context.relatedNotes) {
@@ -303,50 +300,84 @@ expect(relevantScore.semanticScore).toBe(0);
 	});
 
 	describe('Cache Management', () => {
-it('should build and cache TF-IDF vectors', async () => {
-// TF-IDF is no longer used - replaced by vector embeddings
-// This test validates the new architecture
-expect(vectorStore).toBeDefined();
-});
+		it('should build and cache TF-IDF vectors', async () => {
+			const files = vault.getMarkdownFiles();
+			
+			// First call builds cache
+			await engine['buildTFIDFCache'](files);
+			
+			expect(engine['tfidfCache']).not.toBeNull();
+			expect(engine['idfCache']).not.toBeNull();
+			
+			// Verify cache structure
+			expect(engine['tfidfCache']!.size).toBeGreaterThan(0);
+			expect(engine['idfCache']!.size).toBeGreaterThan(0);
+		});
 
-it('should reuse cached clusters', async () => {
-const clusters1 = await engine.buildSemanticClusters();
-const clusters2 = await engine.buildSemanticClusters();
+		it('should reuse cached clusters', async () => {
+			// First call
+			const clusters1 = await engine.buildSemanticClusters();
+			
+			// Second call should use cache
+			const clusters2 = await engine.buildSemanticClusters();
+			
+			expect(clusters1).toBe(clusters2); // Same object reference
+		});
 
-// Currently returns empty maps
-expect(clusters1.size).toBe(0);
-expect(clusters2.size).toBe(0);
-});
-
-it('should clear all caches', async () => {
-await engine.buildSemanticClusters();
-
-// Validate that vectorStore has clear method
-expect(vectorStore.clear).toBeDefined();
-});
-});
+		it('should clear all caches', async () => {
+			const files = vault.getMarkdownFiles();
+			await engine['buildTFIDFCache'](files);
+			await engine.buildSemanticClusters();
+			
+			engine.clearCaches();
+			
+			expect(engine['tfidfCache']).toBeNull();
+			expect(engine['idfCache']).toBeNull();
+			expect(engine['clusterCache']).toBeNull();
+			expect(engine['linkGraphCache']).toBeNull();
+		});
+	});
 
 	describe('TF-IDF Implementation', () => {
-it('should compute valid TF-IDF vectors', async () => {
-// TF-IDF replaced by vector embeddings via VectorStore
-expect(vectorStore).toBeDefined();
-});
+		it('should compute valid TF-IDF vectors', async () => {
+			const files = vault.getMarkdownFiles();
+			await engine['buildTFIDFCache'](files);
+			
+			const firstFile = files[0];
+			const vector = engine['tfidfCache']!.get(firstFile.path);
+			
+			assertTFIDFVector(vector);
+		});
 
-it('should filter stop words', async () => {
-// Stop word filtering now handled by embedding model
-expect(embeddingService).toBeDefined();
-});
+		it('should filter stop words', async () => {
+			const testContent = 'this is a test with some common words that should be filtered';
+			const terms = engine['extractTerms'](testContent);
+			
+			// Should not contain common stop words
+			expect(terms).not.toContain('this');
+			expect(terms).not.toContain('that');
+			expect(terms).not.toContain('with');
+		});
 
-it('should calculate cosine similarity correctly', () => {
-// Cosine similarity now handled by VectorStore.search()
-expect(vectorStore.search).toBeDefined();
-});
+		it('should calculate cosine similarity correctly', () => {
+			const vec1 = new Map([['neural', 2.5], ['network', 1.8]]);
+			const vec2 = new Map([['neural', 2.0], ['network', 2.0]]);
+			
+			const similarity = engine['cosineSimilarity'](vec1, vec2);
+			
+			expect(similarity).toBeGreaterThan(0);
+			expect(similarity).toBeLessThanOrEqual(1);
+		});
 
-it('should return 0 similarity for empty vectors', () => {
-// Edge case handled by VectorStore
-expect(vectorStore).toBeDefined();
-});
-});
+		it('should return 0 similarity for empty vectors', () => {
+			const vec1 = new Map();
+			const vec2 = new Map([['test', 1]]);
+			
+			const similarity = engine['cosineSimilarity'](vec1, vec2);
+			
+			expect(similarity).toBe(0);
+		});
+	});
 
 	describe('Link Graph Analysis', () => {
 		it('should build link graph from metadata', () => {
@@ -370,6 +401,3 @@ expect(vectorStore).toBeDefined();
 		});
 	});
 });
-
-
-

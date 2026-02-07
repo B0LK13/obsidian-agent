@@ -1,0 +1,25 @@
+--- a/main.ts
++++ b/main.ts
+@@ -160,6 +160,24 @@ export default class ObsidianAgentPlugin extends Plugin {
+ 			this.aiService
+ 		);
+ 
++		// Auto-index vault if embeddings are enabled and vector store is empty
++		if (this.settings.embeddingConfig.enabled) {
++			this.app.workspace.onLayoutReady(async () => {
++				if (this.vectorStore.size() === 0) {
++					new Notice('Obsidian Agent: Starting initial vault indexing...');
++					try {
++						await this.indexingService.indexVault(false);
++						new Notice('Obsidian Agent: Vault indexed successfully! Agent is ready.');
++					} catch (error: any) {
++						new Notice(`Obsidian Agent: Indexing failed - ${error.message}`);
++						console.error('Auto-indexing error:', error);
++					}
++				}
++			});
++		}
++
+ 		// Initialize usage stats with defaults
+ 		if (!this.settings.totalRequests) {
+ 			this.settings.totalRequests = 0;

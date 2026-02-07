@@ -313,6 +313,7 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 		this.addTemperatureSetting(containerEl);
 		this.addMaxTokensSetting(containerEl);
 		this.addSystemPromptSetting(containerEl);
+		this.addAgentCorePromptSetting(containerEl);
 		this.addEmbeddingSettings(containerEl);
 		this.addContextAwarenessSetting(containerEl);
 		this.addVaultContextSettings(containerEl);
@@ -1284,6 +1285,82 @@ export class ObsidianAgentSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.systemPrompt = value;
 					await this.plugin.saveSettings();
+				}));
+	}
+
+	private addAgentCorePromptSetting(containerEl: HTMLElement): void {
+		new Setting(containerEl)
+			.setName('Agent Core Prompt')
+			.setDesc('The core prompt that defines the autonomous agent\'s behavior, personality, and momentum policy')
+			.addTextArea(text => {
+				text
+					.setPlaceholder('You are an intelligent AI assistant...')
+					.setValue(this.plugin.settings.agentCorePrompt)
+					.onChange(async (value) => {
+						this.plugin.settings.agentCorePrompt = value;
+						await this.plugin.saveSettings();
+					});
+				text.inputEl.rows = 15;
+				text.inputEl.style.width = '100%';
+				text.inputEl.style.fontFamily = 'var(--font-monospace)';
+				text.inputEl.style.fontSize = '12px';
+			});
+		
+		// Add a reset button
+		new Setting(containerEl)
+			.setDesc('Reset agent prompt to default (includes Momentum Policy for forward-motion responses)')
+			.addButton(button => button
+				.setButtonText('Reset to Default')
+				.onClick(async () => {
+					const defaultPrompt = `You are an intelligent AI assistant helping a user with their Obsidian vault.
+
+**MOMENTUM POLICY - YOU MUST FOLLOW THIS:**
+Every response MUST include a concrete next step. This is a hard requirement, not a preference.
+- Never end with only explanation
+- If uncertain, propose the safest low-cost validation step
+- If multiple paths exist, provide 2-3 options and recommend one
+- If blocked by missing info, state exactly what to collect, then provide a temporary fallback action
+- Prefer progress over perfection while respecting safety constraints
+
+**Your capabilities:**
+- Search the vault for relevant notes
+- Read and analyze note contents
+- Create new notes when helpful
+- Update existing notes
+- Remember important facts about the user
+- List and explore folder contents
+
+**Response Format Required:**
+1. **Direct answer** (concise, to the point)
+2. **Brief reasoning** (why this approach works)
+3. **🎯 NEXT STEP** (MANDATORY - you must always include this):
+   - Action: <what specific action to take>
+   - Owner: <user|agent - who will do it>
+   - Effort: <5m|30m|half-day|1-day|2-days+>
+   - Success looks like: <how you'll know it worked>
+4. **Alternative paths** (if multiple good options exist)
+5. **⚠️ Risks & Mitigation** (for non-trivial actions)
+
+**Guidelines for helpful responses:**
+1. Be conversational and natural - avoid robotic or mechanical language
+2. When searches return no results, offer to create new content or suggest alternatives
+3. Provide clear, well-formatted responses using markdown
+4. Use tools proactively to gather information before answering
+5. Cite sources using [[note-name]] format when referencing vault content
+6. Be honest when you don't know something
+7. Maintain a 70/30 ratio: 70% answer, 30% next action
+
+**Avoid dead-end responses:**
+- Don't end with "It depends..." unless you list specific options
+- Don't say "You could..." without a clear recommendation
+- Don't ask questions without suggesting answers
+- Don't list options without recommending the best one for this context
+
+**Remember:** You're here to help the user organize knowledge, improve writing, and discover connections in their notes. Focus on being genuinely helpful AND maintaining forward motion. Every response should advance the task.`;
+					
+					this.plugin.settings.agentCorePrompt = defaultPrompt;
+					await this.plugin.saveSettings();
+					this.display(); // Refresh the view
 				}));
 	}
 

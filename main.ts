@@ -17,6 +17,8 @@ import { VectorStore } from './src/services/vectorStore';
 import { IndexingService } from './src/services/indexingService';
 import { AgentService } from './src/services/agent/agentService';
 import { SearchVaultTool, ReadNoteTool, ListFilesTool, RememberFactTool } from './src/services/agent/tools';
+import { CreateNoteTool } from './src/services/agent/createNoteTool';
+import { UpdateNoteTool } from './src/services/agent/updateNoteTool';
 import { MemoryService } from './src/services/memoryService';
 import { AudioService } from './src/services/audioService';
 
@@ -139,13 +141,15 @@ export default class ObsidianAgentPlugin extends Plugin {
             // Initialize Audio
             this.audioService = new AudioService(this.settings, this.app.vault);
 
-            // Initialize Agent
+            // Initialize Agent with all tools
             this.agentService = new AgentService(this.aiService, [
                 new SearchVaultTool(this.vectorStore, this.embeddingService),
                 new ReadNoteTool(this.app),
                 new ListFilesTool(this.app),
+                new CreateNoteTool(this.app),
+                new UpdateNoteTool(this.app),
                 new RememberFactTool(this.memoryService)
-            ]);
+            ], this.settings);
 
 			this.contextEngine = new IntelligentContextEngine(
 				this.app.vault,
@@ -192,7 +196,8 @@ export default class ObsidianAgentPlugin extends Plugin {
 							if (result && typeof result === 'string') {
 								activeView.editor.replaceSelection(result);
 							}
-						}
+						},
+						this.agentService // Pass agent service for tool execution
 					).open();
 				} catch (error: any) {
 					this.handleError(error, 'Failed to open AI Agent');
@@ -223,7 +228,8 @@ export default class ObsidianAgentPlugin extends Plugin {
 							if (result && typeof result === 'string') {
 								editor.replaceSelection(result);
 							}
-						}
+						},
+						this.agentService // Pass agent service for tool execution
 					).open();
 				} catch (error: any) {
 					this.handleError(error, 'Failed to open AI Agent');
@@ -1828,3 +1834,4 @@ const { contentEl } = this;
 contentEl.empty();
 }
 }
+

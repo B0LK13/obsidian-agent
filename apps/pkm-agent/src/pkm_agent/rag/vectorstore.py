@@ -49,7 +49,7 @@ class VectorStore:
                     data = pickle.load(f)
                     self._documents = data.get("documents", [])
                     self._id_to_idx = data.get("id_to_idx", {})
-                logger.info(f"Loaded FAISS index with {len(self._documents)} documents")
+                logger.info(f"Loaded FAISS index ({type(self._index).__name__}) with {len(self._documents)} documents")
             else:
                 # Create new index - will be initialized on first add
                 self._index = None
@@ -90,7 +90,18 @@ class VectorStore:
         # Initialize index if needed
         if self._index is None:
             dim = embeddings.shape[1]
-            self._index = faiss.IndexFlatIP(dim)  # Inner product (cosine after normalization)
+            # Use HNSW for better performance on large datasets
+            # M=32: number of connections per layer (higher = better recall, more memory)
+            # efConstruction=40: controls index build time (higher = better quality, slower build)
+            if len(self._documents) > 1000:
+                # For larger datasets, use HNSW
+                self._index = faiss.IndexHNSWFlat(dim, 32)
+                self._index.hnsw.efConstruction = 40
+                logger.info("Using HNSW index for improved performance")
+            else:
+                # For smaller datasets, flat index is sufficient
+                self._index = faiss.IndexFlatIP(dim)
+                logger.info("Using flat index")
         
         # Add to index
         start_idx = len(self._documents)

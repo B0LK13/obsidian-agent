@@ -97,3 +97,5 @@ export class RememberFactTool implements Tool {
         }
     }
 }
+
+// Export tool interface for external use

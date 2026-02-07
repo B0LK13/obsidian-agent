@@ -6,6 +6,7 @@
 import { App, Modal, Notice, TextAreaComponent, setTooltip, setIcon } from 'obsidian';
 import { AIService } from './aiService';
 import { ChatMessage, ObsidianAgentSettings } from './settings';
+import { AgentService } from './src/services/agent/agentService';
 // import { PromptTemplate, BUILT_IN_TEMPLATES } from './promptTemplates';
 import { calculateTokenCount, getUsageLevel, getUsageColor, formatTokenCount } from './tokenCounter';
 import { 
@@ -20,6 +21,7 @@ import {
 export class EnhancedAgentModal extends Modal {
 	// Core services
 	private aiService: AIService;
+	private agentService: AgentService | null;
 	private settings: ObsidianAgentSettings;
 	private saveSettings: () => Promise<void>;
 	private onSubmit: (result: string) => void;
@@ -54,10 +56,12 @@ export class EnhancedAgentModal extends Modal {
 		settings: ObsidianAgentSettings,
 		saveSettings: () => Promise<void>,
 		context: string,
-		onSubmit: (result: string) => void
+		onSubmit: (result: string) => void,
+		agentService: AgentService | null = null
 	) {
 		super(app);
 		this.aiService = aiService;
+		this.agentService = agentService;
 		this.settings = settings;
 		this.saveSettings = saveSettings;
 		this.context = context;
@@ -372,6 +376,8 @@ export class EnhancedAgentModal extends Modal {
 			return;
 		}
 		
+		const userPrompt = this.prompt;
+		
 		if (bypassCache) {
 			this.aiService.setBypassCache(true);
 		}
@@ -393,22 +399,40 @@ export class EnhancedAgentModal extends Modal {
 		this.stopButton.style.display = 'flex';
 		
 		try {
-			const result = await this.aiService.generateCompletion({
-				prompt: this.prompt,
-				context: this.context,
-				stream: true,
-				onChunk: (chunk) => {
-					this.onStreamChunk(chunk);
-					if (chunk.done) {
-						this.finishStreaming(result);
+			// Use AgentService if available (for tool execution)
+			if (this.agentService) {
+				const agentResponse = await this.agentService.run(userPrompt);
+				
+				// Add agent response
+				this.currentResponse = agentResponse;
+				this.addMessage('assistant', agentResponse);
+				
+				// Hide typing indicator
+				this.typingIndicator.hide();
+				
+				// Reset UI
+				this.isStreaming = false;
+				this.submitButton.style.display = 'flex';
+				this.stopButton.style.display = 'none';
+			} else {
+				// Fallback to direct AI completion
+				const result = await this.aiService.generateCompletion({
+					prompt: userPrompt,
+					context: this.context,
+					stream: true,
+					onChunk: (chunk) => {
+						this.onStreamChunk(chunk);
+						if (chunk.done) {
+							this.finishStreaming(result);
+						}
+					},
+					onProgress: (progress) => {
+						if (this.isStreaming) {
+							this.onStreamProgress(progress);
+						}
 					}
-				},
-				onProgress: (progress) => {
-					if (this.isStreaming) {
-						this.onStreamProgress(progress);
-					}
-				}
-			});
+				});
+			}
 		} catch (error: any) {
 			if (error.name !== 'AbortError') {
 				new Notice(`Error: ${error.message}`);
