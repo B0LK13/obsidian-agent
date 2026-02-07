@@ -171,6 +171,34 @@ export default class ObsidianAgentPlugin extends Plugin {
 				this.settings.estimatedCost = 0;
 			}
 
+			// Add ribbon icon for quick access
+			this.addRibbonIcon('bot', 'Ask AI Agent', async () => {
+				const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+				if (!activeView || !activeView.file) {
+					new Notice('Please open a note first');
+					return;
+				}
+
+				try {
+					const currentContent = activeView.editor.getValue();
+					const context = await this.gatherFullContext(activeView.file, currentContent);
+					new EnhancedAgentModal(
+						this.app,
+						this.aiService,
+						this.settings,
+						() => this.saveSettings(),
+						context,
+						(result) => {
+							if (result && typeof result === 'string') {
+								activeView.editor.replaceSelection(result);
+							}
+						}
+					).open();
+				} catch (error: any) {
+					this.handleError(error, 'Failed to open AI Agent');
+				}
+			});
+
 		// Command: Ask AI Agent
 		this.addCommand({
 			id: 'ask-ai-agent',
