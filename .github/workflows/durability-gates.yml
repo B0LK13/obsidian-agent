@@ -1,0 +1,140 @@
+name: Durability Gates
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'eval/**'
+      - 'scripts/**'
+      - '.github/workflows/durability-gates.yml'
+      - 'package.json'
+  push:
+    branches: [main, "phase3c/**"]
+    paths:
+      - 'src/**'
+      - 'eval/**'
+      - 'scripts/**'
+      - '.github/workflows/durability-gates.yml'
+      - 'package.json'
+
+jobs:
+  # Tool Parity and Contract Checks (from tool-parity.yml)
+  tool-parity:
+    name: Tool Registry Parity
+    runs-on: ubuntu-latest
+    container: node:20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build --if-present
+        continue-on-error: true
+      - run: npm run validate:tool-parity
+      - run: npm run contracts:check
+
+  # Benchmark Budget Gate (T3)
+  benchmark-budget:
+    name: Benchmark Performance Budget
+    runs-on: ubuntu-latest
+    container: node:20
+    needs: tool-parity
+    timeout-minutes: 45  # 50 queries should complete within 45 min
+    
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install Dependencies
+        run: npm ci
+      
+      - name: Build (if present)
+        run: npm run build --if-present
+        continue-on-error: true
+      
+      - name: Run Benchmark (50 queries)
+        run: npm run benchmark:ci
+        env:
+          # Use mock Obsidian for CI
+          OBSIDIAN_RUNTIME: false
+          DETERMINISTIC_FALLBACK: true
+        timeout-minutes: 35
+      
+      - name: Check Budget vs Baseline
+        run: npm run benchmark:budget
+        env:
+          BUDGET_PATH: artifacts/budgets/phase3b-baseline.json
+          BENCHMARK_SUMMARY_PATH: artifacts/latest/benchmark-summary.json
+      
+      - name: Upload Benchmark Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ github.run_id }}
+          path: |
+            artifacts/latest/
+            eval/results/
+            eval/reports/
+          retention-days: 30
+      
+      - name: Comment PR with Results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '## 📊 Benchmark Budget Check\n\nStatus: ${{ job.status }}\n\nSee uploaded artifacts for detailed results.'
+            });
+
+  # Dual-lane testing (runtime vs headless)
+  dual-lane-runtime:
+    name: Runtime Mode Tests
+    runs-on: ubuntu-latest
+    container: node:20
+    needs: tool-parity
+    
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build --if-present
+        continue-on-error: true
+      - name: Test Runtime Mode
+        run: npm test
+        env:
+          NODE_ENV: test
+          OBSIDIAN_RUNTIME: true
+
+  dual-lane-headless:
+    name: Headless Mode Tests
+    runs-on: ubuntu-latest
+    container: node:20
+    needs: tool-parity
+    
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build --if-present
+        continue-on-error: true
+      - name: Test Headless Mode
+        run: npm test
+        env:
+          NODE_ENV: test
+          OBSIDIAN_RUNTIME: false
+          DETERMINISTIC_FALLBACK: true

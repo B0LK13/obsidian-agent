@@ -20,7 +20,9 @@
     "clean": "rimraf main.js main.js.map build-meta.json .cache",
     "validate:tool-parity": "ts-node scripts/validate-tool-parity.ts",
     "contracts:refresh": "ts-node scripts/snapshot-tool-schemas.ts",
-    "contracts:check": "ts-node scripts/check-tool-schemas.ts"
+    "contracts:check": "ts-node scripts/check-tool-schemas.ts",
+    "benchmark:ci": "ts-node eval/runProductionBenchmark.ts 50",
+    "benchmark:budget": "ts-node scripts/check-benchmark-budget.ts"
   },
   "keywords": [
     "obsidian",
