@@ -105,22 +105,35 @@ export default class AIChatNotesPlugin extends Plugin {
 	voiceService: VoiceService;
 
 	async onload() {
-		await this.loadSettings();
-		
-		// Initialize services
-		this.dbManager = new DatabaseManager(this);
-		await this.dbManager.initialize();
-		
-		this.aiService = new AIService(this.settings);
-		this.searchService = new SearchService(this);
-		this.chatService = new ChatService(this);
-		
-		// Initialize Phase 3 services
-		this.api = new PluginAPI(this);
-		this.voiceService = new VoiceService(this);
+		try {
+			await this.loadSettings();
+			
+			// Initialize services with error handling
+			try {
+				this.dbManager = new DatabaseManager(this);
+				await this.dbManager.initialize();
+			} catch (e) {
+				console.warn('Database initialization failed, using fallback:', e);
+				this.dbManager = new DatabaseManager(this);
+			}
+			
+			this.aiService = new AIService(this.settings);
+			this.searchService = new SearchService(this);
+			this.chatService = new ChatService(this);
+			
+			// Initialize Phase 3 services
+			this.api = new PluginAPI(this);
+			this.voiceService = new VoiceService(this);
+		} catch (error) {
+			console.error('Failed to initialize plugin services:', error);
+			new Notice('AI Chat & Notes: Some services failed to load, but basic features should work');
+		}
 
 		// Register custom icons
 		this.registerIcons();
+		
+		// Inject CSS styles
+		this.injectStyles();
 
 		// Register views
 		this.registerView(
