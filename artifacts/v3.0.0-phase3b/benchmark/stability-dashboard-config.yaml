@@ -1,0 +1,309 @@
+# Phase 3B Stability Watch Dashboard
+
+**Version**: v3.0.0-phase3b  
+**Baseline Date**: 2026-02-07  
+**Monitoring Period**: Days 1-5 post-release
+
+---
+
+## 🎯 Alert Thresholds
+
+### Query Latency
+```yaml
+p50 Baseline: ~25-28s
+  🟡 Alert: >30s (+7-20%)
+  🔴 Critical: >35s (+25-40%)
+
+p95 Baseline: ~35s
+  🟡 Alert: >38.5s (+10%)
+  🔴 Critical: >42s (+20%)
+
+p99 Baseline: ~45s
+  🟡 Alert: >49.5s (+10%)
+  🔴 Critical: >54s (+20%)
+```
+
+### Error Metrics
+```yaml
+Error Rate Baseline: <2%
+  🟡 Alert: >5%
+  🔴 Critical: >10%
+
+Tool Failure Rate Baseline: <1%
+  🟡 Alert: >3%
+  🔴 Critical: >5%
+
+Fallback Rate Baseline: <10%
+  🟡 Alert: >15%
+  🔴 Critical: >20%
+```
+
+---
+
+## 📊 Dashboard Panels
+
+### Panel 1: Query Latency Trend
+```promql
+# p50 latency over time
+histogram_quantile(0.50, 
+  sum(rate(query_duration_seconds_bucket[5m])) by (le)
+)
+
+# p95 latency over time
+histogram_quantile(0.95,
+  sum(rate(query_duration_seconds_bucket[5m])) by (le)
+)
+
+# p99 latency over time
+histogram_quantile(0.99,
+  sum(rate(query_duration_seconds_bucket[5m])) by (le)
+)
+```
+**Visualization**: Line graph with baseline and alert thresholds
+
+---
+
+### Panel 2: Error Rate
+```promql
+# Error rate percentage
+(
+  sum(rate(errors_total[5m]))
+  /
+  sum(rate(queries_total[5m]))
+) * 100
+```
+**Visualization**: Percentage gauge with color coding
+
+---
+
+### Panel 3: Tool Success Rate
+```promql
+# Tool execution success rate
+(
+  sum(rate(tool_success_total[5m]))
+  /
+  sum(rate(tool_calls_total[5m]))
+) * 100
+```
+**Visualization**: Gauge (target: >99%)
+
+---
+
+### Panel 4: Fallback Trigger Rate
+```promql
+# Fallback rate
+(
+  sum(rate(fallback_triggered_total[5m]))
+  /
+  sum(rate(queries_total[5m]))
+) * 100
+```
+**Visualization**: Trend line with 10% threshold
+
+---
+
+### Panel 5: Query Volume
+```promql
+# Queries per minute
+sum(rate(queries_total[1m])) * 60
+```
+**Visualization**: Bar chart or line graph
+
+---
+
+### Panel 6: Failure Taxonomy Distribution
+```promql
+# Count by failure mode
+sum by (failure_mode) (
+  rate(failures_total[1h])
+)
+```
+**Visualization**: Pie chart or stacked bar
+
+---
+
+## 🔔 Alert Rules
+
+### Alert: High Latency p95
+```yaml
+name: Phase3B_HighLatency_P95
+expr: |
+  histogram_quantile(0.95,
+    sum(rate(query_duration_seconds_bucket[5m])) by (le)
+  ) > 38.5
+for: 5m
+labels:
+  severity: warning
+annotations:
+  summary: "Phase 3B p95 latency exceeds baseline +10%"
+  description: "p95 latency is {{ $value }}s (baseline: 35s)"
+```
+
+### Alert: Critical Latency p95
+```yaml
+name: Phase3B_CriticalLatency_P95
+expr: |
+  histogram_quantile(0.95,
+    sum(rate(query_duration_seconds_bucket[5m])) by (le)
+  ) > 42
+for: 3m
+labels:
+  severity: critical
+annotations:
+  summary: "Phase 3B p95 latency exceeds baseline +20% - ROLLBACK REQUIRED"
+  description: "p95 latency is {{ $value }}s (baseline: 35s). Consider rollback to v3.0.0-phase3b"
+```
+
+### Alert: High Error Rate
+```yaml
+name: Phase3B_HighErrorRate
+expr: |
+  (
+    sum(rate(errors_total[5m]))
+    /
+    sum(rate(queries_total[5m]))
+  ) > 0.05
+for: 5m
+labels:
+  severity: warning
+annotations:
+  summary: "Phase 3B error rate elevated"
+  description: "Error rate is {{ $value | humanizePercentage }} (baseline: <2%)"
+```
+
+### Alert: Tool Failure Spike
+```yaml
+name: Phase3B_ToolFailureSpike
+expr: |
+  (
+    sum(rate(tool_failures_total[5m]))
+    /
+    sum(rate(tool_calls_total[5m]))
+  ) > 0.03
+for: 5m
+labels:
+  severity: warning
+annotations:
+  summary: "Phase 3B tool failure rate elevated"
+  description: "Tool failure rate is {{ $value | humanizePercentage }} (baseline: <1%)"
+```
+
+---
+
+## 📈 Daily Monitoring Checklist
+
+### Day 1 (Release Day)
+- [ ] Verify dashboard is receiving metrics
+- [ ] Confirm all panels showing data
+- [ ] Check alert rules are active
+- [ ] Validate baseline values loaded
+- [ ] Review first 10 queries manually
+
+### Day 2-3 (Stability Watch)
+- [ ] Review overnight metrics
+- [ ] Check for any alerts triggered
+- [ ] Validate latency trends stable
+- [ ] Confirm error rates within bounds
+- [ ] Document any anomalies
+
+### Day 4-5 (Validation)
+- [ ] Full week trend analysis
+- [ ] Compare vs Phase 3B baseline
+- [ ] Validate all KPIs met
+- [ ] Archive evidence if stable
+- [ ] Prepare Phase 3C kickoff
+
+---
+
+## 🚨 Rollback Procedure
+
+### Trigger Conditions
+- p95 latency >42s for >3 minutes
+- Error rate >10% for >5 minutes
+- Tool failure rate >5% for >5 minutes
+- Any critical alert firing
+
+### Rollback Steps
+```bash
+# 1. Notify team
+echo "ROLLBACK INITIATED: v3.0.0-phase3b"
+
+# 2. Checkout release tag
+git checkout v3.0.0-phase3b
+
+# 3. Verify state
+npm run typecheck
+npm test
+
+# 4. Deploy
+git push origin v3.0.0-phase3b:main --force
+
+# 5. Confirm rollback
+curl /health | grep "v3.0.0-phase3b"
+
+# 6. Monitor
+# Watch dashboard for 30 min post-rollback
+```
+
+### Post-Rollback Actions
+- [ ] Document rollback reason
+- [ ] Capture diagnostic data
+- [ ] Create hotfix branch if needed
+- [ ] Notify stakeholders
+- [ ] Schedule post-mortem
+
+---
+
+## 📊 Weekly Report Template
+
+```markdown
+# Phase 3B Stability Report - Week of [DATE]
+
+## Summary
+- Release: v3.0.0-phase3b
+- Monitoring Period: Days X-Y
+- Overall Status: 🟢 Stable / 🟡 Alert / 🔴 Critical
+
+## Key Metrics
+| Metric | Baseline | Average | Peak | Status |
+|--------|----------|---------|------|--------|
+| p50 Latency | 25-28s | XXs | XXs | ✅/⚠️/❌ |
+| p95 Latency | ~35s | XXs | XXs | ✅/⚠️/❌ |
+| Error Rate | <2% | X% | X% | ✅/⚠️/❌ |
+| Tool Success | >99% | XX% | XX% | ✅/⚠️/❌ |
+
+## Incidents
+- [ ] None
+- [ ] Alert triggered (details below)
+- [ ] Rollback performed (details below)
+
+## Actions Taken
+- 
+
+## Recommendations
+- 
+
+## Phase 3C Readiness
+- [ ] Ready to proceed
+- [ ] Blockers identified (see above)
+```
+
+---
+
+## 🔗 Quick Links
+
+- **Release**: https://github.com/B0LK13/obsidian-agent/releases/tag/v3.0.0-phase3b
+- **Baseline Metrics**: See manifest.json
+- **Alert Manager**: [Configure alerts]
+- **Runbook**: This document
+- **Escalation**: [Team contact]
+
+---
+
+**Created**: 2026-02-07  
+**Version**: v3.0.0-phase3b  
+**Next Review**: Daily for 5 days, then weekly
+
+---
+
+*This dashboard monitors the stability of Phase 3B release. Any critical alerts should trigger immediate rollback to v3.0.0-phase3b.*
