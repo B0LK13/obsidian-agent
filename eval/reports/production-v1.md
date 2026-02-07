@@ -1,11 +1,11 @@
 # Production Benchmark v1 - LIVE Agent Execution
 
-**Date**: 2026-02-07T16:40:34.253Z  
-**Dataset**: 3 queries  
-**Completed**: 3 (100.0%)  
+**Date**: 2026-02-07T16:50:32.288Z  
+**Dataset**: 2 queries  
+**Completed**: 2 (100.0%)  
 **Failed**: 0  
 **Strategy**: hybrid_learned  
-**Git Commit**: 77297674529e8b733b42e69aa0fe665c41667c92
+**Git Commit**: 7c5a032f61e4a98d92b3a1415b15c15824d1bc78
 
 ---
 
@@ -14,8 +14,8 @@
 | Gate | Value | Threshold | Status |
 |------|-------|-----------|--------|
 | **Citation Correctness** | 0.0% | ≥98% | ❌ |
-| **Completeness** | 0.0% | ≥95% | ❌ |
-| **ECE** | 0.060 | ≤0.15 | ✅ |
+| **Completeness** | 50.0% | ≥95% | ❌ |
+| **ECE** | 0.090 | ≤0.15 | ✅ |
 | **Precision@5** | 0.0% | ≥73% (3pp tolerance) | ❌ |
 | **Fallback Rate** | 0.0% | <10% | ✅ |
 
@@ -32,18 +32,18 @@
 ### Answer Quality
 - **Faithfulness**: 0.0%
 - **Citation Correctness**: 0.0%
-- **Completeness**: 0.0%
+- **Completeness**: 50.0%
 
 ### Calibration
-- **Confidence Calibration**: 94.0%
-- **ECE**: 0.060
+- **Confidence Calibration**: 91.0%
+- **ECE**: 0.090
 
 ---
 
 ## ⚡ Execution Stats
 
 - **Avg Tools per Query**: 0.0
-- **Avg Execution Time**: 53696ms
+- **Avg Execution Time**: 55151ms
 - **Fallback Rate**: 0.0%
 
 ---
@@ -66,7 +66,7 @@ No failures in top 10
 |--------|---------------|-------------|---|
 | Precision@5 | 0.0% | 76.0% | -76.0pp |
 | Citation | 0.0% | 99.0% | -99.0pp |
-| Complete | 0.0% | 96.0% | -96.0pp |
+| Complete | 50.0% | 96.0% | -46.0pp |
 
 ---
 

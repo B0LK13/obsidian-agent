@@ -43,6 +43,8 @@ import { AgentService } from '../src/services/agent/agentService';
 import { SearchVaultTool } from '../src/services/agent/tools';
 import type { QualityMetrics } from '../src/evaluation/metrics';
 import { ObsidianAgentSettings, DEFAULT_SETTINGS } from '../settings';
+import { routeQuery, QueryClassification, RouterDecision } from '../src/intelligence/rag/queryRouter';
+import { RetrievalStrategy, FallbackReason } from '../src/intelligence/rag/retrievalStrategy';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -180,6 +182,11 @@ async function executeQuery(
   };
   
   try {
+    // Task 3: Route query to optimal strategy
+    const routerDecision = routeQuery(query.query);
+    trace.router_decision = routerDecision;
+    trace.selected_strategy = routerDecision.recommendedStrategy;
+    
     // Create agent for this query (with memoryService)
     const agent = new AgentService(aiService, tools, settings, memoryService);
     
@@ -367,7 +374,8 @@ Always maintain forward momentum. Never end without an actionable next step.`;
   // Initialize agent with all dependencies (including memoryService)
   const agent = new AgentService(aiService, tools, settings, memoryService);
   
-  console.log(`🤖 Agent initialized with strategy: hybrid_learned (mock)\n`);
+  console.log(`🤖 Agent initialized with default strategy: hybrid_learned`);
+  console.log(`📋 Query router active: per-type strategy optimization\n`);
   
   // Execute queries
   const traces: QueryTrace[] = [];
@@ -376,7 +384,8 @@ Always maintain forward momentum. Never end without an actionable next step.`;
   
   for (let i = 0; i < dataset.length; i++) {
     const query = dataset[i];
-    console.log(`[${i + 1}/${dataset.length}] ${query.id} (${query.type}, ${query.difficulty})`);
+    const routeInfo = query.type ? ` [${query.type}]` : '';
+    console.log(`[${i + 1}/${dataset.length}] ${query.id} (${query.type}, ${query.difficulty})${routeInfo}`);
     
     try {
       const trace = await executeQuery(query, aiService, tools, settings, memoryService);

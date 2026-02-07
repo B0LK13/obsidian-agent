@@ -71,20 +71,30 @@ class MockAuditLogger {
 
   async logOperation(op: string, details: any, rollbackMetadata?: any): Promise<string> {
     const opId = this.createOperationId();
-    this.logs.push({ opId, op, status: 'logged', details, rollbackMetadata });
+    this.logs.push({ opId, operation: op, status: 'started', details, rollbackMetadata });
     return opId;
   }
 
   async startOperation(opId: string, op: string, details: any) {
-    this.logs.push({ opId, op, status: 'started', details });
+    this.logs.push({ opId, operation: op, status: 'started', details });
   }
 
   async completeOperation(opId: string, op: string, details: any, rollback?: any) {
-    this.logs.push({ opId, op, status: 'completed', details, rollback });
+    const existing = this.logs.find(l => l.opId === opId);
+    if (existing) {
+      existing.status = 'completed';
+      if (rollback) existing.rollbackMetadata = rollback;
+    } else {
+      this.logs.push({ opId, operation: op, status: 'completed', details, rollbackMetadata: rollback });
+    }
   }
 
   async failOperation(opId: string, op: string, details: any, error: string) {
-    this.logs.push({ opId, op, status: 'failed', details, error });
+    this.logs.push({ opId, operation: op, status: 'failed', details, error });
+  }
+
+  async rollbackOperation(opId: string, data: any) {
+    this.logs.push({ opId, operation: 'rollback', status: 'completed', details: data });
   }
 
   async getRollbackMetadata(opId: string): Promise<any> {

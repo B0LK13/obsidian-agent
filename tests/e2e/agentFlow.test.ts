@@ -46,7 +46,17 @@ describe('End-to-End Agent Tests', () => {
   beforeEach(async () => {
     app = new MockApp() as any;
     mockVault = (app as any).vault;
-    runtime = new AgentRuntime(app);
+    
+    runtime = new AgentRuntime(app, {
+      settings: {
+        apiProvider: 'openai',
+        apiKey: 'mock-key',
+        model: 'gpt-4',
+        temperature: 0.7,
+        maxTokens: 1000,
+        embeddingModel: 'text-embedding-ada-002',
+      } as any
+    });
 
     const mockAI = {
       generateEmbedding: async (text: string) => {

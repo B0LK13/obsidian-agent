@@ -1,8 +1,8 @@
 {
   "version": "production-v1",
-  "timestamp": "2026-02-07T16:40:34.253Z",
-  "dataset_size": 3,
-  "completed": 3,
+  "timestamp": "2026-02-07T16:50:32.288Z",
+  "dataset_size": 2,
+  "completed": 2,
   "failed": 0,
   "traces": [
     {
@@ -14,12 +14,32 @@
       "retrieved_notes": [],
       "tool_calls": 0,
       "reasoning_steps": 1,
-      "answer": "Collect Auth0 client ID and client secret for your React app.\n\n**Why this works:**\nWe need to verify the correct configuration settings for Auth0 integration.\n\n---\n**🎯 NEXT STEP:**\n- **Action**: Collect Auth0 client ID and client secret\n- **Owner**: user\n- **Effort**: 30m\n- **Success looks like**: Verify successful integration of Auth0 with your React app\n- **Type**: unblock\n\n\n---\n**📊 Confidence: Medium**\n",
+      "answer": "Implement JWT authentication in your React app.\n\n**Why this works:**\nJWT is a widely used and well-documented authentication mechanism that can be easily integrated into your React application.\n\n---\n**🎯 NEXT STEP:**\n- **Action**: Implement JWT authentication using a library like `jsonwebtoken` and authenticate user input using middleware functions within the next 2 hours\n- **Owner**: user\n- **Effort**: half-day\n- **Success looks like**: Successful implementation of JWT authentication in your React app\n- **Type**: do_now\n\n\n---\n**📊 Confidence: Medium**\n",
       "evidence": [],
       "confidence": 0.3,
-      "has_next_step": false,
-      "execution_time_ms": 102659,
-      "fallback_triggered": false
+      "has_next_step": true,
+      "execution_time_ms": 62771,
+      "fallback_triggered": false,
+      "router_decision": {
+        "classification": {
+          "type": "technical",
+          "confidence": 1,
+          "signals": [
+            "how do i",
+            "implement",
+            "react",
+            "authentication"
+          ]
+        },
+        "recommendedStrategy": "hybrid_learned",
+        "recommendedWeights": {
+          "keyword": 0.2,
+          "semantic": 0.65,
+          "graph": 0.15
+        },
+        "rationale": "Technical queries benefit from semantic understanding of concepts and terminology"
+      },
+      "selected_strategy": "hybrid_learned"
     },
     {
       "query_id": "t002",
@@ -30,28 +50,30 @@
       "retrieved_notes": [],
       "tool_calls": 0,
       "reasoning_steps": 1,
-      "answer": "Search the vault for relevant notes on API best practices.\n\n**Why this works:**\nImplementing meaningful error responses and rate limiting can significantly improve the reliability and security of APIs.\n\n---\n**🎯 NEXT STEP:**\n- **Action**: search_vault query=\"API error handling best practices\"\n- **Owner**: user\n- **Effort**: 30m\n- **Success looks like**: Understanding API best practices for error handling\n- **Type**: choose_path",
+      "answer": "Best practices for API error handling vary across frameworks and languages.\n\n**Why this works:**\nGeneral principles include handling errors as exceptions, returning meaningful error messages, and implementing retries.\n\n---\n**🎯 NEXT STEP:**\n- **Action**: Collect information on specific use case (e.g., programming language, framework, or library)\n- **Owner**: user\n- **Effort**: half-day\n- **Success looks like**: Tailored guidance\n- **Type**: choose_path\n\n\n---\n**📊 Confidence: Medium**\n- I couldn't find this information in your vault, so I'm relying on general knowledge\n",
       "evidence": [],
       "confidence": 0.3,
       "has_next_step": false,
-      "execution_time_ms": 30525,
-      "fallback_triggered": false
-    },
-    {
-      "query_id": "t003",
-      "query": "Debug TypeError in validation function",
-      "type": "technical",
-      "difficulty": "hard",
-      "tools_used": [],
-      "retrieved_notes": [],
-      "tool_calls": 0,
-      "reasoning_steps": 1,
-      "answer": "Search for related notes to understand the cause of the TypeError.\n\n**Why this works:**\nTo find the root cause of the error, we need to analyze relevant notes on errors and debugging in TypeScript. This will help us understand where to focus our efforts.\n\n---\n**🎯 NEXT STEP:**\n- **Action**: Run a search query using `search_vault` to find relevant notes\n- **Owner**: user\n- **Effort**: half-day\n- **Success looks like**: Identification of potential causes of the error\n- **Type**: choose_path\n\n\n---\n**📊 Confidence: Medium**\n- I couldn't find this information in your vault, so I'm relying on general knowledge\n",
-      "evidence": [],
-      "confidence": 0.3,
-      "has_next_step": false,
-      "execution_time_ms": 27903,
-      "fallback_triggered": false
+      "execution_time_ms": 47530,
+      "fallback_triggered": false,
+      "router_decision": {
+        "classification": {
+          "type": "technical",
+          "confidence": 1,
+          "signals": [
+            "api",
+            "error"
+          ]
+        },
+        "recommendedStrategy": "hybrid_learned",
+        "recommendedWeights": {
+          "keyword": 0.2,
+          "semantic": 0.65,
+          "graph": 0.15
+        },
+        "rationale": "Technical queries benefit from semantic understanding of concepts and terminology"
+      },
+      "selected_strategy": "hybrid_learned"
     }
   ],
   "metrics": {
@@ -61,18 +83,18 @@
     "mrr": 0,
     "faithfulness": 0,
     "citation_correctness": 0,
-    "completeness": 0,
+    "completeness": 0.5,
     "context_carryover": 0,
-    "confidence_calibration": 0.94,
-    "ece": 0.06
+    "confidence_calibration": 0.91,
+    "ece": 0.09
   },
   "quality_gates_passed": false,
   "fallback_rate": 0,
   "avg_tools_per_query": 0,
-  "avg_execution_time_ms": 53695.666666666664,
+  "avg_execution_time_ms": 55150.5,
   "failure_modes": {},
   "metadata": {
-    "git_commit": "77297674529e8b733b42e69aa0fe665c41667c92",
+    "git_commit": "7c5a032f61e4a98d92b3a1415b15c15824d1bc78",
     "strategy": "hybrid_learned",
     "vault_path": "mock_vault"
   }
