@@ -1,0 +1,84 @@
+{
+  "version": "production-v1",
+  "timestamp": "2026-02-07T16:11:27.357Z",
+  "dataset_size": 3,
+  "completed": 0,
+  "failed": 3,
+  "traces": [
+    {
+      "query_id": "t001",
+      "query": "How do I implement authentication in my React app?",
+      "type": "technical",
+      "difficulty": "medium",
+      "tools_used": [],
+      "retrieved_notes": [],
+      "tool_calls": 0,
+      "reasoning_steps": 0,
+      "answer": "Error: ConfigurationError: API key not configured. Please set it in settings.",
+      "evidence": [],
+      "confidence": 0,
+      "has_next_step": false,
+      "execution_time_ms": 1,
+      "fallback_triggered": false,
+      "error": "ConfigurationError: API key not configured. Please set it in settings."
+    },
+    {
+      "query_id": "t002",
+      "query": "What are best practices for API error handling?",
+      "type": "technical",
+      "difficulty": "medium",
+      "tools_used": [],
+      "retrieved_notes": [],
+      "tool_calls": 0,
+      "reasoning_steps": 0,
+      "answer": "Error: ConfigurationError: API key not configured. Please set it in settings.",
+      "evidence": [],
+      "confidence": 0,
+      "has_next_step": false,
+      "execution_time_ms": 0,
+      "fallback_triggered": false,
+      "error": "ConfigurationError: API key not configured. Please set it in settings."
+    },
+    {
+      "query_id": "t003",
+      "query": "Debug TypeError in validation function",
+      "type": "technical",
+      "difficulty": "hard",
+      "tools_used": [],
+      "retrieved_notes": [],
+      "tool_calls": 0,
+      "reasoning_steps": 0,
+      "answer": "Error: ConfigurationError: API key not configured. Please set it in settings.",
+      "evidence": [],
+      "confidence": 0,
+      "has_next_step": false,
+      "execution_time_ms": 0,
+      "fallback_triggered": false,
+      "error": "ConfigurationError: API key not configured. Please set it in settings."
+    }
+  ],
+  "metrics": {
+    "precision_at_5": 0,
+    "precision_at_10": 0,
+    "ndcg_at_10": 0,
+    "mrr": 0,
+    "faithfulness": 0,
+    "citation_correctness": 0,
+    "completeness": 0,
+    "context_carryover": 0,
+    "confidence_calibration": 1,
+    "ece": 0
+  },
+  "quality_gates_passed": false,
+  "fallback_rate": 0,
+  "avg_tools_per_query": 0,
+  "avg_execution_time_ms": 0.3333333333333333,
+  "failure_modes": {
+    "ConfigurationError": 3
+  },
+  "metadata": {
+    "git_commit": "eb1575ebb360f8a50b9e9b65d757e1d45e6ddd59",
+    "strategy": "hybrid_learned",
+    "vault_path": "mock_vault"
+  }
+}
