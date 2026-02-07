@@ -190,4 +190,5 @@ if (require.main === module) {
   main();
 }
 
-export { checkGates, QualityThresholds, GateResult };
+export { checkGates };
+export type { QualityThresholds, GateResult };

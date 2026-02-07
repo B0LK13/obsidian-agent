@@ -75,7 +75,7 @@ async function runBaseline(): Promise<BaselineOutput> {
   // Run evaluation for each query
   for (let i = 0; i < GOLDEN_DATASET.length; i++) {
     const query = GOLDEN_DATASET[i];
-    console.log(`[${i + 1}/${totalQueries}] Evaluating: ${query.id} (${query.type}, ${query.difficulty})`);
+    console.log(`[${i + 1}/${totalQueries}] Evaluating: ${query.id} (${query.type})`);
     
     try {
       const result = await evaluateQuery(query);
@@ -251,4 +251,5 @@ if (require.main === module) {
   main();
 }
 
-export { runBaseline, BaselineOutput, BenchmarkResult };
+export { runBaseline };
+export type { BaselineOutput, BenchmarkResult };

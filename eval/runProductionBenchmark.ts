@@ -164,7 +164,7 @@ function fastRouteQuery(query: string): FastRouterDecision {
   }
   
   // Find best match
-  let bestType: QueryType = 'research';
+  let bestType: QueryType = QueryType.RESEARCH;
   let maxScore = 0;
   
   for (const [type, score] of Object.entries(scores)) {

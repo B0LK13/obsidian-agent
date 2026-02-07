@@ -45,7 +45,7 @@ interface AblationReport {
  */
 async function evaluateStrategy(
   strategy: SearchStrategy,
-  queries: GoldenQueryV2[]
+  _queries: GoldenQueryV2[]
 ): Promise<AblationResult> {
   console.log(`\n🔬 Testing: ${strategy}`);
   const startTime = Date.now();
@@ -392,4 +392,5 @@ if (require.main === module) {
   main();
 }
 
-export { runAblation, AblationReport, SearchStrategy };
+export { runAblation };
+export type { AblationReport, SearchStrategy };

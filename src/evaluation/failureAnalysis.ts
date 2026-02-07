@@ -144,7 +144,7 @@ export function classifyFailure(trace: any, expected: any): FailureInstance | nu
 /**
  * Analyze all failures and create taxonomy
  */
-export function analyzeFail ures(traces: any[], expectedResults: any[]): FailureTaxonomy {
+export function analyzeFailures(traces: any[], expectedResults: any[]): FailureTaxonomy {
   const instances: FailureInstance[] = [];
   const byMode: Record<FailureMode, number> = {
     retrieval_miss: 0,
