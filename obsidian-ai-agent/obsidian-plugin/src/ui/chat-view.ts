@@ -25,6 +25,7 @@ export class AIChatView extends ItemView {
             llmEndpoint: settings.llmEndpoint,
             embedEndpoint: settings.embedEndpoint,
             vectorEndpoint: settings.vectorEndpoint,
+            defaultModel: settings.defaultModel || 'llama3.2',
             useMemoryRAG: false,
             useHallucinationGuard: false,
             enableEvaluation: false

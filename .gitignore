@@ -18,6 +18,10 @@ __pycache__/
 dist/
 main.js
 main.js.map
+
+# Allow Obsidian plugin main.js files
+!obsidian-ai-agent/obsidian-plugin/main.js
+!apps/obsidian-plugin/main.js
 *.js.map
 build-meta.json
 
