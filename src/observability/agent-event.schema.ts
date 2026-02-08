@@ -22,6 +22,9 @@ export type SchemaContractPayload = {
   orphaned: number;
   breaking_changes: number;
   non_breaking_changes: number;
+  drifted_tools?: string[];
+  missing_tools?: string[];
+  orphaned_tools?: string[];
   failure_reason?: string;
 };
 

@@ -179,7 +179,10 @@ function emitSchemaContractEvent(
   orphaned: number,
   breakingChanges: number,
   nonBreakingChanges: number,
-  durationMs: number
+  durationMs: number,
+  driftedTools: string[],
+  missingTools: string[],
+  orphanedTools: string[]
 ): void {
   emitAgentEvent(
     createAgentEvent({
@@ -193,7 +196,10 @@ function emitSchemaContractEvent(
         missing,
         orphaned,
         breaking_changes: breakingChanges,
-        non_breaking_changes: nonBreakingChanges
+        non_breaking_changes: nonBreakingChanges,
+        drifted_tools: driftedTools.length ? driftedTools : undefined,
+        missing_tools: missingTools.length ? missingTools : undefined,
+        orphaned_tools: orphanedTools.length ? orphanedTools : undefined
       }
     }),
     { strict: false }
@@ -313,6 +319,7 @@ function main(): void {
     // Count breaking vs non-breaking changes
     const breakingChanges = result.drifted.filter(d => d.reason.includes('BREAKING')).length;
     const nonBreakingChanges = result.drifted.filter(d => !d.reason.includes('BREAKING')).length;
+    const driftedTools = result.drifted.map(d => d.tool);
     
     // Emit structured event
     emitSchemaContractEvent(
@@ -324,7 +331,10 @@ function main(): void {
       result.orphaned.length,
       breakingChanges,
       nonBreakingChanges,
-      durationMs
+      durationMs,
+      driftedTools,
+      result.missing,
+      result.orphaned
     );
     
     if (result.valid) {

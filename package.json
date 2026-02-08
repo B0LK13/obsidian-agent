@@ -30,6 +30,9 @@
     "benchmark:budget": "npm run benchmark:validate && npx ts-node --project tsconfig.scripts.json scripts/check-benchmark-budget.ts",
     "ci:durability": "npm run benchmark:ci && npm run benchmark:budget",
     "observability:reduce": "npx ts-node --project tsconfig.scripts.json scripts/reduce-durability-events.ts",
+    "weekly:reduce": "npx ts-node --project tsconfig.scripts.json scripts/reduce-weekly-trends.ts",
+    "weekly:report": "npx ts-node --project tsconfig.scripts.json scripts/generate-weekly-durability-report.ts",
+    "weekly:run": "npm run weekly:reduce && npm run weekly:report",
     "events:export": "npx ts-node --project tsconfig.scripts.json scripts/export-events-simple.ts",
     "ci:observability": "npm run ci:durability && npm run observability:reduce"
   },

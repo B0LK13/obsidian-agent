@@ -1,0 +1,52 @@
+name: Weekly Durability Report
+
+on:
+  schedule:
+    # 08:00 Europe/Amsterdam (07:00 UTC in winter)
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+    inputs:
+      strict:
+        description: 'Fail on malformed events (week2+)'
+        required: false
+        default: 'false'
+
+jobs:
+  weekly-report:
+    name: Weekly Durability Report
+    runs-on: ubuntu-latest
+    container: node:20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+
+      - name: Run Durability Gates (fresh events)
+        run: |
+          npm run ci:tooling
+          npm run ci:contracts
+          npm run ci:durability
+
+      - name: Reduce Weekly Trends
+        run: npm run weekly:reduce
+        env:
+          WEEKLY_STRICT: ${{ inputs.strict }}
+        continue-on-error: ${{ inputs.strict != 'true' }}
+
+      - name: Generate Weekly Report
+        run: npm run weekly:report
+        env:
+          WEEKLY_STRICT: ${{ inputs.strict }}
+        continue-on-error: ${{ inputs.strict != 'true' }}
+
+      - name: Upload Weekly Report Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-durability-${{ github.run_id }}
+          path: |
+            artifacts/reports/
+          retention-days: 30
