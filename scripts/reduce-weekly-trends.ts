@@ -10,7 +10,7 @@ import type { AgentEvent } from '../src/observability/agent-event.schema.ts';
 
 const EVENTS_DIR = 'artifacts/events';
 const OUTPUT_PATH = 'artifacts/reports/weekly-durability.json';
-const NOW = new Date();
+const FALLBACK_TIME = new Date(0);
 const STRICT = (process.env.WEEKLY_STRICT ?? 'false').toLowerCase() === 'true';
 
 const MS_DAY = 24 * 60 * 60 * 1000;
@@ -89,8 +89,8 @@ function readEvents(dir: string): AgentEvent[] {
   return events;
 }
 
-function filterByWindow(events: AgentEvent[], days: number): AgentEvent[] {
-  const cutoff = NOW.getTime() - days * MS_DAY;
+function filterByWindow(events: AgentEvent[], days: number, referenceTime: number): AgentEvent[] {
+  const cutoff = referenceTime - days * MS_DAY;
   return events.filter(event => parseTimestamp(event.timestamp) >= cutoff);
 }
 
@@ -114,7 +114,7 @@ function linearSlope(points: Array<{ x: number; y: number }>): number {
   return numerator / denominator;
 }
 
-function buildP95Trend(events: AgentEvent[], days: number): TrendWindow {
+function buildP95Trend(events: AgentEvent[], days: number, referenceTime: number): TrendWindow {
   const benchmarks = events
     .filter(event => event.event_type === 'benchmark_run')
     .map(event => {
@@ -127,7 +127,7 @@ function buildP95Trend(events: AgentEvent[], days: number): TrendWindow {
     .filter(entry => Number.isFinite(entry.timestamp) && Number.isFinite(entry.p95));
 
   const points = benchmarks.map(entry => ({
-    x: (entry.timestamp - (NOW.getTime() - days * MS_DAY)) / MS_DAY,
+    x: (entry.timestamp - (referenceTime - days * MS_DAY)) / MS_DAY,
     y: entry.p95
   }));
 
@@ -262,17 +262,20 @@ function computeDriftHotspots(events: AgentEvent[]): Array<{ tool: string; count
 
 function main(): void {
   const allEvents = readEvents(EVENTS_DIR);
-  const events7d = filterByWindow(allEvents, 7);
-  const events30d = filterByWindow(allEvents, 30);
+  const latestEventTime = allEvents.length
+    ? Math.max(...allEvents.map(event => parseTimestamp(event.timestamp)))
+    : FALLBACK_TIME.getTime();
+  const events7d = filterByWindow(allEvents, 7, latestEventTime);
+  const events30d = filterByWindow(allEvents, 30, latestEventTime);
 
   const summary = {
-    generated_at: NOW.toISOString(),
+    generated_at: new Date(latestEventTime).toISOString(),
     window_days: 7,
     total_events_7d: events7d.length,
     total_events_30d: events30d.length,
     gate_pass_rates: computePassRates(events7d),
-    p95_trend_7d: buildP95Trend(events7d, 7),
-    p95_trend_30d: buildP95Trend(events30d, 30),
+    p95_trend_7d: buildP95Trend(events7d, 7, latestEventTime),
+    p95_trend_30d: buildP95Trend(events30d, 30, latestEventTime),
     regression_breaches_30d: computeBudgetBreaches(events30d),
     top_failure_reasons: computeTopFailures(events30d, 3),
     mttr_hours_by_gate: computeMttr(events30d),
