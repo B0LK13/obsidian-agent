@@ -1,0 +1,374 @@
+{
+  "version": "v1",
+  "dataset": "note-centric",
+  "total_cases": 60,
+  "buckets": [
+    "retrieval",
+    "synthesis",
+    "update",
+    "linking",
+    "planning"
+  ],
+  "cases": [
+    {
+      "id": "NC-001",
+      "bucket": "retrieval",
+      "query": "Find the note that documents the Phase 3C timeline.",
+      "expected_keywords": ["Phase 3C", "timeline"]
+    },
+    {
+      "id": "NC-002",
+      "bucket": "retrieval",
+      "query": "Locate the decision log entry for adopting deterministic benchmarks.",
+      "expected_keywords": ["deterministic", "benchmark", "decision"]
+    },
+    {
+      "id": "NC-003",
+      "bucket": "retrieval",
+      "query": "Which note contains the schema contract snapshot policy?",
+      "expected_keywords": ["schema", "snapshot", "policy"]
+    },
+    {
+      "id": "NC-004",
+      "bucket": "retrieval",
+      "query": "Find the most recent durability gate status update.",
+      "expected_keywords": ["durability", "gate", "status"]
+    },
+    {
+      "id": "NC-005",
+      "bucket": "retrieval",
+      "query": "Locate the note about benchmark budget thresholds.",
+      "expected_keywords": ["benchmark", "budget", "threshold"]
+    },
+    {
+      "id": "NC-006",
+      "bucket": "retrieval",
+      "query": "Find the note that lists the current tool inventory.",
+      "expected_keywords": ["tool", "inventory"]
+    },
+    {
+      "id": "NC-007",
+      "bucket": "retrieval",
+      "query": "Where is the release checklist for Phase 3C?",
+      "expected_keywords": ["release", "checklist", "Phase 3C"]
+    },
+    {
+      "id": "NC-008",
+      "bucket": "retrieval",
+      "query": "Find the note that documents the CI durability workflow.",
+      "expected_keywords": ["CI", "durability", "workflow"]
+    },
+    {
+      "id": "NC-009",
+      "bucket": "retrieval",
+      "query": "Locate the note describing observability event schema v1.",
+      "expected_keywords": ["observability", "event", "schema", "v1"]
+    },
+    {
+      "id": "NC-010",
+      "bucket": "retrieval",
+      "query": "Find the note that tracks benchmark p95 targets.",
+      "expected_keywords": ["p95", "target", "benchmark"]
+    },
+    {
+      "id": "NC-011",
+      "bucket": "retrieval",
+      "query": "Which note contains the tool parity gate results?",
+      "expected_keywords": ["tool", "parity", "results"]
+    },
+    {
+      "id": "NC-012",
+      "bucket": "retrieval",
+      "query": "Locate the note about budget gate regressions and fixes.",
+      "expected_keywords": ["budget", "regression", "fix"]
+    },
+    {
+      "id": "NC-013",
+      "bucket": "synthesis",
+      "query": "Summarize the latest durability gates and highlight any failures.",
+      "expected_keywords": ["durability", "gate", "failure"]
+    },
+    {
+      "id": "NC-014",
+      "bucket": "synthesis",
+      "query": "Provide a short recap of schema contract checks this week.",
+      "expected_keywords": ["schema", "contract", "recap"]
+    },
+    {
+      "id": "NC-015",
+      "bucket": "synthesis",
+      "query": "Summarize benchmark results and note p95 trend direction.",
+      "expected_keywords": ["benchmark", "p95", "trend"]
+    },
+    {
+      "id": "NC-016",
+      "bucket": "synthesis",
+      "query": "Give a summary of tool parity issues and their impact.",
+      "expected_keywords": ["tool parity", "issue", "impact"]
+    },
+    {
+      "id": "NC-017",
+      "bucket": "synthesis",
+      "query": "Explain the rationale for the two-lane benchmark model.",
+      "expected_keywords": ["two-lane", "benchmark", "rationale"]
+    },
+    {
+      "id": "NC-018",
+      "bucket": "synthesis",
+      "query": "Summarize observability events emitted during last CI run.",
+      "expected_keywords": ["observability", "events", "CI"]
+    },
+    {
+      "id": "NC-019",
+      "bucket": "synthesis",
+      "query": "Provide a snapshot of budget gate health over the last week.",
+      "expected_keywords": ["budget gate", "health", "week"]
+    },
+    {
+      "id": "NC-020",
+      "bucket": "synthesis",
+      "query": "Summarize the most common durability failures and why.",
+      "expected_keywords": ["failure", "durability", "reason"]
+    },
+    {
+      "id": "NC-021",
+      "bucket": "synthesis",
+      "query": "Write a brief status for Phase 3C readiness.",
+      "expected_keywords": ["Phase 3C", "status", "ready"]
+    },
+    {
+      "id": "NC-022",
+      "bucket": "synthesis",
+      "query": "Summarize tool schema drift checks and outcomes.",
+      "expected_keywords": ["schema drift", "outcome"]
+    },
+    {
+      "id": "NC-023",
+      "bucket": "synthesis",
+      "query": "Explain how benchmark budgets are enforced in CI.",
+      "expected_keywords": ["benchmark", "budget", "CI"]
+    },
+    {
+      "id": "NC-024",
+      "bucket": "synthesis",
+      "query": "Summarize nightly real benchmark results and variance.",
+      "expected_keywords": ["nightly", "real", "variance"]
+    },
+    {
+      "id": "NC-025",
+      "bucket": "update",
+      "query": "Append a note that the p95 budget target remains 38.5s.",
+      "expected_keywords": ["p95", "38.5s", "budget"]
+    },
+    {
+      "id": "NC-026",
+      "bucket": "update",
+      "query": "Update the release notes to mention weekly durability reports.",
+      "expected_keywords": ["release notes", "weekly", "durability"]
+    },
+    {
+      "id": "NC-027",
+      "bucket": "update",
+      "query": "Record that strict mode flips on Feb 16, 2026.",
+      "expected_keywords": ["strict mode", "Feb 16", "2026"]
+    },
+    {
+      "id": "NC-028",
+      "bucket": "update",
+      "query": "Add a follow-up note to review ESM warnings after T11.",
+      "expected_keywords": ["ESM", "warning", "follow-up"]
+    },
+    {
+      "id": "NC-029",
+      "bucket": "update",
+      "query": "Update the benchmark section with the latest p50/p95 values.",
+      "expected_keywords": ["p50", "p95", "benchmark"]
+    },
+    {
+      "id": "NC-030",
+      "bucket": "update",
+      "query": "Note that weekly report artifacts should not be committed.",
+      "expected_keywords": ["artifacts", "not committed"]
+    },
+    {
+      "id": "NC-031",
+      "bucket": "update",
+      "query": "Replace the CI summary text with a clearer description.",
+      "expected_keywords": ["CI", "summary", "description"]
+    },
+    {
+      "id": "NC-032",
+      "bucket": "update",
+      "query": "Append a note about weekly report SLA compliance section.",
+      "expected_keywords": ["weekly report", "SLA", "compliance"]
+    },
+    {
+      "id": "NC-033",
+      "bucket": "update",
+      "query": "Update the durability checklist to include trend slope review.",
+      "expected_keywords": ["durability", "trend", "slope"]
+    },
+    {
+      "id": "NC-034",
+      "bucket": "update",
+      "query": "Add a line noting MTTR is tracked per gate.",
+      "expected_keywords": ["MTTR", "gate"]
+    },
+    {
+      "id": "NC-035",
+      "bucket": "update",
+      "query": "Update the weekly cadence note to Monday 08:00 CET.",
+      "expected_keywords": ["weekly", "Monday", "08:00"]
+    },
+    {
+      "id": "NC-036",
+      "bucket": "linking",
+      "query": "Link the benchmark budget note to the observability summary note.",
+      "expected_keywords": ["benchmark", "observability", "link"]
+    },
+    {
+      "id": "NC-037",
+      "bucket": "linking",
+      "query": "Create a link between tool parity docs and schema contract docs.",
+      "expected_keywords": ["tool parity", "schema contract", "link"]
+    },
+    {
+      "id": "NC-038",
+      "bucket": "linking",
+      "query": "Cross-link the weekly report to the release notes.",
+      "expected_keywords": ["weekly report", "release notes"]
+    },
+    {
+      "id": "NC-039",
+      "bucket": "linking",
+      "query": "Add backlinks from benchmark summaries to the budget baseline.",
+      "expected_keywords": ["benchmark summary", "budget baseline"]
+    },
+    {
+      "id": "NC-040",
+      "bucket": "linking",
+      "query": "Link T11 weekly report plan to the T10 observability plan.",
+      "expected_keywords": ["T11", "T10", "observability"]
+    },
+    {
+      "id": "NC-041",
+      "bucket": "linking",
+      "query": "Create a link between budget gate failures and remediation notes.",
+      "expected_keywords": ["budget gate", "remediation"]
+    },
+    {
+      "id": "NC-042",
+      "bucket": "linking",
+      "query": "Add a link from the eval dataset note to the weekly report.",
+      "expected_keywords": ["eval dataset", "weekly report"]
+    },
+    {
+      "id": "NC-043",
+      "bucket": "linking",
+      "query": "Link the tool inventory note to the manifest generator doc.",
+      "expected_keywords": ["tool inventory", "manifest"]
+    },
+    {
+      "id": "NC-044",
+      "bucket": "linking",
+      "query": "Connect schema drift incidents to their root cause notes.",
+      "expected_keywords": ["schema drift", "root cause"]
+    },
+    {
+      "id": "NC-045",
+      "bucket": "linking",
+      "query": "Add a link from nightly benchmarks to variance analysis.",
+      "expected_keywords": ["nightly", "variance", "benchmark"]
+    },
+    {
+      "id": "NC-046",
+      "bucket": "linking",
+      "query": "Link the CI durability workflow note to the weekly report plan.",
+      "expected_keywords": ["CI", "durability", "weekly report"]
+    },
+    {
+      "id": "NC-047",
+      "bucket": "planning",
+      "query": "Plan next steps for T12 eval expansion.",
+      "expected_keywords": ["T12", "eval", "next steps"]
+    },
+    {
+      "id": "NC-048",
+      "bucket": "planning",
+      "query": "Draft a checklist for weekly durability report validation.",
+      "expected_keywords": ["weekly", "report", "checklist"]
+    },
+    {
+      "id": "NC-049",
+      "bucket": "planning",
+      "query": "Outline the steps to flip strict mode in week 2.",
+      "expected_keywords": ["strict", "week 2", "steps"]
+    },
+    {
+      "id": "NC-050",
+      "bucket": "planning",
+      "query": "Plan a rollback procedure for the weekly workflow.",
+      "expected_keywords": ["rollback", "weekly", "workflow"]
+    },
+    {
+      "id": "NC-051",
+      "bucket": "planning",
+      "query": "Create a plan to track p95 slope regressions.",
+      "expected_keywords": ["p95", "slope", "regression"]
+    },
+    {
+      "id": "NC-052",
+      "bucket": "planning",
+      "query": "List tasks to integrate eval results into observability events.",
+      "expected_keywords": ["eval", "observability", "events"]
+    },
+    {
+      "id": "NC-053",
+      "bucket": "planning",
+      "query": "Plan a week 1 vs week 2 strict-mode communication note.",
+      "expected_keywords": ["strict mode", "communication"]
+    },
+    {
+      "id": "NC-054",
+      "bucket": "planning",
+      "query": "Draft a schedule for nightly eval runs and reviews.",
+      "expected_keywords": ["nightly", "eval", "schedule"]
+    },
+    {
+      "id": "NC-055",
+      "bucket": "planning",
+      "query": "Define acceptance criteria for eval pass rates.",
+      "expected_keywords": ["acceptance", "pass rate", "criteria"]
+    },
+    {
+      "id": "NC-056",
+      "bucket": "planning",
+      "query": "Plan a lightweight dashboard for weekly trend summaries.",
+      "expected_keywords": ["dashboard", "weekly", "trend"]
+    },
+    {
+      "id": "NC-057",
+      "bucket": "planning",
+      "query": "Outline the steps to add note-centric evals to CI.",
+      "expected_keywords": ["note-centric", "eval", "CI"]
+    },
+    {
+      "id": "NC-058",
+      "bucket": "planning",
+      "query": "Draft the rollup metrics needed for eval reporting.",
+      "expected_keywords": ["metrics", "eval", "reporting"]
+    },
+    {
+      "id": "NC-059",
+      "bucket": "planning",
+      "query": "Plan how to tag regressions by severity.",
+      "expected_keywords": ["regression", "severity", "tag"]
+    },
+    {
+      "id": "NC-060",
+      "bucket": "planning",
+      "query": "Create a plan for MTTR tracking improvements.",
+      "expected_keywords": ["MTTR", "tracking", "improvements"]
+    }
+  ]
+}

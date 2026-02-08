@@ -1,0 +1,78 @@
+name: Note-Centric Evals
+
+on:
+  pull_request:
+    branches: [phase3c/durability-guardrails, main]
+    paths:
+      - 'tests/evals/**'
+      - 'scripts/run-evals-note-centric.ts'
+      - 'scripts/check-eval-thresholds.ts'
+      - '.github/workflows/evals-note-centric.yml'
+  push:
+    branches: [phase3c/**]
+    paths:
+      - 'tests/evals/**'
+      - 'scripts/run-evals-note-centric.ts'
+      - 'scripts/check-eval-thresholds.ts'
+      - '.github/workflows/evals-note-centric.yml'
+  schedule:
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+    inputs:
+      strict:
+        description: 'Fail nightly job on threshold issues'
+        required: false
+        default: 'false'
+
+jobs:
+  evals-smoke:
+    name: Evals Smoke (PR)
+    runs-on: ubuntu-latest
+    container: node:20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run smoke evals (12 cases)
+        run: npm run evals:smoke
+      - name: Check thresholds (>=95%)
+        run: npm run evals:check
+      - name: Upload eval artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evals-note-centric-smoke-${{ github.run_id }}
+          path: |
+            artifacts/latest/
+          retention-days: 14
+
+  evals-full:
+    name: Evals Full (Nightly)
+    runs-on: ubuntu-latest
+    container: node:20
+    if: github.event_name != 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run full evals (60 cases)
+        run: npm run evals:full
+      - name: Check thresholds (>=90%)
+        run: npm run evals:check
+        env:
+          EVAL_MIN_PASS_RATE_PCT: 90
+        continue-on-error: ${{ inputs.strict != 'true' }}
+      - name: Upload eval artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evals-note-centric-full-${{ github.run_id }}
+          path: |
+            artifacts/latest/
+          retention-days: 14
