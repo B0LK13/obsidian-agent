@@ -33,6 +33,10 @@
     "weekly:reduce": "npx ts-node --project tsconfig.scripts.json scripts/reduce-weekly-trends.ts",
     "weekly:report": "npx ts-node --project tsconfig.scripts.json scripts/generate-weekly-durability-report.ts",
     "weekly:run": "npm run weekly:reduce && npm run weekly:report",
+    "evals:smoke": "EVAL_MODE=smoke EVAL_SAMPLE_SIZE=12 npx ts-node --project tsconfig.scripts.json scripts/run-evals-note-centric.ts",
+    "evals:full": "EVAL_MODE=full EVAL_SAMPLE_SIZE=60 npx ts-node --project tsconfig.scripts.json scripts/run-evals-note-centric.ts",
+    "evals:check": "npx ts-node --project tsconfig.scripts.json scripts/check-eval-thresholds.ts",
+    "ci:evals": "npm run evals:smoke && npm run evals:check",
     "events:export": "npx ts-node --project tsconfig.scripts.json scripts/export-events-simple.ts",
     "ci:observability": "npm run ci:durability && npm run observability:reduce"
   },
