@@ -1,0 +1,63 @@
+name: Benchmark Nightly (Real)
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      sample_size:
+        description: 'Optional sample size (queries)'
+        required: false
+        default: '50'
+
+jobs:
+  benchmark-real:
+    name: Real Benchmark (Non-blocking)
+    runs-on: self-hosted
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install Dependencies
+        run: npm ci
+      - name: Run Real Benchmark
+        run: npm run benchmark:ci:real
+        env:
+          BENCHMARK_SAMPLE_SIZE: ${{ inputs.sample_size }}
+          BENCHMARK_WARMUP_RUNS: 1
+          BENCHMARK_SEED: nightly
+      - name: Validate Summary
+        run: npm run benchmark:validate
+      - name: Budget Check (Non-blocking)
+        run: npm run benchmark:budget
+        continue-on-error: true
+      - name: Upload Durability Events
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: durability-events-nightly-${{ github.run_id }}
+          path: artifacts/events/
+          retention-days: 30
+      - name: Reduce Observability Summary
+        if: always()
+        run: npm run observability:reduce
+      - name: Upload Benchmark Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-nightly-${{ github.run_id }}
+          path: |
+            artifacts/latest/
+            eval/results/
+            eval/reports/
+          retention-days: 30
+      - name: Upload Observability Summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: observability-summary-nightly-${{ github.run_id }}
+          path: artifacts/latest/observability-summary.json
+          retention-days: 30

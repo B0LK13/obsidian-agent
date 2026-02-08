@@ -35,6 +35,13 @@ jobs:
         continue-on-error: true
       - run: npm run validate:tool-parity
       - run: npm run contracts:check
+      - name: Upload Durability Events
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: durability-events-tool-parity-${{ github.run_id }}
+          path: artifacts/events/
+          retention-days: 30
 
   # Benchmark Budget Gate (T3)
   benchmark-budget:
@@ -64,6 +71,7 @@ jobs:
           # Use mock Obsidian for CI
           OBSIDIAN_RUNTIME: false
           DETERMINISTIC_FALLBACK: true
+          BENCHMARK_SEED: phase3c
         timeout-minutes: 35
       
       - name: Check Budget vs Baseline
@@ -71,6 +79,13 @@ jobs:
         env:
           BUDGET_PATH: artifacts/budgets/phase3b-baseline.json
           BENCHMARK_SUMMARY_PATH: artifacts/latest/benchmark-summary.json
+      - name: Upload Durability Events
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: durability-events-benchmark-${{ github.run_id }}
+          path: artifacts/events/
+          retention-days: 30
       
       - name: Upload Benchmark Results
         if: always()
@@ -138,3 +153,32 @@ jobs:
           NODE_ENV: test
           OBSIDIAN_RUNTIME: false
           DETERMINISTIC_FALLBACK: true
+
+  observability-summary:
+    name: Observability Summary
+    runs-on: ubuntu-latest
+    container: node:20
+    needs: [tool-parity, benchmark-budget]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Download Durability Events
+        uses: actions/download-artifact@v4
+        with:
+          pattern: durability-events-*
+          path: artifacts/events
+          merge-multiple: true
+      - name: Reduce Observability Summary
+        run: npm run observability:reduce
+      - name: Upload Observability Summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: observability-summary-${{ github.run_id }}
+          path: artifacts/latest/observability-summary.json
+          retention-days: 30

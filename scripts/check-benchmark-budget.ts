@@ -8,6 +8,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { createAgentEvent, emitAgentEvent } from '../src/observability/emit-agent-event.ts';
 
 type Budget = {
   version: string;
@@ -149,53 +150,105 @@ function assertBudget(current: Current, budget: Budget): string[] {
 
 function main() {
   console.log('📊 Benchmark Budget Check\n');
-  
-  const budget = readJson<Budget>(BUDGET_PATH);
-  
-  // Check if current benchmark exists
-  const currentAbs = path.resolve(process.cwd(), CURRENT_PATH);
-  if (!fs.existsSync(currentAbs)) {
-    console.log(`⚠️  No current benchmark found at ${CURRENT_PATH}`);
-    console.log('   Skipping budget check (this is OK for initial setup)');
-    process.exit(0);
-  }
-  
-  const summary = readJson<any>(CURRENT_PATH);
-  const current = extractCurrent(summary);
 
-  const failures = assertBudget(current, budget);
+  const startTime = Date.now();
+  let status: 'pass' | 'fail' = 'pass';
+  let errorMessage = '';
+  let exitCode = 0;
+  let payload: any = {
+    mode: 'deterministic',
+    p50_ms: 0,
+    p95_ms: 0,
+    error_rate: 0,
+    baseline_p95_ms: 0,
+    threshold_p95_ms: 0,
+    regression_pct: 0,
+    seed: 'unknown',
+    node_version: process.version,
+    runner_os: process.platform
+  };
 
-  console.log(`Budget Version: ${budget.version}\n`);
-  
-  console.log('Baseline Metrics:');
-  console.log(`  p50:        ${formatDuration(budget.metrics.p50_ms)}`);
-  console.log(`  p95:        ${formatDuration(budget.metrics.p95_ms)}`);
-  console.log(`  Total (50q): ${formatDuration(budget.metrics.total_runtime_ms_50q)}`);
-  
-  console.log('\nCurrent Metrics:');
-  console.log(`  p50:        ${formatDuration(current.p50_ms)}`);
-  console.log(`  p95:        ${formatDuration(current.p95_ms)}`);
-  console.log(`  Total (50q): ${formatDuration(current.total_runtime_ms_50q)}`);
-  
-  if (current.error_rate_pct != null) {
-    console.log(`  Error Rate: ${current.error_rate_pct}%`);
-  }
-  if (current.cost_per_query_usd != null) {
-    console.log(`  Cost/Query: $${current.cost_per_query_usd.toFixed(4)}`);
-  }
+  try {
+    const budget = readJson<Budget>(BUDGET_PATH);
+    const summary = readJson<any>(CURRENT_PATH);
+    const current = extractCurrent(summary);
 
-  if (failures.length) {
-    console.error('\n❌ BUDGET GATE FAILED');
-    console.error('\nRegressions detected:');
-    for (const f of failures) {
-      console.error(`  • ${f}`);
+    const failures = assertBudget(current, budget);
+
+    console.log(`Budget Version: ${budget.version}\n`);
+
+    console.log('Baseline Metrics:');
+    console.log(`  p50:        ${formatDuration(budget.metrics.p50_ms)}`);
+    console.log(`  p95:        ${formatDuration(budget.metrics.p95_ms)}`);
+    console.log(`  Total (50q): ${formatDuration(budget.metrics.total_runtime_ms_50q)}`);
+
+    console.log('\nCurrent Metrics:');
+    console.log(`  p50:        ${formatDuration(current.p50_ms)}`);
+    console.log(`  p95:        ${formatDuration(current.p95_ms)}`);
+    console.log(`  Total (50q): ${formatDuration(current.total_runtime_ms_50q)}`);
+
+    if (current.error_rate_pct != null) {
+      console.log(`  Error Rate: ${current.error_rate_pct}%`);
     }
-    console.error(`\nMax allowed regression: +${budget.thresholds.max_regression_pct}%`);
-    process.exit(1);
+    if (current.cost_per_query_usd != null) {
+      console.log(`  Cost/Query: $${current.cost_per_query_usd.toFixed(4)}`);
+    }
+
+    const baselineP95 = budget.metrics.p95_ms;
+    const thresholdP95 = baselineP95 * (1 + budget.thresholds.max_regression_pct / 100);
+    const regression = regressionPct(current.p95_ms, baselineP95);
+
+    payload = {
+      mode: summary?.mode === 'real' ? 'real' : 'deterministic',
+      p50_ms: current.p50_ms,
+      p95_ms: current.p95_ms,
+      error_rate: current.error_rate_pct ?? 0,
+      baseline_p95_ms: baselineP95,
+      threshold_p95_ms: thresholdP95,
+      regression_pct: regression,
+      seed: summary?.seed ?? 'unknown',
+      node_version: summary?.node_version ?? process.version,
+      runner_os: summary?.runner_os ?? process.platform
+    };
+
+    if (failures.length) {
+      status = 'fail';
+      exitCode = 1;
+      console.error('\n❌ BUDGET GATE FAILED');
+      console.error('\nRegressions detected:');
+      for (const f of failures) {
+        console.error(`  • ${f}`);
+      }
+      console.error(`\nMax allowed regression: +${budget.thresholds.max_regression_pct}%`);
+      return;
+    }
+
+    console.log('\n✅ BUDGET GATE PASSED');
+    console.log(`   All metrics within +${budget.thresholds.max_regression_pct}% regression threshold`);
+  } catch (error) {
+    status = 'fail';
+    errorMessage = String(error);
+    exitCode = 1;
+    console.error(`\n❌ Budget check failed: ${errorMessage}`);
+  } finally {
+    const durationMs = Date.now() - startTime;
+    if (errorMessage) {
+      payload.failure_reason = errorMessage;
+    }
+    emitAgentEvent(
+      createAgentEvent({
+        event_type: 'budget_gate',
+        status,
+        duration_ms: durationMs,
+        payload
+      }),
+      { strict: false }
+    );
   }
 
-  console.log('\n✅ BUDGET GATE PASSED');
-  console.log(`   All metrics within +${budget.thresholds.max_regression_pct}% regression threshold`);
+  if (exitCode !== 0) {
+    process.exit(exitCode);
+  }
 }
 
 main();
