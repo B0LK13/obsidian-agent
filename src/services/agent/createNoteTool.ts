@@ -3,7 +3,21 @@ import { Tool } from './tools';
 
 export class CreateNoteTool implements Tool {
     name = 'create_note';
-    description = 'Create a new note in the vault. Input format: "path:Title of Note|content:Content here" or just the title.';
+    description = 'Create a new note in the vault.';
+    schema = {
+        type: 'object',
+        properties: {
+            path: {
+                type: 'string',
+                description: 'The path for the new note (e.g., "Research/My Topic").'
+            },
+            content: {
+                type: 'string',
+                description: 'The initial content of the note.'
+            }
+        },
+        required: ['path', 'content']
+    };
 
     constructor(private app: App) {}
 

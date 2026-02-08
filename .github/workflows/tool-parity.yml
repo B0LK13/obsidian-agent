@@ -1,32 +1,31 @@
-name: Tool Parity Gate
+name: Phase 3C Durability Gates
 
 on:
   pull_request:
     branches: [main]
     paths:
-      - 'src/services/agent/tools/**'
+      - 'src/services/agent/*Tool.ts'
       - 'openai_assistants_tools.json'
       - 'scripts/validate-tool-parity.ts'
+      - 'scripts/generate-openai-tools-manifest.ts'
       - '.github/workflows/tool-parity.yml'
   push:
     branches: [main, "phase3c/**"]
     paths:
-      - 'src/services/agent/tools/**'
+      - 'src/services/agent/*Tool.ts'
       - 'openai_assistants_tools.json'
       - 'scripts/validate-tool-parity.ts'
+      - 'scripts/generate-openai-tools-manifest.ts'
       - '.github/workflows/tool-parity.yml'
 
 jobs:
   parity:
-    name: Validate Tool Manifest↔Registry Parity
+    name: Durability Gates - Tool Parity & Schema Contracts
     runs-on: ubuntu-latest
-    container: node:20
     
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -37,12 +36,11 @@ jobs:
       - name: Install Dependencies
         run: npm ci
       
-      - name: Build (if present)
-        run: npm run build --if-present
-        continue-on-error: true
-      
       - name: Validate Tool Parity
-        run: npm run validate:tool-parity
+        run: npm run ci:tooling
+      
+      - name: Check Schema Contracts
+        run: npm run ci:contracts
       
       - name: Upload Results on Failure
         if: failure()
@@ -51,5 +49,5 @@ jobs:
           name: tool-parity-failure
           path: |
             openai_assistants_tools.json
-            src/services/agent/tools/
+            src/services/agent/
           retention-days: 7

@@ -1,4 +1,4 @@
-﻿import { AIService } from '../../../aiService';
+import { AIService } from '../../../aiService';
 import { Tool } from './tools';
 import { ObsidianAgentSettings } from '../../../settings';
 import { 
@@ -46,7 +46,9 @@ export class AgentService {
         if (sessionContext) history += "Recent Conversation:\n" + sessionContext + "\n";
 
         history += 'Available tools:\n';
-        this.tools.forEach(t => history += `- ${t.name}: ${t.description}\n`);
+        this.tools.forEach(t => {
+          history += `- ${t.name}: ${t.description}\n`;
+        });
         history += `\nUser's question: ${query}\n`;
 
         let steps = 0;

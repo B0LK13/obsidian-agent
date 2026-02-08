@@ -1,0 +1,31 @@
+{
+  "description": "Update or append content to an existing note in the vault.",
+  "name": "update_note",
+  "parameters": {
+    "additionalProperties": false,
+    "properties": {
+      "content": {
+        "description": "The new content to append or overwrite.",
+        "type": "string"
+      },
+      "mode": {
+        "default": "append",
+        "description": "Whether to append to existing content or overwrite it completely. Defaults to append.",
+        "enum": [
+          "append",
+          "overwrite"
+        ],
+        "type": "string"
+      },
+      "path": {
+        "description": "The path of the note to update.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "content",
+      "path"
+    ],
+    "type": "object"
+  }
+}

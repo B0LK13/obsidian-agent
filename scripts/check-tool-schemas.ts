@@ -3,18 +3,92 @@
  * 
  * Validates that current schemas match committed snapshots.
  * Fails CI on any drift (breaking changes).
+ * Emits structured events for observability.
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { canonicalizeJSON, extractToolSchema, loadManifest } from './snapshot-tool-schemas';
+import { fileURLToPath } from 'url';
+import { createAgentEvent, emitAgentEvent } from '../src/observability/emit-agent-event.ts';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+interface ToolDefinition {
+  type: string;
+  function: {
+    name: string;
+    description: string;
+    parameters: {
+      type: string;
+      properties: Record<string, any>;
+      required?: string[];
+      additionalProperties?: boolean;
+    };
+  };
+}
+
+interface ToolManifest {
+  tools: ToolDefinition[];
+}
 
 interface DriftCheckResult {
   valid: boolean;
   matching: string[];
-  drifted: { tool: string; file: string; reason: string }[];
+  drifted: { tool: string; file: string; reason: string; diff?: string }[];
   missing: string[];
   orphaned: string[];
+}
+
+/**
+ * Canonicalize JSON for stable comparison
+ * Sorts keys alphabetically for deterministic output
+ */
+function canonicalizeJSON(obj: any): any {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(canonicalizeJSON);
+  }
+  
+  const sorted: Record<string, any> = {};
+  Object.keys(obj).sort().forEach(key => {
+    sorted[key] = canonicalizeJSON(obj[key]);
+  });
+  
+  return sorted;
+}
+
+/**
+ * Extract schema from tool definition
+ */
+function extractToolSchema(tool: ToolDefinition): any {
+  return {
+    name: tool.function.name,
+    description: tool.function.description,
+    parameters: {
+      type: tool.function.parameters.type,
+      properties: tool.function.parameters.properties,
+      required: tool.function.parameters.required?.sort() || [],
+      additionalProperties: tool.function.parameters.additionalProperties ?? false
+    }
+  };
+}
+
+/**
+ * Load tool manifest
+ */
+function loadManifest(): ToolManifest {
+  const manifestPath = path.join(__dirname, '..', 'openai_assistants_tools.json');
+  
+  if (!fs.existsSync(manifestPath)) {
+    throw new Error(`Tool manifest not found: ${manifestPath}`);
+  }
+  
+  const content = fs.readFileSync(manifestPath, 'utf-8');
+  return JSON.parse(content) as ToolManifest;
 }
 
 /**
@@ -59,21 +133,38 @@ function detectDriftType(current: any, snapshot: any): string {
   const currentCanon = canonicalizeJSON(current);
   const snapshotCanon = canonicalizeJSON(snapshot);
   
-  // Check for breaking changes
-  if (JSON.stringify(currentCanon.required || []) !== JSON.stringify(snapshotCanon.required || [])) {
-    return 'required fields changed';
+  const currentProps = currentCanon.parameters?.properties || {};
+  const snapshotProps = snapshotCanon.parameters?.properties || {};
+  
+  const currentReq = currentCanon.parameters?.required || [];
+  const snapshotReq = snapshotCanon.parameters?.required || [];
+
+  // Check for breaking changes: Removed properties
+  const removedProps = Object.keys(snapshotProps).filter(p => !currentProps[p]);
+  if (removedProps.length > 0) {
+    return `BREAKING: Properties removed: ${removedProps.join(', ')}`;
+  }
+
+  // Check for breaking changes: Optional became Required
+  const newRequired = currentReq.filter((r: string) => !snapshotReq.includes(r));
+  if (newRequired.length > 0) {
+    return `BREAKING: Optional properties became required: ${newRequired.join(', ')}`;
+  }
+
+  // Check for breaking changes: Type changed
+  for (const prop of Object.keys(snapshotProps)) {
+    if (currentProps[prop] && currentProps[prop].type !== snapshotProps[prop].type) {
+      return `BREAKING: Type changed for ${prop}: ${snapshotProps[prop].type} -> ${currentProps[prop].type}`;
+    }
+  }
+
+  // Check for non-breaking changes: Added properties
+  const addedProps = Object.keys(currentProps).filter(p => !snapshotProps[p]);
+  if (addedProps.length > 0) {
+    return `NON-BREAKING: Added properties: ${addedProps.join(', ')}`;
   }
   
-  if (JSON.stringify(Object.keys(currentCanon.properties || {}).sort()) !== 
-      JSON.stringify(Object.keys(snapshotCanon.properties || {}).sort())) {
-    return 'properties changed';
-  }
-  
-  if (currentCanon.type !== snapshotCanon.type) {
-    return 'type changed';
-  }
-  
-  return 'schema structure changed';
+  return 'Schema structure changed';
 }
 
 /**
@@ -83,7 +174,7 @@ function checkDrift(): DriftCheckResult {
   console.log('🔍 Checking Tool Schema Drift...\n');
   
   const manifest = loadManifest();
-  const snapshotDir = path.join(__dirname, '..', 'tests', 'snapshots', 'tool-schemas');
+  const snapshotDir = path.join(__dirname, '..', 'tests', 'contracts', 'snapshots', 'tools');
   const committedSnapshots = getSnapshotFiles(snapshotDir);
   
   const manifestToolNames = manifest.tools.map(t => t.function.name).sort();
@@ -180,25 +271,68 @@ function generateReport(result: DriftCheckResult): void {
  * Main execution
  */
 function main(): void {
+  const startTime = Date.now();
+  let status: 'pass' | 'fail' = 'pass';
+  let exitCode = 0;
+  let errorMessage = '';
+  let result: DriftCheckResult | null = null;
+
   try {
-    const result = checkDrift();
+    result = checkDrift();
     generateReport(result);
-    
-    if (result.valid) {
-      console.log('\n✅ Schema contract check PASSED');
-      console.log('   All schemas match committed snapshots');
-      process.exit(0);
-    } else {
-      console.log('\n❌ Schema contract check FAILED');
-      console.log('\nTo update snapshots:');
-      console.log('  npm run contracts:refresh');
-      console.log('\nReview changes before committing.');
-      process.exit(1);
+
+    status = result.valid ? 'pass' : 'fail';
+    if (!result.valid) {
+      exitCode = 1;
     }
   } catch (error) {
-    console.error(`\n❌ Failed to check schema drift: ${error}`);
-    process.exit(1);
+    status = 'fail';
+    exitCode = 1;
+    errorMessage = String(error);
+    console.error(`\n❌ Failed to check schema drift: ${errorMessage}`);
+  } finally {
+    const durationMs = Date.now() - startTime;
+    const breakingChanges = result ? result.drifted.filter(d => d.reason.includes('BREAKING')).length : 0;
+    const nonBreakingChanges = result ? result.drifted.filter(d => !d.reason.includes('BREAKING')).length : 0;
+
+    emitAgentEvent(
+      createAgentEvent({
+        event_type: 'schema_contract_check',
+        status,
+        duration_ms: durationMs,
+        payload: {
+          tools_checked: result ? result.matching.length + result.drifted.length : 0,
+          matching: result?.matching.length ?? 0,
+          drifted: result?.drifted.length ?? 0,
+          missing: result?.missing.length ?? 0,
+          orphaned: result?.orphaned.length ?? 0,
+          breaking_changes: breakingChanges,
+          non_breaking_changes: nonBreakingChanges,
+          failure_reason: errorMessage || undefined
+        }
+      }),
+      { strict: false }
+    );
   }
+
+  if (result && result.valid) {
+    console.log('\n✅ Schema contract check PASSED');
+    console.log('   All schemas match committed snapshots');
+  } else if (result) {
+    console.log('\n❌ Schema contract check FAILED');
+    console.log('\nTo update snapshots:');
+    console.log('  npm run contracts:refresh');
+    console.log('\nReview changes before committing.');
+  }
+
+  if (exitCode !== 0) {
+    process.exit(exitCode);
+  }
+}
+
+// Run if called directly
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main();
 }
 
 // Export for testing
@@ -208,8 +342,3 @@ export {
   schemasEqual,
   getSnapshotFiles
 };
-
-// Run if called directly
-if (require.main === module) {
-  main();
-}

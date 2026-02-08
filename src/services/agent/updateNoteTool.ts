@@ -3,7 +3,27 @@ import { Tool } from './tools';
 
 export class UpdateNoteTool implements Tool {
     name = 'update_note';
-    description = 'Update or append content to an existing note. Input format: "path:Note.md|content:New content to append" or "path:Note.md|replace:Old text|with:New text"';
+    description = 'Update or append content to an existing note.';
+    schema = {
+        type: 'object',
+        properties: {
+            path: {
+                type: 'string',
+                description: 'The path of the note to update.'
+            },
+            content: {
+                type: 'string',
+                description: 'The new content to append or overwrite.'
+            },
+            mode: {
+                type: 'string',
+                enum: ['append', 'overwrite'],
+                description: 'Whether to append to existing content or overwrite it completely. Defaults to append.',
+                default: 'append'
+            }
+        },
+        required: ['path', 'content']
+    };
 
     constructor(private app: App) {}
 
