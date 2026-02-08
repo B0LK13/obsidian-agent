@@ -7,6 +7,10 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 interface ToolDefinition {
   type: string;
@@ -88,7 +92,7 @@ function loadManifest(): ToolManifest {
  * Ensure snapshot directory exists
  */
 function ensureSnapshotDir(): string {
-  const snapshotDir = path.join(__dirname, '..', 'tests', 'snapshots', 'tool-schemas');
+  const snapshotDir = path.join(__dirname, '..', 'tests', 'contracts', 'snapshots', 'tools');
   
   if (!fs.existsSync(snapshotDir)) {
     fs.mkdirSync(snapshotDir, { recursive: true });
@@ -158,6 +162,11 @@ function main(): void {
   }
 }
 
+// Run if called directly
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main();
+}
+
 // Export for testing
 export {
   canonicalizeJSON,
@@ -166,8 +175,3 @@ export {
   loadManifest,
   generateSnapshots
 };
-
-// Run if called directly
-if (require.main === module) {
-  main();
-}

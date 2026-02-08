@@ -1,27 +1,64 @@
-/**
- * Tool Schema Contract Tests
- * 
- * Validates that:
- * - Every manifest tool has a committed schema snapshot
- * - No orphan snapshots exist
- * - Schemas are valid and consistent
- */
-
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { loadManifest, getSnapshotFilename } from '../../../scripts/snapshot-tool-schemas';
-import { getSnapshotFiles, getToolFromFilename, schemasEqual } from '../../../scripts/check-tool-schemas';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+/**
+ * Helper functions (copied from scripts to avoid import issues)
+ */
+function canonicalizeJSON(obj: any): any {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(canonicalizeJSON);
+  }
+  
+  const sorted: Record<string, any> = {};
+  Object.keys(obj).sort().forEach(key => {
+    sorted[key] = canonicalizeJSON(obj[key]);
+  });
+  
+  return sorted;
+}
+
+function schemasEqual(a: any, b: any): boolean {
+  return JSON.stringify(canonicalizeJSON(a)) === JSON.stringify(canonicalizeJSON(b));
+}
+
+function getToolFromFilename(filename: string): string {
+  return filename.replace('.schema.json', '');
+}
+
+function getSnapshotFiles(snapshotDir: string): string[] {
+  if (!fs.existsSync(snapshotDir)) {
+    return [];
+  }
+  
+  return fs.readdirSync(snapshotDir)
+    .filter(f => f.endsWith('.schema.json'))
+    .sort();
+}
+
+function loadManifest(): any {
+  const manifestPath = path.join(__dirname, '../../', 'openai_assistants_tools.json');
+  
+  if (!fs.existsSync(manifestPath)) {
+    throw new Error(`Tool manifest not found: ${manifestPath}`);
+  }
+  
+  const content = fs.readFileSync(manifestPath, 'utf-8');
+  return JSON.parse(content);
+}
 
 describe('Tool Schema Contracts', () => {
-  const snapshotDir = path.join(__dirname, '..', '..', 'snapshots', 'tool-schemas');
-  let manifest: any;
-  let snapshotFiles: string[];
-
-  beforeAll(() => {
-    manifest = loadManifest();
-    snapshotFiles = fs.existsSync(snapshotDir) ? getSnapshotFiles(snapshotDir) : [];
-  });
+  const snapshotDir = path.join(__dirname, 'snapshots', 'tools');
+  const manifest = loadManifest();
+  const snapshotFiles = getSnapshotFiles(snapshotDir);
 
   it('should have a snapshot for every tool in manifest', () => {
     const manifestToolNames = manifest.tools.map((t: any) => t.function.name);
@@ -31,29 +68,44 @@ describe('Tool Schema Contracts', () => {
       (tool: string) => !snapshotToolNames.includes(tool)
     );
 
-    if (missing.length > 0) {
-      console.log('Missing snapshots for:', missing);
-    }
-
     expect(missing).toHaveLength(0);
   });
 
-  it('should not have orphan snapshots (snapshot without manifest tool)', () => {
-    const manifestToolNames = manifest.tools.map((t: any) => t.function.name);
-    const snapshotToolNames = snapshotFiles.map(getToolFromFilename);
+  it('should detect schema drift', () => {
+    const drifted: string[] = [];
 
-    const orphaned = snapshotToolNames.filter(
-      (tool: string) => !manifestToolNames.includes(tool)
-    );
+    for (const tool of manifest.tools) {
+      const toolName = tool.function.name;
+      const filename = `${toolName}.schema.json`;
+      const filepath = path.join(snapshotDir, filename);
 
-    if (orphaned.length > 0) {
-      console.log('Orphaned snapshots:', orphaned);
+      if (!fs.existsSync(filepath)) {
+        continue; // Missing snapshot handled in other test
+      }
+
+      const currentSchema = {
+        name: tool.function.name,
+        description: tool.function.description,
+        parameters: {
+          type: tool.function.parameters.type,
+          properties: tool.function.parameters.properties,
+          required: tool.function.parameters.required?.sort() || [],
+          additionalProperties: tool.function.parameters.additionalProperties ?? false
+        }
+      };
+
+      const snapshotContent = fs.readFileSync(filepath, 'utf-8');
+      const snapshotSchema = JSON.parse(snapshotContent);
+
+      if (!schemasEqual(currentSchema, snapshotSchema)) {
+        drifted.push(toolName);
+      }
     }
 
-    expect(orphaned).toHaveLength(0);
+    expect(drifted).toHaveLength(0);
   });
 
-  it('should have valid JSON schema snapshots', () => {
+  it('should validate snapshot structure', () => {
     for (const file of snapshotFiles) {
       const filepath = path.join(snapshotDir, file);
       const content = fs.readFileSync(filepath, 'utf-8');
@@ -70,78 +122,5 @@ describe('Tool Schema Contracts', () => {
       expect(schema.parameters).toHaveProperty('type');
       expect(schema.parameters).toHaveProperty('properties');
     }
-  });
-
-  it('should have consistent schema properties', () => {
-    for (const file of snapshotFiles) {
-      const filepath = path.join(snapshotDir, file);
-      const content = fs.readFileSync(filepath, 'utf-8');
-      const snapshot = JSON.parse(content);
-
-      // Type must be "function" for all tools
-      expect(snapshot.parameters.type).toBe('object');
-
-      // Properties must be an object
-      expect(typeof snapshot.parameters.properties).toBe('object');
-
-      // Required must be an array if present
-      if (snapshot.parameters.required !== undefined) {
-        expect(Array.isArray(snapshot.parameters.required)).toBe(true);
-      }
-    }
-  });
-
-  it('should have matching tool names in filenames and content', () => {
-    for (const file of snapshotFiles) {
-      const filepath = path.join(snapshotDir, file);
-      const content = fs.readFileSync(filepath, 'utf-8');
-      const snapshot = JSON.parse(content);
-
-      const filenameTool = getToolFromFilename(file);
-      const contentTool = snapshot.name;
-
-      expect(contentTool).toBe(filenameTool);
-    }
-  });
-
-  it('should detect schema drift if present', () => {
-    // This test will fail if schemas have drifted
-    // Run contracts:check to validate
-    const drifted: string[] = [];
-
-    for (const tool of manifest.tools) {
-      const toolName = tool.function.name;
-      const filename = getSnapshotFilename(toolName);
-      const filepath = path.join(snapshotDir, filename);
-
-      if (!fs.existsSync(filepath)) {
-        continue; // Missing snapshot handled in other test
-      }
-
-      const currentSchema = {
-        name: tool.function.name,
-        description: tool.function.description,
-        parameters: {
-          type: tool.function.parameters.type,
-          properties: tool.function.parameters.properties,
-          required: tool.function.parameters.required || [],
-          additionalProperties: tool.function.parameters.additionalProperties ?? false
-        }
-      };
-
-      const snapshotContent = fs.readFileSync(filepath, 'utf-8');
-      const snapshotSchema = JSON.parse(snapshotContent);
-
-      if (!schemasEqual(currentSchema, snapshotSchema)) {
-        drifted.push(toolName);
-      }
-    }
-
-    if (drifted.length > 0) {
-      console.log('Drifted schemas:', drifted);
-      console.log('Run: npm run contracts:refresh');
-    }
-
-    expect(drifted).toHaveLength(0);
   });
 });

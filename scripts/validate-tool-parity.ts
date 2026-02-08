@@ -3,10 +3,13 @@
  * 
  * Validates that tool manifest and runtime registry are in perfect sync.
  * Hard fail on any mismatch - blocks CI/CD pipeline.
+ * Emits structured events for observability.
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+import { createAgentEvent, emitAgentEvent } from '../src/observability/emit-agent-event.ts';
 
 interface ToolDefinition {
   type: string;
@@ -30,16 +33,21 @@ interface ParityValidationResult {
   mismatches: string[];
   manifestTools: string[];
   runtimeTools: string[];
+  matching: string[];
+  drifted: string[];
+  missing: string[];
+  orphaned: string[];
 }
 
 /**
  * Load tool manifest from openai_assistants_tools.json
  */
 function loadToolManifest(): ToolManifest {
-  const manifestPath = path.join(__dirname, '..', 'openai_assistants_tools.json');
+  const manifestPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'openai_assistants_tools.json');
   
   if (!fs.existsSync(manifestPath)) {
-    throw new Error(`Tool manifest not found: ${manifestPath}`);
+    // Return empty if not exists yet, so we can generate it
+    return { tools: [] };
   }
   
   const content = fs.readFileSync(manifestPath, 'utf-8');
@@ -48,39 +56,31 @@ function loadToolManifest(): ToolManifest {
 
 /**
  * Load runtime tool registry
- * This simulates the runtime registry - in production, this would import from src/runtime/toolRegistry.ts
+ * This simulates the runtime registry by scanning the agent services directory
  */
 function loadRuntimeRegistry(): string[] {
-  // For now, we'll scan the tools directory
-  const toolsDir = path.join(__dirname, '..', 'src', 'services', 'agent', 'tools');
+  // Point to actual tool location
+  const agentDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src', 'services', 'agent');
   
-  if (!fs.existsSync(toolsDir)) {
-    console.warn(`Tools directory not found: ${toolsDir}`);
+  if (!fs.existsSync(agentDir)) {
+    console.warn(`Agent directory not found: ${agentDir}`);
     return [];
   }
   
-  // Extract tool names from tool files
-  // This is a simplified check - production would use the actual registry
-  const toolFiles = fs.readdirSync(toolsDir)
-    .filter(f => f.endsWith('.ts') && !f.includes('.test.'));
+  // Extract tool names from files ending in 'Tool.ts'
+  const toolFiles = fs.readdirSync(agentDir)
+    .filter(f => f.endsWith('Tool.ts') && !f.includes('.test.'));
   
-  // Map file names to tool names (e.g., SearchVaultTool.ts -> search_vault)
   const toolNames = toolFiles.map(file => {
-    const className = file.replace('.ts', '');
-    return classNameToSnakeCase(className).replace(/_tool$/, '');
+    // e.g., createNoteTool.ts -> create_note
+    return file
+      .replace('Tool.ts', '')
+      .replace(/([A-Z])/g, '_$1')
+      .toLowerCase()
+      .replace(/^_/, '');
   });
   
   return toolNames.sort();
-}
-
-/**
- * Convert PascalCase class name to snake_case
- */
-function classNameToSnakeCase(className: string): string {
-  return className
-    .replace(/([A-Z])/g, '_$1')
-    .toLowerCase()
-    .replace(/^_/, '');
 }
 
 /**
@@ -121,21 +121,11 @@ function validateToolParity(): ParityValidationResult {
   const mismatches: string[] = [];
   
   // Load manifest
-  let manifest: ToolManifest;
-  try {
-    manifest = loadToolManifest();
-  } catch (error) {
-    return {
-      valid: false,
-      mismatches: [`Failed to load manifest: ${error}`],
-      manifestTools: [],
-      runtimeTools: []
-    };
-  }
+  const manifest = loadToolManifest();
   
   // Extract manifest tool names
   const manifestTools = manifest.tools
-    .map(extractManifestToolName)
+    .map((t: ToolDefinition) => extractManifestToolName(t))
     .sort();
   
   // Load runtime registry
@@ -176,11 +166,21 @@ function validateToolParity(): ParityValidationResult {
     mismatches.push(`Tools in runtime but not in manifest: ${runtimeOnly.join(', ')}`);
   }
   
+  // Calculate matching, drifted, missing, orphaned
+  const matching: string[] = manifestTools.filter(t => runtimeTools.includes(t));
+  const drifted: string[] = []; // No schema drift in parity check
+  const missing: string[] = manifestOnly;
+  const orphaned: string[] = runtimeOnly;
+  
   return {
     valid: mismatches.length === 0,
     mismatches,
     manifestTools,
-    runtimeTools
+    runtimeTools,
+    matching,
+    drifted,
+    missing,
+    orphaned
   };
 }
 
@@ -189,30 +189,66 @@ function validateToolParity(): ParityValidationResult {
  */
 function main(): void {
   console.log('🔍 Validating Tool Manifest↔Registry Parity...\n');
-  
-  const result = validateToolParity();
-  
-  console.log(`Manifest Tools (${result.manifestTools.length}):`);
-  for (const t of result.manifestTools) {
-    console.log(`  ✓ ${t}`);
+
+  const startTime = Date.now();
+  let status: 'pass' | 'fail' = 'pass';
+  let errorMessage = '';
+  let exitCode = 0;
+  let result: ParityValidationResult | null = null;
+
+  try {
+    result = validateToolParity();
+
+    console.log(`Manifest Tools (${result.manifestTools.length}):`);
+    for (const t of result.manifestTools) {
+      console.log(`  ✓ ${t}`);
+    }
+
+    console.log(`\nRuntime Tools (${result.runtimeTools.length}):`);
+    for (const t of result.runtimeTools) {
+      console.log(`  ✓ ${t}`);
+    }
+
+    status = result.valid ? 'pass' : 'fail';
+    if (!result.valid) {
+      exitCode = 1;
+    }
+  } catch (error) {
+    status = 'fail';
+    exitCode = 1;
+    errorMessage = String(error);
+    console.error(`\n❌ Tool parity check failed: ${errorMessage}`);
+  } finally {
+    const durationMs = Date.now() - startTime;
+    emitAgentEvent(
+      createAgentEvent({
+        event_type: 'tool_parity_check',
+        status,
+        duration_ms: durationMs,
+        payload: {
+          tools_manifest: result?.manifestTools.length ?? 0,
+          tools_runtime: result?.runtimeTools.length ?? 0,
+          mismatch_count: result?.mismatches.length ?? 0,
+          mismatches: result?.mismatches ?? (errorMessage ? [errorMessage] : [])
+        }
+      }),
+      { strict: false }
+    );
   }
-  
-  console.log(`\nRuntime Tools (${result.runtimeTools.length}):`);
-  for (const t of result.runtimeTools) {
-    console.log(`  ✓ ${t}`);
-  }
-  
-  if (result.valid) {
+
+  if (result && result.valid) {
     console.log('\n✅ Tool parity check PASSED');
     console.log('   Manifest and runtime registry are in sync');
-    process.exit(0);
-  } else {
+  } else if (result) {
     console.log('\n❌ Tool parity check FAILED');
     console.log('\nMismatches found:');
     for (const m of result.mismatches) {
       console.log(`  • ${m}`);
     }
-    process.exit(1);
+  }
+
+  if (exitCode !== 0) {
+    process.exit(exitCode);
   }
 }
 
@@ -226,6 +262,6 @@ export {
 };
 
 // Run if called directly
-if (require.main === module) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   main();
 }

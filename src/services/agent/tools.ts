@@ -1,4 +1,4 @@
-﻿import { App, TFile } from 'obsidian';
+import { App, TFile } from 'obsidian';
 import { VectorStore } from '../vectorStore';
 import { EmbeddingService } from '../embeddingService';
 import { MemoryService, MemoryLayer } from '../memoryService';
@@ -6,12 +6,23 @@ import { MemoryService, MemoryLayer } from '../memoryService';
 export interface Tool {
     name: string;
     description: string;
+    schema?: any;
     execute(input: string): Promise<string>;
 }
 
 export class SearchVaultTool implements Tool {
     name = 'search_vault';
-    description = 'Search the vault for notes relevant to a query. Returns a list of note paths and relevance scores. Input: A search query string.';
+    description = 'Search the vault for notes relevant to a query. Returns a list of note paths and relevance scores.';
+    schema = {
+        type: 'object',
+        properties: {
+            query: {
+                type: 'string',
+                description: 'A search query string to find relevant notes.'
+            }
+        },
+        required: ['query']
+    };
 
     constructor(
         private vectorStore: VectorStore, 
@@ -34,7 +45,17 @@ export class SearchVaultTool implements Tool {
 
 export class ReadNoteTool implements Tool {
     name = 'read_note';
-    description = 'Read the content of a specific note. Input: The exact file path of the note (e.g., "Folder/My Note.md").';
+    description = 'Read the content of a specific note.';
+    schema = {
+        type: 'object',
+        properties: {
+            path: {
+                type: 'string',
+                description: 'The exact file path of the note to read (e.g., "Folder/My Note.md").'
+            }
+        },
+        required: ['path']
+    };
 
     constructor(private app: App) {}
 
@@ -57,7 +78,16 @@ ${content}`;
 
 export class ListFilesTool implements Tool {
     name = 'list_files';
-    description = 'List all files in a specific folder. Input: The folder path (e.g., "Projects"). Leave empty for root.';
+    description = 'List all files in a specific folder.';
+    schema = {
+        type: 'object',
+        properties: {
+            path: {
+                type: 'string',
+                description: 'The folder path to list (e.g., "Projects"). Leave empty for root.'
+            }
+        }
+    };
 
     constructor(private app: App) {}
 
@@ -81,7 +111,22 @@ export class ListFilesTool implements Tool {
 
 export class RememberFactTool implements Tool {
     name = 'remember';
-    description = 'Save information to memory. Input format: "<layer>|<text>". Valid layers: "user" (preferences/identity), "session" (current task state), "long_term" (facts/decisions). Example: "user|Prefers concise code summaries"';
+    description = 'Save information to memory.';
+    schema = {
+        type: 'object',
+        properties: {
+            text: {
+                type: 'string',
+                description: 'The information to save.'
+            },
+            layer: {
+                type: 'string',
+                enum: ['user', 'session', 'long_term'],
+                description: 'The memory layer to save to. "user" (preferences), "session" (current task), "long_term" (facts).'
+            }
+        },
+        required: ['text']
+    };
 
     constructor(private memoryService: MemoryService) {}
 

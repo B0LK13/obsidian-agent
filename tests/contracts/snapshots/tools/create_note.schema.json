@@ -1,0 +1,26 @@
+{
+  "description": "Create a new note in the vault. Returns success message or error if note exists.",
+  "name": "create_note",
+  "parameters": {
+    "additionalProperties": false,
+    "properties": {
+      "content": {
+        "description": "The initial content of the note in Markdown format.",
+        "type": "string"
+      },
+      "path": {
+        "description": "The path for the new note (e.g., \"Research/My Topic\"). Extension .md is added automatically if missing.",
+        "type": "string"
+      },
+      "title": {
+        "description": "The title for the new note (optional).",
+        "type": "string"
+      }
+    },
+    "required": [
+      "content",
+      "path"
+    ],
+    "type": "object"
+  }
+}
