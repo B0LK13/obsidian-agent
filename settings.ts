@@ -282,6 +282,12 @@ export interface ObsidianAgentSettings {
         };
         // Agent core prompt (for autonomous agent mode)
         agentCorePrompt: string;
+	// Logging settings
+	loggingConfig: {
+		enabled: boolean;
+		logLevel: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
+		maxHistorySize: number;
+	};
 }
 
 export const DEFAULT_SETTINGS: ObsidianAgentSettings = {
@@ -376,7 +382,12 @@ mitigation:
   - <how to reduce risk>
 \`\`\`
 
-Maintain a 70/30 ratio: 70% answer/explanation, 30% next action. Always end with a clear recommended next move.`
+Maintain a 70/30 ratio: 70% answer/explanation, 30% next action. Always end with a clear recommended next move.`,
+	loggingConfig: {
+		enabled: true,
+		logLevel: 'INFO',
+		maxHistorySize: 1000
+	}
 }
 
 export function generateProfileId(): string {

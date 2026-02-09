@@ -21,6 +21,7 @@ import { CreateNoteTool } from './src/services/agent/createNoteTool';
 import { UpdateNoteTool } from './src/services/agent/updateNoteTool';
 import { MemoryService } from './src/services/memoryService';
 import { AudioService } from './src/services/audioService';
+import { logger, LogLevel } from './src/logger';
 
 // Import enhanced UI styles
 const ENHANCED_STYLES = `
@@ -117,6 +118,12 @@ export default class ObsidianAgentPlugin extends Plugin {
 		try {
 			await this.loadSettings();
 			await this.migrateToProfiles();
+
+			// Initialize logger with settings
+			if (this.settings.loggingConfig.enabled) {
+				logger.setLogLevel(LogLevel[this.settings.loggingConfig.logLevel]);
+			}
+			logger.info('Obsidian Agent plugin loaded', { component: 'Plugin', version: '1.0.0' });
 
 			this.registerStyles();
 

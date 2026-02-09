@@ -3,6 +3,7 @@ import { requestUrl, RequestUrlResponse } from 'obsidian';
 import { CacheService, CacheEntry } from './cacheService';
 import { ValidationError, APIError, NetworkError, ConfigurationError } from './src/errors';
 import { Validators } from './src/validators';
+import { logger } from './src/logger';
 
 export interface CompletionResult {
 	text: string;
@@ -61,7 +62,7 @@ export class AIService {
 					settings: settings.cacheConfig
 				});
 			} catch (error) {
-				console.error('Failed to import cache data:', error);
+				logger.error('Failed to import cache data', error as Error, { component: 'AIService' });
 				// Continue without cached data
 			}
 		}
@@ -192,7 +193,7 @@ export class AIService {
 					};
 				}
 			} catch (error) {
-				console.warn('Cache lookup failed, continuing with API call:', error);
+				logger.warn('Cache lookup failed, continuing with API call', { component: 'AIService', operation: 'cache-lookup' });
 			}
 		}
 
@@ -249,7 +250,7 @@ export class AIService {
 					);
 					result.cacheEntry = cacheEntry;
 				} catch (error) {
-					console.warn('Failed to cache result:', error);
+					logger.warn('Failed to cache result', { component: 'AIService', operation: 'cache-write' });
 					// Continue without caching
 				}
 			}
@@ -257,7 +258,7 @@ export class AIService {
 			result.fromCache = false;
 			return result;
 		} catch (error: any) {
-			console.error('AI Service Error:', error);
+			logger.error('AI Service Error', error, { component: 'AIService', operation: 'generate' });
 			
 			// Re-throw known error types
 			if (error instanceof ValidationError || 
