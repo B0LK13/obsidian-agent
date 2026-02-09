@@ -36,6 +36,13 @@
     "*.config.*",
     "scripts/",
     "src/",
-    "build-meta.json"
+    "build-meta.json",
+    "tests/",
+    "eval/",
+    "obsidian-ai-chat-plugin/",
+    "obsidian-ai-agent/",
+    "obsidian-agent/",
+    "pkm-agent/",
+    "pkm-agent-local/"
   ]
 }

@@ -261,9 +261,9 @@ export class AIService {
 			
 			// Re-throw known error types
 			if (error instanceof ValidationError || 
-			    error instanceof APIError || 
-			    error instanceof ConfigurationError ||
-			    error instanceof NetworkError) {
+				error instanceof APIError || 
+				error instanceof ConfigurationError ||
+				error instanceof NetworkError) {
 				throw error;
 			}
 			
@@ -361,7 +361,7 @@ export class AIService {
 		let body: any;
 
 		switch (this.settings.apiProvider) {
-			case 'openai':
+			case 'openai': {
 				url = 'https://api.openai.com/v1/chat/completions';
 				headers = {
 					'Content-Type': 'application/json',
@@ -394,6 +394,7 @@ export class AIService {
 					stream: true
 				};
 				break;
+			}
 
 			case 'anthropic': {
 				url = 'https://api.anthropic.com/v1/messages';
@@ -592,7 +593,7 @@ export class AIService {
 		let body: any;
 
 		switch (this.settings.apiProvider) {
-			case 'openai':
+			case 'openai': {
 				url = 'https://api.openai.com/v1/chat/completions';
 				headers = {
 					'Content-Type': 'application/json',
@@ -624,6 +625,7 @@ export class AIService {
 					max_tokens: this.settings.maxTokens
 				};
 				break;
+			}
 
 			case 'anthropic': {
 				url = 'https://api.anthropic.com/v1/messages';

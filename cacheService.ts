@@ -455,7 +455,7 @@ export class CacheService {
 			}
 			
 			const score = (overlap / Math.max(currentWords.size, 1)) * 
-			              (entry.accessCount / 10); // Weight by popularity
+				(entry.accessCount / 10); // Weight by popularity
 			
 			if (score > 0.3) {  // Minimum threshold
 				candidates.push({ entry, score });

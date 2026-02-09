@@ -957,7 +957,7 @@ ${content}`;
 					
 					for (const suggestion of suggestions) {
 						const priority = suggestion.priority === 'high' ? '🔴' : 
-						                suggestion.priority === 'medium' ? '🟡' : '🟢';
+						suggestion.priority === 'medium' ? '🟡' : '🟢';
 						report += `## ${priority} ${suggestion.direction}\n\n`;
 						report += `**Why this matters:** ${suggestion.reasoning}\n\n`;
 						if (suggestion.suggestedSources.length > 0) {
