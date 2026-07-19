@@ -175,3 +175,5 @@ websockets==16.0
 wheel==0.45.1
 widgetsnbextension==4.0.15
 yarl==1.22.0
+# added by remediation: enable dense embeddings
+fastembed==0.7.0
