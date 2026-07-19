@@ -1,37 +1,40 @@
 # Complete Developer Files Move Script
 # Run: powershell -ExecutionPolicy Bypass -File move_all_dev_files.ps1
 
-Write-Host "=== Complete Developer Files Migration to F:\DevDrive ===" -ForegroundColor Cyan
+# Prefer DEVDRIVE env var to avoid hardcoded host paths
+$devDrive = $env:DEVDRIVE
+if (-not $devDrive) { $devDrive = "F:\\DevDrive" }
+Write-Host "=== Complete Developer Files Migration to $devDrive ===" -ForegroundColor Cyan
 Write-Host ""
 
 # Create destination
-if (-not (Test-Path "F:\DevDrive")) {
-    New-Item -ItemType Directory -Path "F:\DevDrive" -Force | Out-Null
-    Write-Host "Created F:\DevDrive" -ForegroundColor Green
+if (-not (Test-Path $devDrive)) {
+    New-Item -ItemType Directory -Path $devDrive -Force | Out-Null
+    Write-Host "Created $devDrive" -ForegroundColor Green
 }
 
 # ============================================
 # MAIN PROJECT DIRECTORIES
 # ============================================
 $projectDirs = @(
-    @{ Source = "C:\Users\Admin\Documents\B0LK13v2"; Dest = "F:\DevDrive\B0LK13v2"; Desc = "Main PKM Agent Project" },
-    @{ Source = "C:\Users\Admin\Documents\Cline"; Dest = "F:\DevDrive\Cline"; Desc = "Cline AI" },
-    @{ Source = "C:\Users\Admin\Documents\zed-dev-extension"; Dest = "F:\DevDrive\zed-dev-extension"; Desc = "Zed Extension" },
-    @{ Source = "C:\Users\Admin\agent-zero-advanced"; Dest = "F:\DevDrive\agent-zero-advanced"; Desc = "Agent Zero" },
-    @{ Source = "C:\Users\Admin\BlackAgencyOS"; Dest = "F:\DevDrive\BlackAgencyOS"; Desc = "Black Agency OS" },
-    @{ Source = "C:\Users\Admin\CascadeProjects"; Dest = "F:\DevDrive\CascadeProjects"; Desc = "Cascade Projects" },
-    @{ Source = "C:\Users\Admin\Development"; Dest = "F:\DevDrive\Development"; Desc = "Development" },
-    @{ Source = "C:\Users\Admin\Projects"; Dest = "F:\DevDrive\Projects"; Desc = "Projects" }
+    @{ Source = "C:\Users\Admin\Documents\B0LK13v2"; Dest = (Join-Path $devDrive "B0LK13v2"); Desc = "Main PKM Agent Project" },
+    @{ Source = "C:\Users\Admin\Documents\Cline"; Dest = (Join-Path $devDrive "Cline"); Desc = "Cline AI" },
+    @{ Source = "C:\Users\Admin\Documents\zed-dev-extension"; Dest = (Join-Path $devDrive "zed-dev-extension"); Desc = "Zed Extension" },
+    @{ Source = "C:\Users\Admin\agent-zero-advanced"; Dest = (Join-Path $devDrive "agent-zero-advanced"); Desc = "Agent Zero" },
+    @{ Source = "C:\Users\Admin\BlackAgencyOS"; Dest = (Join-Path $devDrive "BlackAgencyOS"); Desc = "Black Agency OS" },
+    @{ Source = "C:\Users\Admin\CascadeProjects"; Dest = (Join-Path $devDrive "CascadeProjects"); Desc = "Cascade Projects" },
+    @{ Source = "C:\Users\Admin\Development"; Dest = (Join-Path $devDrive "Development"); Desc = "Development" },
+    @{ Source = "C:\Users\Admin\Projects"; Dest = (Join-Path $devDrive "Projects"); Desc = "Projects" }
 )
 
 # ============================================
 # DEV TOOL DIRECTORIES (keep on C: but backup)
 # ============================================
 $devToolDirs = @(
-    @{ Source = "C:\Users\Admin\scoop"; Dest = "F:\DevDrive\_backups\scoop"; Desc = "Scoop Package Manager" },
-    @{ Source = "C:\Users\Admin\pipx"; Dest = "F:\DevDrive\_backups\pipx"; Desc = "Pipx Python Tools" },
-    @{ Source = "C:\Users\Admin\.pkm-agent"; Dest = "F:\DevDrive\_backups\.pkm-agent"; Desc = "PKM Agent Data" },
-    @{ Source = "C:\Users\Admin\.mcp"; Dest = "F:\DevDrive\_backups\.mcp"; Desc = "MCP Config" }
+    @{ Source = "C:\Users\Admin\scoop"; Dest = (Join-Path $devDrive "_backups\scoop"); Desc = "Scoop Package Manager" },
+    @{ Source = "C:\Users\Admin\pipx"; Dest = (Join-Path $devDrive "_backups\pipx"); Desc = "Pipx Python Tools" },
+    @{ Source = "C:\Users\Admin\.pkm-agent"; Dest = (Join-Path $devDrive "_backups\.pkm-agent"); Desc = "PKM Agent Data" },
+    @{ Source = "C:\Users\Admin\.mcp"; Dest = (Join-Path $devDrive "_backups\.mcp"); Desc = "MCP Config" }
 )
 
 # ============================================
@@ -120,7 +123,7 @@ foreach ($item in $devToolDirs) {
 }
 
 Write-Host "`n=== CONFIG FILES ===" -ForegroundColor Cyan
-New-Item -ItemType Directory -Path "F:\DevDrive\_backups\configs" -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $devDrive "_backups\configs") -Force | Out-Null
 foreach ($item in $configFiles) {
     if (Test-Path $item.Source) {
         Copy-Item -Path $item.Source -Destination $item.Dest -Force
@@ -165,7 +168,7 @@ if (Test-Path "E:\") {
             }
         }
         if ($isDev) {
-            $destPath = "F:\DevDrive\E-Drive\$($item.Name)"
+            $destPath = (Join-Path $devDrive ("E-Drive\" + $item.Name))
             if (Move-DevItem -Source $item.FullName -Dest $destPath -Desc "E:\$($item.Name)") {
                 $moved += $destPath
             }

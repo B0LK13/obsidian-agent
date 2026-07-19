@@ -20,12 +20,15 @@ Write-Host @"
 # ============================================
 Write-Host "`n[1/6] Creating DevDrive structure..." -ForegroundColor Yellow
 
+# Prefer DEVDRIVE env var to avoid hardcoded host paths
+$devDrive = $env:DEVDRIVE
+if (-not $devDrive) { $devDrive = "F:\\DevDrive" }
 $devDriveDirs = @(
-    "F:\DevDrive",
-    "F:\DevDrive\scoop",
-    "F:\DevDrive\tools",
-    "F:\DevDrive\projects",
-    "F:\DevDrive\_backups"
+    $devDrive,
+    (Join-Path $devDrive "scoop"),
+    (Join-Path $devDrive "tools"),
+    (Join-Path $devDrive "projects"),
+    (Join-Path $devDrive "_backups")
 )
 
 foreach ($dir in $devDriveDirs) {
@@ -41,7 +44,7 @@ foreach ($dir in $devDriveDirs) {
 Write-Host "`n[2/6] Migrating Scoop to F:\DevDrive\scoop..." -ForegroundColor Yellow
 
 $oldScoop = "C:\Users\Admin\scoop"
-$newScoop = "F:\DevDrive\scoop"
+$newScoop = Join-Path $devDrive "scoop"
 
 if (Test-Path $oldScoop) {
     Write-Host "  Copying scoop files (this may take a few minutes)..." -ForegroundColor Gray
@@ -66,7 +69,7 @@ if (Test-Path $oldScoop) {
 Write-Host "`n[3/6] Migrating pipx..." -ForegroundColor Yellow
 
 $oldPipx = "C:\Users\Admin\pipx"
-$newPipx = "F:\DevDrive\tools\pipx"
+$newPipx = Join-Path $devDrive "tools\pipx"
 
 if (Test-Path $oldPipx) {
     robocopy $oldPipx $newPipx /E /MT:8 /R:1 /W:1 /NP /NDL /NJS /NJH 2>&1 | Out-Null
@@ -126,7 +129,7 @@ foreach ($cfg in $configs) {
 
 # Copy individual config files
 $configFiles = @(".gitconfig", ".npmrc", ".mcp.json", "winsurf-mcp.json")
-New-Item -ItemType Directory -Path "F:\DevDrive\_backups\configs" -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $devDrive "_backups\configs") -Force | Out-Null
 foreach ($file in $configFiles) {
     $src = "C:\Users\Admin\$file"
     if (Test-Path $src) {
@@ -147,7 +150,7 @@ if (Test-Path "E:\") {
         foreach ($ind in $indicators) {
             if (Test-Path (Join-Path $item.FullName $ind)) {
                 Write-Host "  Found: $($item.Name)" -ForegroundColor Gray
-                robocopy $item.FullName "F:\DevDrive\projects\$($item.Name)" /E /MT:8 /R:1 /W:1 /NP /NDL /NJS /NJH 2>&1 | Out-Null
+                robocopy $item.FullName (Join-Path $devDrive ("projects\" + $item.Name)) /E /MT:8 /R:1 /W:1 /NP /NDL /NJS /NJH 2>&1 | Out-Null
                 Write-Host "    [OK]" -ForegroundColor Green
                 break
             }

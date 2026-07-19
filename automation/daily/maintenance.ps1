@@ -3,7 +3,10 @@
 # Logs to F:\DevDrive\logs\maintenance-YYYY-MM-DD.log
 
 $ErrorActionPreference = "Continue"
-$logDir = "F:\DevDrive\logs"
+# Prefer DEVDRIVE env var to avoid hardcoded host paths
+$devDrive = $env:DEVDRIVE
+if (-not $devDrive) { $devDrive = "F:\\DevDrive" }
+$logDir = Join-Path $devDrive "logs"
 $logFile = "$logDir\maintenance-$(Get-Date -Format 'yyyy-MM-dd').log"
 
 # Ensure log directory exists

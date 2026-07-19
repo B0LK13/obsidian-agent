@@ -3,8 +3,11 @@
 
 Write-Host "=== PKM Agent Clean Installation ===" -ForegroundColor Cyan
 
+# Prefer DEVDRIVE env var to avoid hardcoded host paths
+$devDrive = $env:DEVDRIVE
+if (-not $devDrive) { $devDrive = "F:\\DevDrive" }
 # Find executables
-$pythonExe = "F:\DevDrive\scoop\apps\python\current\python.exe"
+$pythonExe = Join-Path $devDrive "scoop\apps\python\current\python.exe"
 if (-not (Test-Path $pythonExe)) {
     $pythonExe = "C:\Users\Admin\scoop\apps\python\current\python.exe"
 }

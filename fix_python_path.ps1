@@ -3,9 +3,15 @@
 
 Write-Host "=== Fixing Python PATH ===" -ForegroundColor Cyan
 
+# Prefer DEVDRIVE env var to avoid committing host-specific paths
+$devDrive = $env:DEVDRIVE
+if (-not $devDrive) {
+    $devDrive = "F:\\DevDrive"
+}
+
 # Check possible Python locations
 $pythonPaths = @(
-    "F:\DevDrive\scoop\apps\python\current\python.exe",
+    Join-Path $devDrive "scoop\apps\python\current\python.exe",
     "C:\Users\Admin\scoop\apps\python\current\python.exe",
     "C:\Python312\python.exe",
     "C:\Python311\python.exe"
@@ -48,7 +54,7 @@ if ($userPath -notlike "*$pythonDir*") {
 
 # Install PKM Agent
 Write-Host "`n=== Installing PKM Agent ===" -ForegroundColor Cyan
-$pkmAgentPath = "F:\DevDrive\projects\B0LK13v2\apps\pkm-agent"
+$pkmAgentPath = Join-Path $devDrive "projects\B0LK13v2\apps\pkm-agent"
 if (-not (Test-Path $pkmAgentPath)) {
     $pkmAgentPath = "C:\Users\Admin\Documents\B0LK13v2\apps\pkm-agent"
 }

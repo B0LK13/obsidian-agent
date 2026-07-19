@@ -1,27 +1,30 @@
 # Move all developer files to F:\DevDrive
 # Run: powershell -ExecutionPolicy Bypass -File move_to_devdrive.ps1
 
-Write-Host "=== Moving Developer Files to F:\DevDrive ===" -ForegroundColor Cyan
+# Prefer DEVDRIVE env var to avoid hardcoded host paths
+$devDrive = $env:DEVDRIVE
+if (-not $devDrive) { $devDrive = "F:\\DevDrive" }
+Write-Host "=== Moving Developer Files to $devDrive ===" -ForegroundColor Cyan
 
 # Create destination
-if (-not (Test-Path "F:\DevDrive")) {
-    New-Item -ItemType Directory -Path "F:\DevDrive" -Force | Out-Null
-    Write-Host "Created F:\DevDrive" -ForegroundColor Green
+if (-not (Test-Path $devDrive)) {
+    New-Item -ItemType Directory -Path $devDrive -Force | Out-Null
+    Write-Host "Created $devDrive" -ForegroundColor Green
 }
 
 # Developer directories to move
 $devDirs = @(
     # From Documents
-    @{ Source = "C:\Users\Admin\Documents\B0LK13v2"; Dest = "F:\DevDrive\B0LK13v2" },
-    @{ Source = "C:\Users\Admin\Documents\Cline"; Dest = "F:\DevDrive\Cline" },
-    @{ Source = "C:\Users\Admin\Documents\zed-dev-extension"; Dest = "F:\DevDrive\zed-dev-extension" },
+    @{ Source = "C:\Users\Admin\Documents\B0LK13v2"; Dest = (Join-Path $devDrive "B0LK13v2") },
+    @{ Source = "C:\Users\Admin\Documents\Cline"; Dest = (Join-Path $devDrive "Cline") },
+    @{ Source = "C:\Users\Admin\Documents\zed-dev-extension"; Dest = (Join-Path $devDrive "zed-dev-extension") },
     
     # From User root
-    @{ Source = "C:\Users\Admin\agent-zero-advanced"; Dest = "F:\DevDrive\agent-zero-advanced" },
-    @{ Source = "C:\Users\Admin\BlackAgencyOS"; Dest = "F:\DevDrive\BlackAgencyOS" },
-    @{ Source = "C:\Users\Admin\CascadeProjects"; Dest = "F:\DevDrive\CascadeProjects" },
-    @{ Source = "C:\Users\Admin\Development"; Dest = "F:\DevDrive\Development" },
-    @{ Source = "C:\Users\Admin\Projects"; Dest = "F:\DevDrive\Projects" }
+    @{ Source = "C:\Users\Admin\agent-zero-advanced"; Dest = (Join-Path $devDrive "agent-zero-advanced") },
+    @{ Source = "C:\Users\Admin\BlackAgencyOS"; Dest = (Join-Path $devDrive "BlackAgencyOS") },
+    @{ Source = "C:\Users\Admin\CascadeProjects"; Dest = (Join-Path $devDrive "CascadeProjects") },
+    @{ Source = "C:\Users\Admin\Development"; Dest = (Join-Path $devDrive "Development") },
+    @{ Source = "C:\Users\Admin\Projects"; Dest = (Join-Path $devDrive "Projects") }
 )
 
 $moved = @()

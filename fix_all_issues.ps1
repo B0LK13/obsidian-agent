@@ -8,13 +8,16 @@ Write-Host "=== Fixing All Issues ===" -ForegroundColor Cyan
 # ============================================
 Write-Host "`n[1/3] Fixing PATH..." -ForegroundColor Yellow
 
+# Prefer DEVDRIVE env var to avoid hardcoded host paths
+$devDrive = $env:DEVDRIVE
+if (-not $devDrive) { $devDrive = "F:\\DevDrive" }
 $pathsToAdd = @(
     "C:\Users\Admin\scoop\shims",
     "C:\Users\Admin\scoop\apps\python\current",
     "C:\Users\Admin\scoop\apps\python\current\Scripts",
-    "F:\DevDrive\scoop\shims",
-    "F:\DevDrive\scoop\apps\python\current",
-    "F:\DevDrive\scoop\apps\python\current\Scripts"
+    (Join-Path $devDrive "scoop\shims"),
+    (Join-Path $devDrive "scoop\apps\python\current"),
+    (Join-Path $devDrive "scoop\apps\python\current\Scripts")
 )
 
 # Add to current session
